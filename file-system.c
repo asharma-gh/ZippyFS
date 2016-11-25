@@ -13,15 +13,6 @@
 #include <unistd.h>
 #include <dirent.h>
 #define MAX_FILE_SIZE 4096
-/** 
- * Returns file attributes
- *  - sets unused fields in stat to 0
- *  - adds file attributes to stat
- * @param path is the path to the file
- * @param stbuf is the stat structure to put the file attributes in
- * @return 0 for normal exit status, non-zero otherwise.
- */
-
 
 
 /** returns the attributes of a specific file / directory
