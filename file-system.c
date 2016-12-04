@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <stdlib.h>
 #include <regex.h>
 #include <alloca.h>
 
@@ -99,12 +100,24 @@ static int zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             strcpy(fuse_name + 1, temp);
             fuse_name[0] = '/';
         }
+        // check if the current file is in the directory in the given path
+        char* temp_path = strdup(path);
+        char* temp_fuse_path = strdup(fuse_name);
+        int pathDif = strlen(temp_fuse_path)
+                    - strlen(temp_path);
+        if (strlen(path) > 1) {
+            pathDif--;
+        }
+        pathDif = pathDif == strlen(basename(temp_fuse_path));
+
+        free(temp_path);
+        free(temp_fuse_path);
 
         printf("zip_name: %s\n", zip_name);
         printf("fuse_name: %s\n", fuse_name);
         // find file in system, add to buffer
         struct stat buffer;
-        if (zipfs_getattr(fuse_name, &buffer) == 0) {
+        if (pathDif && zipfs_getattr(fuse_name, &buffer) == 0) {
             printf("added %s\n", fuse_name); 
             filler(buf, basename(fuse_name), NULL, 0);
         }
@@ -137,8 +150,7 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
     (void) offset;
     printf("READ: %s\n", path);
     /** TODO: fix path to be readable by libzip **/
-    // open file
-    struct zip_file* file = zip_fopen(archive, path, 0);
+    struct zip_file* file = zip_fopen(archive, path + 1, 0);
     if (!file) {
         printf("%s not found\n", path);
         return -errno;
@@ -171,13 +183,89 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
  * @param path is the relative path to the file
  * @param fi is file info
  * @return 0 for success, non-zero otherwise
-
+ */
  static int zipfs_open(const char* path, struct fuse_file_info* fi) {
  printf("OPEN: %s\n", path);
 
  return 0;
  }
+
+/**
+ * creates a file
+ * @param path is the path of the file
+ * @param mode is an attribute of the file
+ * @param rdev is another attribute of the file
+ * @return 0 for success, non-zero otherwise
  */
+static int zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
+    printf("MKNOD: %s\n", path);
+    return 0;
+}
+/**
+ * deletes the given file
+ * @param path is the path of the file to delete
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_unlink(const char* path) {
+     printf("UNLINK: %s\n", path);
+     return 0;
+}
+/**
+ * creates a directory with the given name
+ * @param path is the name of the directory
+ * @param mode is the permissions
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_mkdir(const char* path, mode_t mode) {
+     printf("MKDIR: %s\n", path);return 0;
+}
+/**
+ * renames the file "from" to "to"
+ * @param from is the source
+ * @param to is the destination
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_rename(const char* from, const char* to) {
+     printf("RENAME: from: %s == to: %s\n", from, to);
+     return 0;
+}
+
+/**
+ * writes bytes to a file at a specified offset
+ * @param path is the path to the file
+ * @param buf is the bytes to write
+ * @param size is the size of the buffer
+ * @param offset is the offset in the file
+ * @param file info is unused
+ * @return the number of bytes written
+ */
+static int zipfs_write(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
+    printf("WRITE: %s\n", path);
+    return 0;
+}
+
+/**
+ * extend a given file / shrink it by the given bytes
+ * @param path is the path to the file
+ * @param size is the size to truncate by
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_truncate(const char* path, off_t size) {
+     printf("TRUNCATE: %s\n", path);
+     return 0;
+}
+/**
+ * check user permissions of a file
+ * @param path is the path to the file
+ * @param mask is for permissions, unused
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_access(const char* path, int mode) {
+     printf("ACCESS: %s\n", path);
+     return 0;
+}
+
+ 
 /**
  * closes the working zip archive
  */
@@ -190,6 +278,14 @@ static struct fuse_operations zipfs_operations = {
     .getattr = zipfs_getattr,
     .readdir = zipfs_readdir,
     .read = zipfs_read,
+    .mknod = zipfs_mknod, // create file
+    .unlink = zipfs_unlink, // delete file
+    .mkdir = zipfs_mkdir, // create directory
+    .rename = zipfs_rename, // rename a file/directory
+    .write = zipfs_write, // write to a file
+    .truncate = zipfs_truncate, // truncates file to given size
+    .access = zipfs_access, // does file exist?
+    .open = zipfs_access, // same as access
     .destroy = zipfs_destroy,
 };
 
