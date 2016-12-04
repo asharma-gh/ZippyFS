@@ -1,4 +1,5 @@
 # zipfs
-meme file system using libzip and fuse
+toy file system using libzip and fuse
 
-- currently a crude fuse wrapper for syscalls
+now mountable!
+ls kind of works!!
