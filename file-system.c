@@ -149,7 +149,7 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
-    /** TODO: fix path to be readable by libzip **/
+    
     struct zip_file* file = zip_fopen(archive, path + 1, 0);
     if (!file) {
         printf("%s not found\n", path);
