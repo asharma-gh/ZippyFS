@@ -199,46 +199,6 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
  }
 
 /**
- * creates a file
- * @param path is the path of the file
- * @param mode is an attribute of the file
- * @param rdev is another attribute of the file
- * @return 0 for success, non-zero otherwise
- */
-static int zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
-    printf("MKNOD: %s\n", path);
-    return 0;
-}
-/**
- * deletes the given file
- * @param path is the path of the file to delete
- * @return 0 for success, non-zero otherwise
- */
-static int zipfs_unlink(const char* path) {
-     printf("UNLINK: %s\n", path);
-     return 0;
-}
-/**
- * creates a directory with the given name
- * @param path is the name of the directory
- * @param mode is the permissions
- * @return 0 for success, non-zero otherwise
- */
-static int zipfs_mkdir(const char* path, mode_t mode) {
-     printf("MKDIR: %s\n", path);return 0;
-}
-/**
- * renames the file "from" to "to"
- * @param from is the source
- * @param to is the destination
- * @return 0 for success, non-zero otherwise
- */
-static int zipfs_rename(const char* from, const char* to) {
-     printf("RENAME: from: %s == to: %s\n", from, to);
-     return 0;
-}
-
-/**
  * writes bytes to a file at a specified offset
  * @param path is the path to the file
  * @param buf is the bytes to write
@@ -273,6 +233,57 @@ static int zipfs_write(const char* path, const char* buf, size_t size, off_t off
     return size;
 }
 
+
+/**
+ * creates a file
+ * @param path is the path of the file
+ * @param mode is an attribute of the file
+ * @param rdev is another attribute of the file
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
+    printf("MKNOD: %s\n", path);
+    (void)mode;
+    (void)rdev;
+    zipfs_write(path, 0, 0, 0, NULL);
+    return 0;
+}
+/**
+ * deletes the given file
+ * @param path is the path of the file to delete
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_unlink(const char* path) {
+     printf("UNLINK: %s\n", path);
+     zip_int64_t file_index = zip_name_locate(archive, path + 1, 0);
+     zip_delete(archive, file_index);
+     return 0;
+}
+/**
+ * creates a directory with the given name
+ * @param path is the name of the directory
+ * @param mode is the permissions
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_mkdir(const char* path, mode_t mode) {
+     printf("MKDIR: %s\n", path);
+     zip_dir_add(archive, path + 1, ZIP_FL_ENC_UTF_8);
+     return 0;
+}
+/**
+ * renames the file "from" to "to"
+ * @param from is the source
+ * @param to is the destination
+ * @return 0 for success, non-zero otherwise
+ */
+static int zipfs_rename(const char* from, const char* to) {
+     printf("RENAME: from: %s == to: %s\n", from, to);
+     zip_source_t* old_source = zip_source_file(archive, from + 1, 0, 0);
+     zip_int64_t old_file_index = zip_name_locate(archive, from + 1, 0);
+     zip_file_add(archive, to + 1, old_source, ZIP_FL_OVERWRITE);
+     zip_delete(archive, old_file_index);
+     return 0;
+}
 /**
  * extend a given file / shrink it by the given bytes
  * @param path is the path to the file
@@ -291,7 +302,8 @@ static int zipfs_truncate(const char* path, off_t size) {
  */
 static int zipfs_access(const char* path, int mode) {
      printf("ACCESS: %s\n", path);
-     return 0;
+     (void)mode;
+     return zipfs_open(path, NULL);
 }
 
  
@@ -315,7 +327,7 @@ static struct fuse_operations zipfs_operations = {
     .write = zipfs_write, // write to a file
     .truncate = zipfs_truncate, // truncates file to given size
     .access = zipfs_access, // does file exist?
-    .open = zipfs_access, // same as access
+    .open = zipfs_open, // same as access
     .destroy = zipfs_destroy,
 };
 
