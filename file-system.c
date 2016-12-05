@@ -19,7 +19,7 @@
 
 /** the mounted zip archive */
 static struct zip* archive;
-
+static char* zip_name;
 
 
 
@@ -42,19 +42,19 @@ static int zipfs_getattr(const char* path, struct stat* stbuf) {
         folder_path[len] = '\0'; 
     }
     struct zip_stat zipstbuf;
-    printf("===temp folder path: %s\n", folder_path);
+    //printf("===temp folder path: %s\n", folder_path);
     // find folder in archive
     if (strlen(path)== 1 || !zip_stat(archive, folder_path, 0, &zipstbuf)) {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
-        printf("**added folder at folder path\n");
+     //   printf("**added folder at folder path\n");
     } else {
         // find file in archive
         if (zip_stat(archive, path + 1, 0, &zipstbuf)) {
-            printf("path not found: %s\n", path);
+      //      printf("path not found: %s\n", path);
             return -errno;
         }
-        printf("added file at fuse path + 1\n");
+   //     printf("added file at fuse path + 1\n");
         stbuf->st_mode = S_IFREG | 0666;
         stbuf->st_nlink = 1;
         stbuf->st_size = zipstbuf.size;
@@ -103,7 +103,7 @@ static int zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         // check if the current file is in the directory in the given path
         char* temp_path = strdup(path);
         char* temp_fuse_path = strdup(fuse_name);
-        int pathDif = strlen(temp_fuse_path)
+        unsigned int pathDif = strlen(temp_fuse_path)
                     - strlen(temp_path);
         if (strlen(path) > 1) {
             pathDif--;
@@ -113,12 +113,12 @@ static int zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         free(temp_path);
         free(temp_fuse_path);
 
-        printf("zip_name: %s\n", zip_name);
-        printf("fuse_name: %s\n", fuse_name);
+    //    printf("zip_name: %s\n", zip_name);
+    //    printf("fuse_name: %s\n", fuse_name);
         // find file in system, add to buffer
         struct stat buffer;
         if (pathDif && zipfs_getattr(fuse_name, &buffer) == 0) {
-            printf("added %s\n", fuse_name); 
+   //         printf("added %s\n", fuse_name); 
             filler(buf, basename(fuse_name), NULL, 0);
         }
 
@@ -179,15 +179,23 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
 }
 
 /**
- * opens the file
+ * opens the file, checks if the file exists
  * @param path is the relative path to the file
  * @param fi is file info
  * @return 0 for success, non-zero otherwise
  */
  static int zipfs_open(const char* path, struct fuse_file_info* fi) {
- printf("OPEN: %s\n", path);
-
- return 0;
+    printf("OPEN: %s\n", path);
+    (void)fi;
+    
+    int num_files = zip_get_num_entries(archive, ZIP_FL_UNCHANGED);
+    for (int i = 0; i < num_files; i++) {
+        const char* name = zip_get_name(archive, i, 0);
+        if (strcmp(name, path + 1) == 0) {
+            return 0;
+        }
+    }
+    return -1;
  }
 
 /**
@@ -239,9 +247,30 @@ static int zipfs_rename(const char* from, const char* to) {
  * @param file info is unused
  * @return the number of bytes written
  */
-static int zipfs_write(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
+static int zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE: %s\n", path);
-    return 0;
+    (void)fi;
+    // read old data
+    char new_buf[offset + size];
+    zip_file_t* file =  zip_fopen(archive, path + 1, 0);
+    zip_fread(file, new_buf, offset);
+    zip_fclose(file);
+    //zipfs_read(path, new_buf, offset, 0, fi);
+    // concat new data into buffer
+    memcpy(new_buf + offset, buf, size);
+
+
+    // write to new file source
+    zip_source_t* new_source;
+    if ((new_source = zip_source_buffer(archive, new_buf, sizeof(new_buf), 0)) == NULL
+        || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
+        zip_source_free(new_source);
+        printf("error adding new file source %s\n", zip_strerror(archive));
+    }
+    zip_close(archive);
+    archive = zip_open(zip_name, 0, 0);
+ 
+    return size;
 }
 
 /**
@@ -271,6 +300,7 @@ static int zipfs_access(const char* path, int mode) {
  */
 void zipfs_destroy(void* private_data) {
     (void)private_data;
+    free(zip_name);
     zip_close(archive);
 }
 /** represents available functionality */
@@ -297,7 +327,8 @@ static struct fuse_operations zipfs_operations = {
 int
 main(int argc, char *argv[]) {
     int* error = NULL;
-    archive = zip_open(argv[--argc], 0, error);
+    zip_name = strdup(argv[--argc]);
+    archive = zip_open(zip_name, 0, error);
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
         newarg[i] = argv[i];
