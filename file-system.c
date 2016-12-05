@@ -42,25 +42,20 @@ static int zipfs_getattr(const char* path, struct stat* stbuf) {
         folder_path[len] = '\0'; 
     }
     struct zip_stat zipstbuf;
-    //printf("===temp folder path: %s\n", folder_path);
     // find folder in archive
     if (strlen(path)== 1 || !zip_stat(archive, folder_path, 0, &zipstbuf)) {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
-     //   printf("**added folder at folder path\n");
-    } else {
-        // find file in archive
-        if (zip_stat(archive, path + 1, 0, &zipstbuf)) {
-      //      printf("path not found: %s\n", path);
-            return -errno;
-        }
-   //     printf("added file at fuse path + 1\n");
+    } else if (!zip_stat(archive, path + 1, 0, &zipstbuf)) {
         stbuf->st_mode = S_IFREG | 0666;
         stbuf->st_nlink = 1;
         stbuf->st_size = zipstbuf.size;
+        
+    } else {
+        return -ENOENT;
     }
-
     return 0;
+
 }
 /**
  * Provides contents of a directory
@@ -113,17 +108,13 @@ static int zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         free(temp_path);
         free(temp_fuse_path);
 
-    //    printf("zip_name: %s\n", zip_name);
-    //    printf("fuse_name: %s\n", fuse_name);
         // find file in system, add to buffer
         struct stat buffer;
         if (pathDif && zipfs_getattr(fuse_name, &buffer) == 0) {
-   //         printf("added %s\n", fuse_name); 
             filler(buf, basename(fuse_name), NULL, 0);
         }
 
     }
-
 
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
@@ -187,13 +178,13 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
  static int zipfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
     (void)fi;
-    
-    int num_files = zip_get_num_entries(archive, ZIP_FL_UNCHANGED);
-    for (int i = 0; i < num_files; i++) {
-        const char* name = zip_get_name(archive, i, 0);
-        if (strcmp(name, path + 1) == 0) {
-            return 0;
-        }
+    char folder_path[strlen(path)];
+    strcpy(folder_path, path + 1);
+    folder_path[strlen(path) - 2] = '/';
+    folder_path[strlen(path - 1)] = '\0';
+    if (zip_name_locate(archive, path + 1, 0) >= 0 
+            || zip_name_locate(archive, folder_path, 0)) {
+        return 0;
     }
     return -1;
  }
@@ -215,7 +206,6 @@ static int zipfs_write(const char* path, const char* buf, size_t size, off_t off
     zip_file_t* file =  zip_fopen(archive, path + 1, 0);
     zip_fread(file, new_buf, offset);
     zip_fclose(file);
-    //zipfs_read(path, new_buf, offset, 0, fi);
     // concat new data into buffer
     memcpy(new_buf + offset, buf, size);
 
@@ -245,7 +235,11 @@ static int zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
     (void)mode;
     (void)rdev;
-    zipfs_write(path, 0, 0, 0, NULL);
+    char mt [0];
+    zip_source_t* dummy = zip_source_buffer(archive, mt, 0, 0);
+    zip_file_add(archive, path + 1, dummy, ZIP_FL_OVERWRITE);
+    zip_close(archive);
+    archive = zip_open(zip_name, 0, 0);
     return 0;
 }
 /**
@@ -257,6 +251,8 @@ static int zipfs_unlink(const char* path) {
      printf("UNLINK: %s\n", path);
      zip_int64_t file_index = zip_name_locate(archive, path + 1, 0);
      zip_delete(archive, file_index);
+     zip_close(archive);
+     archive = zip_open(zip_name, 0, 0);
      return 0;
 }
 /**
@@ -267,7 +263,11 @@ static int zipfs_unlink(const char* path) {
  */
 static int zipfs_mkdir(const char* path, mode_t mode) {
      printf("MKDIR: %s\n", path);
+     (void)mode;
      zip_dir_add(archive, path + 1, ZIP_FL_ENC_UTF_8);
+     zip_close(archive);
+     archive = zip_open(zip_name, 0, 0);
+
      return 0;
 }
 /**
@@ -282,6 +282,7 @@ static int zipfs_rename(const char* from, const char* to) {
      zip_int64_t old_file_index = zip_name_locate(archive, from + 1, 0);
      zip_file_add(archive, to + 1, old_source, ZIP_FL_OVERWRITE);
      zip_delete(archive, old_file_index);
+     zip_source_free(old_source);
      return 0;
 }
 /**
@@ -292,6 +293,25 @@ static int zipfs_rename(const char* from, const char* to) {
  */
 static int zipfs_truncate(const char* path, off_t size) {
      printf("TRUNCATE: %s\n", path);
+     // get size of file
+     struct stat file_stats;
+     zipfs_getattr(path, &file_stats);
+     unsigned int file_size = file_stats.st_size;
+     int numZeros = 0;
+     if (size >  file_size) {
+        numZeros = size - file_size;
+     }
+     char new_contents[size + numZeros];
+     memset(new_contents, 0, size+numZeros);
+     zipfs_read(path + 1, new_contents, size, 0, NULL);
+     zip_source_t* new_source;
+     if ((new_source = zip_source_buffer(archive, new_contents, sizeof(new_contents), 0)) == NULL
+        || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
+        zip_source_free(new_source);
+        printf("error adding new file source %s\n", zip_strerror(archive));
+        return -1;
+    }
+
      return 0;
 }
 /**
