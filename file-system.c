@@ -97,21 +97,16 @@ static int zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             fuse_name[0] = '/';
         }
         // check if the current file is in the directory in the given path
+        
         char* temp_path = strdup(path);
         char* temp_fuse_path = strdup(fuse_name);
-        unsigned int pathDif = strlen(temp_fuse_path)
-            - strlen(temp_path);
-        if (strlen(path) > 1) {
-            pathDif--;
-        }
-        pathDif = pathDif == strlen(basename(temp_fuse_path));
-
+        int isInPath = strcmp(dirname(temp_fuse_path), path);
         free(temp_path);
         free(temp_fuse_path);
 
         // find file in system, add to buffer
         struct stat buffer;
-        if (pathDif && zipfs_getattr(fuse_name, &buffer) == 0) {
+        if (!isInPath && zipfs_getattr(fuse_name, &buffer) == 0) {
             filler(buf, basename(fuse_name), NULL, 0);
         }
 
