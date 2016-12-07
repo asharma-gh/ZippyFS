@@ -151,14 +151,9 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
     struct stat stbuf;
     zipfs_getattr(path, &stbuf);
     unsigned int maxSize = stbuf.st_size;
-    int readAmt;
-    if (offset + size > maxSize) {
-        readAmt = maxSize;
-    } else {
-        readAmt = size + offset;
-    }
-    char tempBuf[readAmt];
-    int numRead = zip_fread(file, tempBuf, readAmt);
+    char tempBuf[maxSize + size + offset];
+    memset(tempBuf, 0, maxSize + size + offset);
+    int numRead = zip_fread(file, tempBuf, maxSize);
     if (numRead == -1 ) {
         printf("error reading %s\n", path);
     }
@@ -166,7 +161,7 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
     memcpy(buf, tempBuf + offset, size);
     zip_fclose(file);
 
-    return numRead - offset;
+    return size;
 
 }
 
