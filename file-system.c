@@ -97,7 +97,7 @@ static int zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             fuse_name[0] = '/';
         }
         // check if the current file is in the directory in the given path
-        
+
         char* temp_path = strdup(path);
         char* temp_fuse_path = strdup(fuse_name);
         int isInPath = strcmp(dirname(temp_fuse_path), path);
@@ -274,10 +274,10 @@ static int zipfs_mkdir(const char* path, mode_t mode) {
  */
 static int zipfs_rename(const char* from, const char* to) {
     printf("RENAME: from: %s == to: %s\n", from, to);
-   
+
     zip_int64_t old_file_index = zip_name_locate(archive, from + 1, 0);
     zip_file_rename(archive, old_file_index, to + 1, 0);
-   
+
     zip_close(archive);
     archive = zip_open(zip_name, 0, 0);
 
