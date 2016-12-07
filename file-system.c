@@ -19,6 +19,7 @@
 
 /** the mounted zip archive */
 static struct zip* archive;
+/** the name of the zip archive */
 static char* zip_name;
 
 
@@ -47,7 +48,7 @@ static int zipfs_getattr(const char* path, struct stat* stbuf) {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
     } else if (!zip_stat(archive, path + 1, 0, &zipstbuf)) {
-        stbuf->st_mode = S_IFREG | 0666;
+        stbuf->st_mode = S_IFREG | 0777;
         stbuf->st_nlink = 1;
         stbuf->st_size = zipstbuf.size;
 
@@ -151,7 +152,6 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
     zipfs_getattr(path, &stbuf);
     unsigned int maxSize = stbuf.st_size;
     int readAmt;
-
     if (offset + size > maxSize) {
         readAmt = maxSize;
     } else {
@@ -162,7 +162,8 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
     if (numRead == -1 ) {
         printf("error reading %s\n", path);
     }
-    strcpy(buf, tempBuf + offset);
+    //strcpy(buf, tempBuf + offset);
+    memcpy(buf, tempBuf + offset, size);
     zip_fclose(file);
 
     return numRead - offset;
@@ -202,13 +203,15 @@ static int zipfs_write(const char* path, const char* buf, size_t size, off_t off
     printf("WRITE: %s\n", path);
     (void)fi;
     // read old data
-    char new_buf[offset + size];
+    struct stat stbuf;
+    zipfs_getattr(path, &stbuf);
+    unsigned int file_size = stbuf.st_size;
+    char new_buf[file_size + size + offset];
     zip_file_t* file =  zip_fopen(archive, path + 1, 0);
-    zip_fread(file, new_buf, offset);
+    zip_fread(file, new_buf, file_size);
     zip_fclose(file);
     // concat new data into buffer
     memcpy(new_buf + offset, buf, size);
-
 
     // write to new file source
     zip_source_t* new_source;
@@ -280,13 +283,13 @@ static int zipfs_mkdir(const char* path, mode_t mode) {
  */
 static int zipfs_rename(const char* from, const char* to) {
     printf("RENAME: from: %s == to: %s\n", from, to);
-    zip_source_t* old_source = zip_source_file(archive, from + 1, 0, 0);
+   
     zip_int64_t old_file_index = zip_name_locate(archive, from + 1, 0);
-    zip_file_add(archive, to + 1, old_source, ZIP_FL_OVERWRITE);
-    zip_delete(archive, old_file_index);
-    zip_source_free(old_source);
+    zip_file_rename(archive, old_file_index, to + 1, 0);
+   
     zip_close(archive);
     archive = zip_open(zip_name, 0, 0);
+
     return 0;
 }
 /**
@@ -349,7 +352,6 @@ static int zipfs_utimens(const char* path,  const struct timespec ts[2]) {
  */
 void zipfs_destroy(void* private_data) {
     (void)private_data;
-    free(zip_name);
     zip_close(archive);
 }
 /** represents available functionality */
