@@ -207,6 +207,7 @@ static int zipfs_write(const char* path, const char* buf, size_t size, off_t off
     zipfs_getattr(path, &stbuf);
     unsigned int file_size = stbuf.st_size;
     char new_buf[file_size + size + offset];
+    memset(new_buf, 0, file_size + size + offset);
     zip_file_t* file =  zip_fopen(archive, path + 1, 0);
     zip_fread(file, new_buf, file_size);
     zip_fclose(file);
