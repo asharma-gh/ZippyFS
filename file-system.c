@@ -17,10 +17,23 @@
 #include <alloca.h>
 #include <time.h>
 
+/**
+ * represents a zip archive entry
+ * - archive is the zip file
+ * - zip_name is the name of the zip file
+ * - add_time is the time this file was added
+ */
+typedef struct zip_archive {
+    struct zip* archive;
+    char* zip_name;
+    time_t add_time;
+}zip_archive;
+
 /** the mounted zip archive */
 static struct zip* archive;
 /** the name of the zip archive */
 static char* zip_name;
+
 
 
 
