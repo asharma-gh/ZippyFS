@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <regex.h>
 #include <alloca.h>
-
+#include <time.h>
 
 /** the mounted zip archive */
 static struct zip* archive;
