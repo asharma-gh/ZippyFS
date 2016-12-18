@@ -16,12 +16,14 @@
 #include <regex.h>
 #include <alloca.h>
 #include <time.h>
+#include <dirent.h>
 
 /**
  * represents a zip archive entry
  * - archive is the zip file
  * - zip_name is the name of the zip file
  * - add_time is the time this file was added
+ * NOTE: passed year 2038 time_t will overflow
  */
 typedef struct zip_archive {
     struct zip* archive;
@@ -33,6 +35,8 @@ typedef struct zip_archive {
 static struct zip* archive;
 /** the name of the zip archive */
 static char* zip_name;
+
+zip_archive archives[1024];
 
 
 
@@ -379,12 +383,49 @@ static struct fuse_operations zipfs_operations = {
  * The main method of this program
  * calls fuse_main to initialize the filesystem
  * ./file-system <options> <mount point> <zip file>
+ * NEW CONVENTION!
+ * ./file-system <fuse options> <mount point> <directory of zip files>
  */
 int
 main(int argc, char *argv[]) {
     int* error = NULL;
+    // open directory
+    DIR* dp;
+    struct dirent *de;
+    zip_name = argv[--argc];
+    dp = opendir(argv[argc]);
+    if (dp == NULL) {
+        printf("invalid directory given\n");
+        return -1;
+    }
+    int archive_index = 0;
+    // read contents into archive array
+    while ((de = readdir(dp)) != NULL) {
+        // create path to zip file entry
+        char* entry_name = de->d_name;
+        if (!strcmp(entry_name, ".") || !strcmp(entry_name, ".."))
+            continue;
+        char entry_path[strlen(zip_name) + strlen(entry_name) + 2];
+        memset(entry_path, 0, strlen(entry_path));
+        memcpy(entry_path, zip_name, strlen(zip_name));
+        entry_path[strlen(zip_name) + 1] = '/';
+        memcpy(entry_path + strlen(zip_name) + 1, entry_name, strlen(entry_name));
+        zip_archive* zip_entry = malloc(sizeof(zip_archive)); //TODO: FREE THIS SHIT
+        struct zip* file = zip_open(entry_name, 0, error);
+        printf("Added: %s\n", entry_name);
+        zip_entry->archive = file;
+        zip_entry->zip_name = entry_name;
+        zip_entry->add_time = 0;
+
+        archives[archive_index] = *zip_entry;
+        archive_index++;
+    }
+    // close directory
+    closedir(dp);
+    /*
     zip_name = argv[--argc];
     archive = zip_open(zip_name, 0, error);
+    */
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
         newarg[i] = argv[i];
