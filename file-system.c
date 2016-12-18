@@ -15,33 +15,12 @@
 #include <stdlib.h>
 #include <regex.h>
 #include <alloca.h>
-#include <time.h>
-#include <dirent.h>
 
-/**
- * represents a zip archive entry
- * - archive is the zip file
- * - zip_name is the name of the zip file
- * - add_time is the time this file was added
- * NOTE: passed year 2038 time_t will overflow
- */
-typedef struct zip_archive {
-    struct zip* archive;
-    char* zip_name;
-    time_t add_time;
-}zip_archive;
 
 /** the mounted zip archive */
 static struct zip* archive;
 /** the name of the zip archive */
 static char* zip_name;
-
-/** represents the set of zip files in the mounted directory */
-zip_archive archives[1024];
-
-/** mounted directory */
-static char* dir_name;
-
 
 
 
@@ -387,14 +366,11 @@ static struct fuse_operations zipfs_operations = {
  * The main method of this program
  * calls fuse_main to initialize the filesystem
  * ./file-system <options> <mount point> <zip file>
- * NEW CONVENTION!
- * ./file-system <fuse options> <mount point> <directory of zip files>
  */
 int
 main(int argc, char *argv[]) {
-    int* error = NULL; 
+    int* error = NULL;
     zip_name = argv[--argc];
-    dir_name = argv[--argc];
     archive = zip_open(zip_name, 0, error);
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
