@@ -15,13 +15,17 @@
 #include <stdlib.h>
 #include <regex.h>
 #include <alloca.h>
-
+#include <dirent.h>
+/** using glib over switching languages */
+#include <glib.h>
 
 /** the mounted zip archive */
 static struct zip* archive;
 /** the name of the zip archive */
 static char* zip_name;
 
+/** the mounted directory of zip files */
+static DIR* zip_dir;
 
 
 /** 
@@ -344,6 +348,7 @@ static int zipfs_utimens(const char* path,  const struct timespec ts[2]) {
 void zipfs_destroy(void* private_data) {
     (void)private_data;
     zip_close(archive);
+    closedir(zip_dir);
 }
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
@@ -365,11 +370,13 @@ static struct fuse_operations zipfs_operations = {
 /**
  * The main method of this program
  * calls fuse_main to initialize the filesystem
- * ./file-system <options> <mount point> <zip file>
+ * ./file-system <options> <mount point> <zip file> <dir>
+ * temporary~!
  */
 int
 main(int argc, char *argv[]) {
     int* error = NULL;
+    zip_dir = opendir(argv[--argc]);
     zip_name = argv[--argc];
     archive = zip_open(zip_name, 0, error);
     char* newarg[argc];
