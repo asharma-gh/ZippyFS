@@ -39,6 +39,9 @@ static char* zip_name;
 /** represents the set of zip files in the mounted directory */
 zip_archive archives[1024];
 
+/** mounted directory */
+static char* dir_name;
+
 
 
 
@@ -389,44 +392,10 @@ static struct fuse_operations zipfs_operations = {
  */
 int
 main(int argc, char *argv[]) {
-    int* error = NULL;
-    // open directory
-    DIR* dp;
-    struct dirent *de;
+    int* error = NULL; 
     zip_name = argv[--argc];
-    dp = opendir(argv[argc]);
-    if (dp == NULL) {
-        printf("invalid directory given\n");
-        return -1;
-    }
-    int archive_index = 0;
-    // read contents into archive array
-    while ((de = readdir(dp)) != NULL) {
-        // create path to zip file entry
-        char* entry_name = de->d_name;
-        if (!strcmp(entry_name, ".") || !strcmp(entry_name, ".."))
-            continue;
-        char entry_path[strlen(zip_name) + strlen(entry_name) + 2];
-        memset(entry_path, 0, strlen(entry_path));
-        memcpy(entry_path, zip_name, strlen(zip_name));
-        entry_path[strlen(zip_name) + 1] = '/';
-        memcpy(entry_path + strlen(zip_name) + 2, entry_name, strlen(entry_name));
-        zip_archive* zip_entry = malloc(sizeof(zip_archive)); //TODO: FREE THIS SHIT
-        struct zip* file = zip_open(entry_path, 0, error);
-        printf("Added: %s at path %s\n", entry_name, entry_path);
-        zip_entry->archive = file;
-        zip_entry->zip_name = entry_name;
-        zip_entry->add_time = 0;
-
-        archives[archive_index] = *zip_entry;
-        archive_index++;
-    }
-    // close directory
-    closedir(dp);
-    /*
-    zip_name = argv[--argc];
+    dir_name = argv[--argc];
     archive = zip_open(zip_name, 0, error);
-    */
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
         newarg[i] = argv[i];
