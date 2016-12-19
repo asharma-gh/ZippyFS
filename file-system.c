@@ -34,7 +34,9 @@ static DIR* zip_dir;
  *  @param stbuf is the stat structure to hold the attributes
  *  @return 0 for normal exit status, non-zero otherwise.
  */
-static int zipfs_getattr(const char* path, struct stat* stbuf) {
+static
+int 
+zipfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
     // convert the fuse path to 
@@ -73,7 +75,9 @@ static int zipfs_getattr(const char* path, struct stat* stbuf) {
  * @return 0 for normal exit status, non-zero otherwise.
  *
  */
-static int zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
+static
+int
+zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         off_t offset, struct fuse_file_info* fi) {
     printf("READDIR: %s\n", path);
     // unneeded
@@ -135,7 +139,9 @@ static int zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
  * @param fi has information about the file
  * @return 0 for normal exit status, non-zero otherwise
  */
-static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
+static
+int
+zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     //unused
     (void) fi;
     (void) offset;
@@ -170,7 +176,9 @@ static int zipfs_read(const char* path, char* buf, size_t size, off_t offset, st
  * @param fi is file info
  * @return 0 for success, non-zero otherwise
  */
-static int zipfs_open(const char* path, struct fuse_file_info* fi) {
+static
+int
+zipfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
     (void)fi;
     char folder_path[strlen(path)];
@@ -193,7 +201,9 @@ static int zipfs_open(const char* path, struct fuse_file_info* fi) {
  * @param file info is unused
  * @return the number of bytes written
  */
-static int zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
+static
+int
+zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE: %s\n", path);
     (void)fi;
     // read old data
@@ -229,7 +239,9 @@ static int zipfs_write(const char* path, const char* buf, size_t size, off_t off
  * @param rdev is another attribute of the file
  * @return 0 for success, non-zero otherwise
  */
-static int zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
+static
+int
+zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
     (void)mode;
     (void)rdev;
@@ -246,7 +258,9 @@ static int zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
  * @param path is the path of the file to delete
  * @return 0 for success, non-zero otherwise
  */
-static int zipfs_unlink(const char* path) {
+static
+int
+zipfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
     zip_int64_t file_index = zip_name_locate(archive, path + 1, 0);
     zip_delete(archive, file_index);
@@ -260,7 +274,9 @@ static int zipfs_unlink(const char* path) {
  * @param mode is the permissions
  * @return 0 for success, non-zero otherwise
  */
-static int zipfs_mkdir(const char* path, mode_t mode) {
+static
+int
+zipfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
     (void)mode;
     zip_dir_add(archive, path + 1, ZIP_FL_ENC_UTF_8);
@@ -276,7 +292,9 @@ static int zipfs_mkdir(const char* path, mode_t mode) {
  * @param to is the destination
  * @return 0 for success, non-zero otherwise
  */
-static int zipfs_rename(const char* from, const char* to) {
+static
+int
+zipfs_rename(const char* from, const char* to) {
     printf("RENAME: from: %s == to: %s\n", from, to);
 
     zip_int64_t old_file_index = zip_name_locate(archive, from + 1, 0);
@@ -293,7 +311,9 @@ static int zipfs_rename(const char* from, const char* to) {
  * @param size is the size to truncate by
  * @return 0 for success, non-zero otherwise
  */
-static int zipfs_truncate(const char* path, off_t size) {
+static
+int
+zipfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
     // get size of file
     struct stat file_stats;
@@ -324,7 +344,9 @@ static int zipfs_truncate(const char* path, off_t size) {
  * @param mask is for permissions, unused
  * @return 0 for success, non-zero otherwise
  */
-static int zipfs_access(const char* path, int mode) {
+static
+int
+zipfs_access(const char* path, int mode) {
     printf("ACCESS: %s\n", path);
     (void)mode;
     return zipfs_open(path, NULL);
@@ -336,7 +358,9 @@ static int zipfs_access(const char* path, int mode) {
  * @param ts is the timestamp
  * @param fi is not used
  */
-static int zipfs_utimens(const char* path,  const struct timespec ts[2]) {
+static
+int
+zipfs_utimens(const char* path,  const struct timespec ts[2]) {
     (void)path;
     (void)ts;
     return 0;
@@ -345,7 +369,8 @@ static int zipfs_utimens(const char* path,  const struct timespec ts[2]) {
 /**
  * closes the working zip archive
  */
-void zipfs_destroy(void* private_data) {
+void
+zipfs_destroy(void* private_data) {
     (void)private_data;
     zip_close(archive);
     closedir(zip_dir);
