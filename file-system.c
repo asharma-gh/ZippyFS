@@ -50,6 +50,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     }
     struct zip_stat zipstbuf;
     // find folder in archive
+    // TODO: check each zip-file until u find the latest one
     if (strlen(path)== 1 || !zip_stat(archive, folder_path, 0, &zipstbuf)) {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
@@ -85,7 +86,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     (void) fi;
 
     int numberOfFiles = zip_get_num_entries(archive, ZIP_FL_UNCHANGED);
-
+    //TODO: find the latest zip file
     for (int i = 0; i < numberOfFiles; i++) {
         // get a file/directory in the archive
         const char* zip_name = zip_get_name(archive, i, 0); 
