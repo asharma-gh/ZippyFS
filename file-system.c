@@ -25,6 +25,9 @@ static struct zip* archive;
 static char* zip_name;
 
 /** the mounted directory of zip files */
+/** INVARIANT: always closed unless inside of a R/W function
+ * - ensures each function call has a fresh directory stream
+ */
 static DIR* zip_dir;
 /** the name of the mounted directory of zip files */
 static char* zip_dir_name;
@@ -51,7 +54,7 @@ find_latest_archive(const char* path) {
     struct zip* latest_archive = NULL;
     struct dirent* zip_file;
     char* zip_file_name = alloca(FILENAME_MAX);
-
+    opendir(zip_dir_name);
     while ((zip_file = readdir(zip_dir)) != NULL) {
         zip_file_name = zip_file->d_name;
         // make relative path to the zip file
@@ -76,7 +79,6 @@ find_latest_archive(const char* path) {
         }
     }
     closedir(zip_dir);
-    zip_dir = opendir(zip_dir_name);
     return latest_archive;
 
 }
@@ -144,6 +146,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     int numberOfFiles = zip_get_num_entries(archive, ZIP_FL_UNCHANGED);
     //TODO: find the latest zip file for each path
     GArray* added_entries = g_array_new(FALSE, TRUE, sizeof(char*));
+    opendir(zip_dir_name);
     for (int i = 0; i < numberOfFiles; i++) {
         // get a file/directory in the archive
         const char* zip_name = zip_get_name(archive, i, 0); 
@@ -182,7 +185,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     filler(buf, "..", NULL, 0);
 
 
-
+    closedir(zip_dir);
     return 0;
 
 }
@@ -459,8 +462,8 @@ static struct fuse_operations zipfs_operations = {
 int
 main(int argc, char *argv[]) {
     int* error = NULL;
-    zip_dir = opendir(argv[--argc]);
-    zip_dir_name = argv[argc];
+    //zip_dir = opendir(argv[--argc]);
+    zip_dir_name = argv[--argc];
     zip_name = argv[--argc];
     archive = zip_open(zip_name, 0, error);
     char* newarg[argc];
