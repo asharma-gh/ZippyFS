@@ -26,8 +26,59 @@ static char* zip_name;
 
 /** the mounted directory of zip files */
 static DIR* zip_dir;
+/** the name of the mounted directory of zip files */
+static char* zip_dir_name;
 
+/**
+ * retrieve the latest archive with the given PATH
+ * @param path is the path of the archive
+ * @return the pointer to the zip_file, NULL if it doesnt exist
+ */
+static
+struct zip* 
+find_latest_archive(const char* path) {
+    printf("FINDING LATEST ARCHIVE CONTAINING: %s\n", path);
+    int len = strlen(path);
+    char folder_path[len + 1];
+    if (strlen(path) > 1) {
+        strcpy(folder_path, path + 1);
+        folder_path[len - 1] = '/';
+        folder_path[len] = '\0'; 
+    }
+    struct zip_stat zipstbuf;
+    // NEW!:
+    // check each zip-file until u find the latest one
+    struct zip* latest_archive;
+    struct dirent* zip_file;
+    char[FILENAME_MAX] zip_file_name;
 
+    while ((zip_file = readdir(zip_dir)) != NULL) {
+        // open zip file in dir
+        zip_file_name = zip_file->d_name;
+        // create new path to the zip file
+        char[strlen(zip_file_name) + zip_dir_name + 2] fixed_path;
+        memcpy(fixed_path, zip_dir_name, strlen(zip_dir_name));
+        fixed_path[zip_dir_name] = '/';
+        memcpy(fixed_path + strlen(zip_dir_name) + 2, zip_file_name, strlen(zip_file_name));
+        printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
+        struct zip* temp_archive;
+        if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
+            printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
+        }
+        // find file in temp archive
+        if (!zip_stat(temp_archive, folder_path, 0, &zipstbuf) 
+                || !zip_stat(temp_archive, path + 1, 0, &zipstbuf)) {
+            zip_close(latest_archive);
+            latest_archive = temp_archive;
+        } else {
+            zip_close(temp_archive);
+        }
+    }
+    closedir(zip_dir);
+    zip_dir = opendir(zip_dir_name);
+    return latest_archive;
+
+}
 /** 
  *  retrieves the attributes of a specific file / directory
  *  @param path is the path of the file
@@ -49,19 +100,23 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
         folder_path[len] = '\0'; 
     }
     struct zip_stat zipstbuf;
-    // find folder in archive
+    //NEW!:
     // TODO: check each zip-file until u find the latest one
-    if (strlen(path)== 1 || !zip_stat(archive, folder_path, 0, &zipstbuf)) {
+    struct zip* latest_archive = find_latest_archive(path);
+    // end of NEW!
+    if (strlen(path)== 1 || !zip_stat(latest_archive, folder_path, 0, &zipstbuf)) {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
-    } else if (!zip_stat(archive, path + 1, 0, &zipstbuf)) {
+    } else if (!zip_stat(latest_archive, path + 1, 0, &zipstbuf)) {
         stbuf->st_mode = S_IFREG | 0777;
         stbuf->st_nlink = 1;
         stbuf->st_size = zipstbuf.size;
 
     } else {
+        zip_close(latest_archive);
         return -ENOENT;
     }
+    zip_close(latest_archive);
     return 0;
 
 }
@@ -403,6 +458,7 @@ int
 main(int argc, char *argv[]) {
     int* error = NULL;
     zip_dir = opendir(argv[--argc]);
+    zip_dir_name = argv[argc];
     zip_name = argv[--argc];
     archive = zip_open(zip_name, 0, error);
     char* newarg[argc];
