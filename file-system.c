@@ -53,15 +53,15 @@ find_latest_archive(const char* path) {
     char[FILENAME_MAX] zip_file_name;
 
     while ((zip_file = readdir(zip_dir)) != NULL) {
-        // open zip file in dir
         zip_file_name = zip_file->d_name;
-        // create new path to the zip file
+        // make relative path to the zip file
         char[strlen(zip_file_name) + zip_dir_name + 2] fixed_path;
         memset(fixed_path, 0, strlen(fixed_path));
         memcpy(fixed_path, zip_dir_name, strlen(zip_dir_name));
         fixed_path[zip_dir_name] = '/';
         memcpy(fixed_path + strlen(zip_dir_name) + 1, zip_file_name, strlen(zip_file_name));
         printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
+        // open zip file in dir
         struct zip* temp_archive;
         if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
             printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
