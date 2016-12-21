@@ -48,7 +48,7 @@ find_latest_archive(const char* path) {
     struct zip_stat zipstbuf;
     // NEW!:
     // check each zip-file until u find the latest one
-    struct zip* latest_archive;
+    struct zip* latest_archive = NULL;
     struct dirent* zip_file;
     char[FILENAME_MAX] zip_file_name;
 
@@ -102,7 +102,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     }
     struct zip_stat zipstbuf;
     //NEW!:
-    // TODO: check each zip-file until u find the latest one
+    // check each zip-file until u find the latest one
     struct zip* latest_archive = find_latest_archive(path);
     // end of NEW!
     if (strlen(path)== 1 || !zip_stat(latest_archive, folder_path, 0, &zipstbuf)) {
@@ -142,7 +142,8 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     (void) fi;
 
     int numberOfFiles = zip_get_num_entries(archive, ZIP_FL_UNCHANGED);
-    //TODO: find the latest zip file
+    //TODO: find the latest zip file for each path
+    GArray* added_entries = g_array_new(FALSE, TRUE, sizeof(char*));
     for (int i = 0; i < numberOfFiles; i++) {
         // get a file/directory in the archive
         const char* zip_name = zip_get_name(archive, i, 0); 
