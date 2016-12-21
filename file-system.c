@@ -50,15 +50,15 @@ find_latest_archive(const char* path) {
     // check each zip-file until u find the latest one
     struct zip* latest_archive = NULL;
     struct dirent* zip_file;
-    char[FILENAME_MAX] zip_file_name;
+    char* zip_file_name = alloca(FILENAME_MAX);
 
     while ((zip_file = readdir(zip_dir)) != NULL) {
         zip_file_name = zip_file->d_name;
         // make relative path to the zip file
-        char[strlen(zip_file_name) + zip_dir_name + 2] fixed_path;
+        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 2];
         memset(fixed_path, 0, strlen(fixed_path));
         memcpy(fixed_path, zip_dir_name, strlen(zip_dir_name));
-        fixed_path[zip_dir_name] = '/';
+        fixed_path[strlen(zip_dir_name)] = '/';
         memcpy(fixed_path + strlen(zip_dir_name) + 1, zip_file_name, strlen(zip_file_name));
         printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
         // open zip file in dir
