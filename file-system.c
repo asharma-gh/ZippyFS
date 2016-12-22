@@ -24,11 +24,7 @@ static struct zip* archive;
 static char* zip_name;
 
 
-/** the mounted directory of zip files */
-/** INVARIANT: always closed unless inside of a R/W function
- * - ensures each function call has a fresh directory stream
- */
-//static DIR* zip_dir;
+
 /** the name of the mounted directory of zip files */
 static char* zip_dir_name;
 
@@ -153,7 +149,6 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     (void) offset;
     (void) fi;
 
-    //int numberOfFiles = zip_get_num_entries(archive, ZIP_FL_UNCHANGED);
     //TODO: find the latest zip file for each path
     GArray* added_entries = g_array_new(TRUE, TRUE, sizeof(char*));
     DIR* zip_dir = opendir(zip_dir_name);
@@ -165,7 +160,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         if (strcmp(zip_file_name, ".") == 0
                 || strcmp(zip_file_name, "..") ==0)
             continue;
-        
+
         // make relative path to the zip file
         char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 2];
         memset(fixed_path, 0, strlen(fixed_path));
@@ -214,42 +209,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         }
         printf("wtf? %s\n", zip_file->d_name);
         zip_close(temp_archive);
-    }/*
-        for (int i = 0; i < numberOfFiles; i++) {
-    // get a file/directory in the archive
-    const char* zip_name = zip_get_name(archive, i, 0); 
-
-    char temp[strlen(zip_name)];
-    strcpy(temp, zip_name);
-    char* fuse_name;
-    // fix libzip path to match the format in fuse
-    if (zip_name[strlen(zip_name) - 1] == '/') {
-    fuse_name = alloca(strlen(zip_name) + 1);
-    temp[strlen(zip_name) - 1] = '\0';
-    strcpy(fuse_name + 1, temp);
-    fuse_name[0] = '/';
-    } else {
-    fuse_name = alloca(strlen(zip_name) + 2);
-    strcpy(fuse_name + 1, temp);
-    fuse_name[0] = '/';
-    }
-    // check if the current file is in the directory in the given path
-
-    char* temp_path = strdup(path);
-    char* temp_fuse_path = strdup(fuse_name);
-    int isInPath = strcmp(dirname(temp_fuse_path), path);
-    free(temp_path);
-    free(temp_fuse_path);
-
-    // find file in system, add to buffer
-    struct stat buffer;
-    if (!isInPath && zipfs_getattr(fuse_name, &buffer) == 0) {
-    filler(buf, basename(fuse_name), NULL, 0);
-    }
-
-    }
-    */
-    filler(buf, ".", NULL, 0);
+    }    filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
 
@@ -503,7 +463,7 @@ void
 zipfs_destroy(void* private_data) {
     (void)private_data;
     zip_close(archive);
-    //closedir(zip_dir);
+
 }
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
