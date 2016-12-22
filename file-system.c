@@ -1,7 +1,7 @@
 /**
- * Zipfs: A toy file system using libfuze and libzip
+ * Zipfs: A toy distributed file system using libfuze and libzip
  * @author Arvin Sharma
- * @version 1.0
+ * @version 2.0
  */
 #define FUSE_USE_VERSION 26
 #include <zip.h>
@@ -105,12 +105,12 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
         folder_path[len - 1] = '/';
         folder_path[len] = '\0'; 
     }
-    struct zip_stat zipstbuf;
-    //NEW!:
+
+
     // check each zip-file until u find the latest one
     struct zip* latest_archive = find_latest_archive(path);
-    // end of NEW!
 
+    struct zip_stat zipstbuf;
     if (strlen(path)== 1 || !zip_stat(latest_archive, folder_path, 0, &zipstbuf)) {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
