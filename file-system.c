@@ -86,6 +86,7 @@ find_latest_archive(const char* path) {
 }
 /** 
  *  retrieves the attributes of a specific file / directory
+ *  - returns the attributes of the LATEST file / directory
  *  @param path is the path of the file
  *  @param stbuf is the stat structure to hold the attributes
  *  @return 0 for normal exit status, non-zero otherwise.
@@ -192,14 +193,22 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 fuse_name[0] = '/';
             }
             printf("ENTRY NAME: %s\n", fuse_name);
-            char* ele;
-            int inserted = 0;
+
             // check if the current file is in the directory in the given path
             char* temp_path = strdup(path);
             char* temp_fuse_path = strdup(fuse_name);
             int notInPath = strcmp(dirname(temp_fuse_path), path);
             free(temp_path);
             free(temp_fuse_path);
+            char* ele;
+            int inserted = 0;
+            for (int j = 0; (ele = g_array_index(added_entries, char*, j)) != 0; j++) {
+                if (!strcmp(ele, fuse_name)) {
+                    inserted = 1;
+                    break;
+                }
+
+            }
             // find file in system, add to buffer
             struct stat buffer;
             if (!inserted && !notInPath && zipfs_getattr(fuse_name, &buffer)== 0) {
@@ -207,9 +216,10 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 filler(buf, basename(fuse_name), NULL, 0);
             }
         }
-        printf("wtf? %s\n", zip_file->d_name);
+
         zip_close(temp_archive);
-    }    filler(buf, ".", NULL, 0);
+    }    
+    filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
 
