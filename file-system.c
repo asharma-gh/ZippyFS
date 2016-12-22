@@ -28,7 +28,7 @@ static char* zip_name;
 /** INVARIANT: always closed unless inside of a R/W function
  * - ensures each function call has a fresh directory stream
  */
-static DIR* zip_dir;
+//static DIR* zip_dir;
 /** the name of the mounted directory of zip files */
 static char* zip_dir_name;
 
@@ -54,7 +54,7 @@ find_latest_archive(const char* path) {
     struct zip* latest_archive = NULL;
     struct dirent* zip_file;
     char* zip_file_name = alloca(FILENAME_MAX);
-    zip_dir = opendir(zip_dir_name);
+    DIR* zip_dir = opendir(zip_dir_name);
     while ((zip_file = readdir(zip_dir)) != NULL) {
         zip_file_name = zip_file->d_name;
         if (strcmp(zip_file_name, ".") == 0
@@ -83,7 +83,8 @@ find_latest_archive(const char* path) {
             zip_close(temp_archive);
         }
     }
-    closedir(zip_dir);
+    if(!closedir(zip_dir))
+        printf("successfully closed dir\n");
     return latest_archive;
 
 }
@@ -155,11 +156,16 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     //int numberOfFiles = zip_get_num_entries(archive, ZIP_FL_UNCHANGED);
     //TODO: find the latest zip file for each path
     GArray* added_entries = g_array_new(TRUE, TRUE, sizeof(char*));
-    zip_dir = opendir(zip_dir_name);
+    DIR* zip_dir = opendir(zip_dir_name);
     struct dirent* zip_file;
     // find the paths to things in the given path
     while((zip_file = readdir(zip_dir)) != NULL) {
-        char* zip_file_name = zip_file->d_name;
+        const char* zip_file_name = zip_file->d_name;
+        printf("FILE NAME %s\n", zip_file_name);
+        if (strcmp(zip_file_name, ".") == 0
+                || strcmp(zip_file_name, "..") ==0)
+            continue;
+        
         // make relative path to the zip file
         char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 2];
         memset(fixed_path, 0, strlen(fixed_path));
@@ -171,7 +177,6 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         struct zip* temp_archive;
         if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
             printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
-            continue;
         }
         int numEntries = zip_get_num_entries(temp_archive, ZIP_FL_UNCHANGED);
         for (int i = 0; i < numEntries; i++) {
@@ -194,15 +199,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             printf("ENTRY NAME: %s\n", fuse_name);
             char* ele;
             int inserted = 0;
-            for (int j = 0; (ele = g_array_index(added_entries, char*, i)) != 0; j++) {
-                if (strcmp(ele, fuse_name) == 0) {
-                    inserted = 1;
-                    break;
-                }
-            }
-
             // check if the current file is in the directory in the given path
-
             char* temp_path = strdup(path);
             char* temp_fuse_path = strdup(fuse_name);
             int notInPath = strcmp(dirname(temp_fuse_path), path);
@@ -214,13 +211,9 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 g_array_append_val(added_entries, fuse_name);
                 filler(buf, basename(fuse_name), NULL, 0);
             }
-
-
         }
+        printf("wtf? %s\n", zip_file->d_name);
         zip_close(temp_archive);
-
-
-
     }/*
         for (int i = 0; i < numberOfFiles; i++) {
     // get a file/directory in the archive
@@ -260,7 +253,8 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     filler(buf, "..", NULL, 0);
 
 
-    closedir(zip_dir);
+    if (!closedir(zip_dir))
+        printf("successfully closed dir\n");
     return 0;
 
 }
@@ -509,7 +503,7 @@ void
 zipfs_destroy(void* private_data) {
     (void)private_data;
     zip_close(archive);
-    closedir(zip_dir);
+    //closedir(zip_dir);
 }
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
