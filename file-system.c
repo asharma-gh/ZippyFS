@@ -485,13 +485,12 @@ static struct fuse_operations zipfs_operations = {
 /**
  * The main method of this program
  * calls fuse_main to initialize the filesystem
- * ./file-system <options> <mount point> <zip file> <dir>
+ * ./file-system <options> <mount point>  <dir>
  * temporary~!
  */
 int
 main(int argc, char *argv[]) {
     int* error = NULL;
-    //zip_dir = opendir(argv[--argc]);
     zip_dir_name = argv[--argc];
     zip_name = argv[--argc];
     archive = zip_open(zip_name, 0, error);
