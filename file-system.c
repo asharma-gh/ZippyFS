@@ -479,6 +479,7 @@ zipfs_utimens(const char* path,  const struct timespec ts[2]) {
 void
 zipfs_destroy(void* private_data) {
     (void)private_data;
+    free(shadow_path);
     zip_close(archive);
 
 }
