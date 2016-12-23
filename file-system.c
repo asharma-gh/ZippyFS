@@ -247,11 +247,14 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
     (void) offset;
     printf("READ: %s\n", path);
 
-    struct zip_file* file = zip_fopen(archive, path + 1, 0);
-    if (!file) {
+    //find latest archive with this file
+    struct zip* latest_archive = find_latest_archive(path);
+    struct zip_file* file = zip_fopen(latest_archive, path + 1, 0);
+    if (!latest_archive || !file) {
         printf("%s not found\n", path);
-        return -errno;
+        return -1;
     }
+
     // read file
     struct stat stbuf;
     zipfs_getattr(path, &stbuf);
@@ -479,7 +482,7 @@ zipfs_destroy(void* private_data) {
 static struct fuse_operations zipfs_operations = {
     .getattr = zipfs_getattr,
     .readdir = zipfs_readdir,
-    // .read = zipfs_read,
+    .read = zipfs_read,
     // .mknod = zipfs_mknod, // create file
     //.unlink = zipfs_unlink, // delete file
     //.mkdir = zipfs_mkdir, // create directory
