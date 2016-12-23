@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <alloca.h>
 #include <dirent.h>
+#include <wordexp.h>
 /** using glib over switching languages */
 #include <glib.h>
 
@@ -27,6 +28,10 @@ static char* zip_name;
 
 /** the name of the mounted directory of zip files */
 static char* zip_dir_name;
+
+/** cache for writes */
+//static struct zip* cached_writes;
+static char* shadow_path;
 
 /**
  * retrieve the latest archive with the given PATH
@@ -504,13 +509,30 @@ int
 main(int argc, char *argv[]) {
     int* error = NULL;
     zip_dir_name = argv[--argc];
-    zip_name = argv[--argc];
-    archive = zip_open(zip_name, 0, error);
+    //zip_name = argv[--argc];
+    //archive = zip_open(zip_name, 0, error);
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
         newarg[i] = argv[i];
         printf("%s\n", newarg[i]);
     }
+    // construct shadow directory name
+    char shadow_name[10] = {0};
+    sprintf(shadow_name,"PID%d" , getpid());
+    printf("shadow dir name: %s\n", shadow_name);
+    // construct shadow directory path
+    char* temp_path = alloca(PATH_MAX * sizeof(char));
+    memset(temp_path, 0, strlen(temp_path));
+    strcat(temp_path, "~/.cache/zipfs/");
+    strcat(temp_path, shadow_name);
+    strcat(temp_path, "/");
+    printf("shadow dir path: %s\n", temp_path);
+    wordexp_t path;
+    wordexp(temp_path, &path, 0);
+    shadow_path = strdup(*(path.we_wordv));
+    wordfree(&path);
+    printf("expanded dir path: %s\n", shadow_path);
+
 
     return fuse_main(argc, newarg, &zipfs_operations, NULL);
 
