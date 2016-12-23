@@ -150,7 +150,6 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     (void) offset;
     (void) fi;
 
-    //TODO: find the latest zip file for each path
     GArray* added_entries = g_array_new(TRUE, TRUE, sizeof(char*));
     DIR* zip_dir = opendir(zip_dir_name);
     struct dirent* zip_file;
