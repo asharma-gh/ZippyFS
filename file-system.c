@@ -533,6 +533,10 @@ main(int argc, char *argv[]) {
     shadow_path = strdup(*(path.we_wordv));
     wordfree(&path);
     printf("expanded dir path: %s\n", shadow_path);
+    // make the directory
+    if(mkdir(shadow_path, S_IRWXU)) {
+        printf("error making shadow directory\n");
+    }
 
 
     return fuse_main(argc, newarg, &zipfs_operations, NULL);
