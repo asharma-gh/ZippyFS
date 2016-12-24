@@ -521,21 +521,30 @@ main(int argc, char *argv[]) {
     char shadow_name[10] = {0};
     sprintf(shadow_name,"PID%d" , getpid());
     printf("shadow dir name: %s\n", shadow_name);
-    // construct shadow directory path
+
+    // construct program directory path
     char* temp_path = alloca(PATH_MAX * sizeof(char));
     memset(temp_path, 0, strlen(temp_path));
     strcat(temp_path, "~/.cache/zipfs/");
-    strcat(temp_path, shadow_name);
-    strcat(temp_path, "/");
     printf("shadow dir path: %s\n", temp_path);
     wordexp_t path;
     wordexp(temp_path, &path, 0);
     shadow_path = strdup(*(path.we_wordv));
     wordfree(&path);
     printf("expanded dir path: %s\n", shadow_path);
+
+    // make program directory if it doesn't exist yet
+    if (mkdir(shadow_path, S_IRWXU)) {
+        printf("error making program directory ERRNO: %s\n", strerror(errno));
+    }
+    // construct shadow directory path
+    strcat(shadow_path, shadow_name);
+    strcat(shadow_path, "/");
+
     // make the directory
     if(mkdir(shadow_path, S_IRWXU)) {
         printf("error making shadow directory\n");
+        printf("ERRNO: %s\n", strerror(errno));
     }
 
 
