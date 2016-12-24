@@ -313,19 +313,21 @@ int
 zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE: %s\n", path);
     (void)fi;
-    // read old data
+    // read old data from latest archive with path
     struct stat stbuf;
     zipfs_getattr(path, &stbuf);
     unsigned int file_size = stbuf.st_size;
     char new_buf[file_size + size + offset];
     memset(new_buf, 0, file_size + size + offset);
-    zip_file_t* file =  zip_fopen(archive, path + 1, 0);
+    struct zip* latest_archive = find_latest_archive(path);
+    zip_file_t* file =  zip_fopen(latest_archive, path + 1, 0);
     zip_fread(file, new_buf, file_size);
     zip_fclose(file);
     // concat new data into buffer
     memcpy(new_buf + offset, buf, size);
 
     // write to new file source
+    // TODO: write to shadow directory!!
     zip_source_t* new_source;
     if ((new_source = zip_source_buffer(archive, new_buf, sizeof(new_buf), 0)) == NULL
             || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
@@ -507,8 +509,7 @@ static struct fuse_operations zipfs_operations = {
  * temporary~!
  */
 int
-main(int argc, char *argv[]) {
-    int* error = NULL;
+main(int argc, char *argv[]) { 
     zip_dir_name = argv[--argc];
     //zip_name = argv[--argc];
     //archive = zip_open(zip_name, 0, error);
