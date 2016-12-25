@@ -340,7 +340,7 @@ int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     strcat(zip_dir_path, "/");
     strcat(zip_dir_path, zip_dir_name);
 
-    char command[strlen(shadow_path) + strlen(hex_name) + 10];
+    char command[strlen(shadow_path) + strlen(hex_name) + 50];
     memset(command, 0, strlen(command));
     strcat(command, "cd ");
     strcat(command, shadow_path);
