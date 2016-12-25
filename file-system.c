@@ -4,6 +4,7 @@
  * @version 2.0
  */
 #define FUSE_USE_VERSION 26
+#include <syscall.h>
 #include <zip.h>
 #include <fuse.h>
 #include <stdio.h>
@@ -16,6 +17,7 @@
 #include <alloca.h>
 #include <dirent.h>
 #include <wordexp.h>
+#include <linux/random.h>
 /** using glib over switching languages */
 #include <glib.h>
 
@@ -301,6 +303,62 @@ zipfs_open(const char* path, struct fuse_file_info* fi) {
     return 0;
 }
 
+/** flushes cached changes / writes to directory
+ * - flushes the entire cache when called
+ * @param path is the path of the file
+ * @param isdatasync is not used
+ * @param fi is not used
+ * @return 0 on success, nonzero if cache is empty or other error occured.
+ */
+int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
+    // create archive name
+    char num[16] = {'\0'};
+    char hex_name[33] = {'\0'};
+    syscall(SYS_getrandom, num, sizeof(num), GRND_NONBLOCK);
+
+    for (int i = 0; i < 16; i++) {
+        sprintf(hex_name + i*2,"%02X", num[i]);
+    }
+
+    // create zip archive name
+    char archive_path[strlen(zip_dir_name) + strlen(hex_name) + 1];
+    strcat(archive_path, zip_dir_name);
+    archive_path[strlen(zip_dir_name)] =  '/';
+    strcat(archive_path + strlen(zip_dir_name) + 1, hex_name);
+
+    /** zip cache
+     * - using the system() call and the "real" zip command
+     * - in the future it may be worthwhile to use libzip and recursively make dirs/files
+     */
+    char cwd[PATH_MAX];
+    memset(cwd, 0, strlen(cwd));
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+        printf("error getting current working directory\n");
+    char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
+    memset(zip_dir_path, 0, strlen(zip_dir_path));
+    strcat(zip_dir_path, cwd);
+    strcat(zip_dir_path, "/");
+    strcat(zip_dir_path, zip_dir_name);
+
+    char command[strlen(shadow_path) + strlen(hex_name) + 10];
+    memset(command, 0, strlen(command));
+    strcat(command, "cd ");
+    strcat(command, shadow_path);
+    strcat(command, "; zip ");
+    strcat(command, hex_name);
+    strcat(command, " *; ");
+    strcat(command, "mv ");
+    strcat(command, hex_name);
+    strcat(command, ".zip ");
+    strcat(command, zip_dir_path);
+    strcat(command, "; rm -rf *");
+    printf("MAGIC COMMAND: %s\n", command);
+    system(command);
+    chdir(cwd);
+
+    return 0;
+}
+
 /**
  * writes bytes to a file at a specified offset
  * @param path is the path to the file
@@ -383,11 +441,13 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
         printf("error closing shadow file descriptor\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
+    /*
     // char mt [0];
     zip_source_t* dummy = zip_source_buffer(archive, NULL, 0, 0);
     zip_file_add(archive, path + 1, dummy, ZIP_FL_OVERWRITE);
     zip_close(archive);
     archive = zip_open(zip_name, 0, 0);
+    */
     return 0;
 }
 /**
@@ -518,6 +578,8 @@ static struct fuse_operations zipfs_operations = {
     .getattr = zipfs_getattr,
     .readdir = zipfs_readdir,
     .read = zipfs_read,
+    //.fsync = zipfs_fsync,
+    // .fsyncdir = zipfS_fsyncdir,
     // .mknod = zipfs_mknod, // create file
     //.unlink = zipfs_unlink, // delete file
     //.mkdir = zipfs_mkdir, // create directory
