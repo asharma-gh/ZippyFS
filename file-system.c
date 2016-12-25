@@ -342,16 +342,8 @@ int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     char command[strlen(shadow_path) + strlen(hex_name) + 50];
     memset(command, 0, strlen(command));
-    strcat(command, "cd ");
-    strcat(command, shadow_path);
-    strcat(command, "; zip ");
-    strcat(command, hex_name);
-    strcat(command, " *; ");
-    strcat(command, "mv ");
-    strcat(command, hex_name);
-    strcat(command, ".zip ");
-    strcat(command, zip_dir_path);
-    strcat(command, "; rm -rf *");
+    sprintf(command, "cd %s; zip %s *; mv %s.zip %s; rm -rf *", 
+            shadow_path, hex_name, hex_name, zip_dir_path);
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
