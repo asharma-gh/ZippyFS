@@ -288,15 +288,17 @@ int
 zipfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
     (void)fi;
-    char folder_path[strlen(path)];
-    strcpy(folder_path, path + 1);
-    folder_path[strlen(path) - 2] = '/';
-    folder_path[strlen(path - 1)] = '\0';
-    if (zip_name_locate(archive, path + 1, 0) >= 0 
-            || zip_name_locate(archive, folder_path, 0)) {
-        return 0;
-    }
-    return -1;
+    /*
+       char folder_path[strlen(path)];
+       strcpy(folder_path, path + 1);
+       folder_path[strlen(path) - 2] = '/';
+       folder_path[strlen(path - 1)] = '\0';
+       if (zip_name_locate(archive, path + 1, 0) >= 0 
+       || zip_name_locate(archive, folder_path, 0)) {
+       return 0;
+       }
+       */
+    return 0;
 }
 
 /**
@@ -327,15 +329,29 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     memcpy(new_buf + offset, buf, size);
 
     // write to new file source
-    // TODO: write to shadow directory!!
-    zip_source_t* new_source;
-    if ((new_source = zip_source_buffer(archive, new_buf, sizeof(new_buf), 0)) == NULL
-            || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
-        zip_source_free(new_source);
-        printf("error adding new file source %s\n", zip_strerror(archive));
-    }
-    zip_close(archive);
-    archive = zip_open(zip_name, 0, 0);
+    // TODO: write to shadow directory
+    char shadow_file_path[strlen(path) + strlen(shadow_path) + 1];
+    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY);
+    if (pwrite(shadow_file, new_buf, sizeof(new_buf), 0) == -1)
+        printf("error writing to shadow file\n");
+    if (close(shadow_file))
+        printf("error closing shadow file\n");
+
+    /*
+
+       zip_source_t* new_source;
+       if ((new_source = zip_source_buffer(archive, new_buf, sizeof(new_buf), 0)) == NULL
+       || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
+       zip_source_free(new_source);
+       printf("error adding new file source %s\n", zip_strerror(archive));
+       }
+
+       zip_close(archive);
+       archive = zip_open(zip_name, 0, 0);
+       */
 
     return size;
 }
@@ -494,10 +510,10 @@ static struct fuse_operations zipfs_operations = {
     //.unlink = zipfs_unlink, // delete file
     //.mkdir = zipfs_mkdir, // create directory
     //.rename = zipfs_rename, // rename a file/directory
-    //.write = zipfs_write, // write to a file
+    .write = zipfs_write, // write to a file
     //.truncate = zipfs_truncate, // truncates file to given size
-    //.access = zipfs_access, // does file exist?
-    //.open = zipfs_open, // same as access
+    .access = zipfs_access, // does file exist?
+    .open = zipfs_open, // same as access
     //.utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
 };
@@ -543,7 +559,7 @@ main(int argc, char *argv[]) {
     strcat(shadow_path, "/");
 
     // make the directory
-    if(mkdir(shadow_path, S_IRWXU)) {
+    if (mkdir(shadow_path, S_IRWXU)) {
         printf("error making shadow directory\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
