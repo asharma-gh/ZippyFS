@@ -329,7 +329,6 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     memcpy(new_buf + offset, buf, size);
 
     // write to new file source
-    // TODO: write to shadow directory
     char shadow_file_path[strlen(path) + strlen(shadow_path) + 1];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
