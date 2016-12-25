@@ -329,7 +329,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     memcpy(new_buf + offset, buf, size);
 
     // write to new file source
-    char shadow_file_path[strlen(path) + strlen(shadow_path) + 1];
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
@@ -369,7 +369,20 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
     (void)mode;
     (void)rdev;
-
+    // create path to file
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY);
+    if (shadow_file == -1) {
+        printf("error making shadow file descriptor\n");
+        printf("ERRNO: %s\n", strerror(errno));
+    }
+    if (close(shadow_file)) {
+        printf("error closing shadow file descriptor\n");
+        printf("ERRNO: %s\n", strerror(errno));
+    }
     // char mt [0];
     zip_source_t* dummy = zip_source_buffer(archive, NULL, 0, 0);
     zip_file_add(archive, path + 1, dummy, ZIP_FL_OVERWRITE);
