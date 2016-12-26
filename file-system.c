@@ -397,19 +397,6 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
         printf("error writing to shadow file\n");
     if (close(shadow_file))
         printf("error closing shadow file\n");
-
-    /*
-
-       zip_source_t* new_source;
-       if ((new_source = zip_source_buffer(archive, new_buf, sizeof(new_buf), 0)) == NULL
-       || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
-       zip_source_free(new_source);
-       printf("error adding new file source %s\n", zip_strerror(archive));
-       }
-
-       zip_close(archive);
-       archive = zip_open(zip_name, 0, 0);
-       */
     zipfs_fsync(NULL, 0, 0);
     return size;
 }
