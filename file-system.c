@@ -22,13 +22,6 @@
 /** using glib over switching languages */
 #include <glib.h>
 
-/** the mounted zip archive */
-static struct zip* archive;
-/** the name of the zip archive */
-static char* zip_name;
-
-
-
 /** the name of the mounted directory of zip files */
 static char* zip_dir_name;
 
@@ -350,7 +343,7 @@ int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     char command[strlen(shadow_path) + strlen(zip_dir_path) + strlen(hex_name) + 50];
     memset(command, 0, strlen(command));
-    sprintf(command, "cd %s; zip %s *; mv %s.zip %s" 
+    sprintf(command, "cd %s; zip %s *; mv %s.zip %s", 
             shadow_path, hex_name, hex_name, zip_dir_path);
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
@@ -566,7 +559,6 @@ void
 zipfs_destroy(void* private_data) {
     (void)private_data;
     free(shadow_path);
-    zip_close(archive);
 
 }
 /** represents available functionality */
