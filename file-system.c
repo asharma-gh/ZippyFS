@@ -70,8 +70,8 @@ find_latest_archive(const char* path) {
         printf("dir name: %s zip file name: %s\n",zip_dir_name,  zip_file_name);
         memset(fixed_path, 0, sizeof(fixed_path));
         sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
-        
- 
+
+
         // open zip file in dir
         struct zip* temp_archive;
         if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
@@ -88,7 +88,7 @@ find_latest_archive(const char* path) {
                 latest_time = zipstbuf.mtime;
                 printf("DIF: %f\n", dif);
             }
-            
+
             printf("FOUND ENTRY IN AN ARCHIVE\n");
         } else {
             printf("ENTRY NOT IN HERE\n");
