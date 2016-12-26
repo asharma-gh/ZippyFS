@@ -33,7 +33,6 @@ static char* zip_name;
 static char* zip_dir_name;
 
 /** cache for writes */
-//static struct zip* cached_writes;
 static char* shadow_path;
 
 /**
