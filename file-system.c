@@ -15,6 +15,7 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <alloca.h>
+#include <limits.h>
 #include <dirent.h>
 #include <wordexp.h>
 #include <linux/random.h>
@@ -58,28 +59,36 @@ find_latest_archive(const char* path) {
     struct dirent* zip_file;
     char* zip_file_name = alloca(FILENAME_MAX);
     DIR* zip_dir = opendir(zip_dir_name);
+    time_t latest_time = 0;
     while ((zip_file = readdir(zip_dir)) != NULL) {
         zip_file_name = zip_file->d_name;
         if (strcmp(zip_file_name, ".") == 0
                 || strcmp(zip_file_name, "..") == 0)
             continue;
         // make relative path to the zip file
-        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 2];
-        memset(fixed_path, 0, strlen(fixed_path));
-        memcpy(fixed_path, zip_dir_name, strlen(zip_dir_name));
-        fixed_path[strlen(zip_dir_name)] = '/';
-        memcpy(fixed_path + strlen(zip_dir_name) + 1, zip_file_name, strlen(zip_file_name));
-        printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
+        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name)];
+        printf("dir name: %s zip file name: %s\n",zip_dir_name,  zip_file_name);
+        memset(fixed_path, 0, sizeof(fixed_path));
+        sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
+        
+ 
         // open zip file in dir
         struct zip* temp_archive;
         if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
             printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
         }
         // find file in temp archive
+
         if (!zip_stat(temp_archive, folder_path, 0, &zipstbuf) 
                 || !zip_stat(temp_archive, path + 1, 0, &zipstbuf)) {
             zip_close(latest_archive);
-            latest_archive = temp_archive;
+            
+            if (difftime(zipstbuf.mtime,  latest_time) >= 0) {
+                latest_archive = temp_archive;
+                latest_time = zipstbuf.mtime;
+            }
+            
+            latest_archive=temp_archive;
             printf("FOUND ENTRY IN AN ARCHIVE\n");
         } else {
             printf("ENTRY NOT IN HERE\n");
@@ -334,16 +343,27 @@ int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     memset(cwd, 0, strlen(cwd));
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
+    printf("CWD: %s\n", cwd);
     char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
     memset(zip_dir_path, 0, strlen(zip_dir_path));
-    strcat(zip_dir_path, cwd);
-    strcat(zip_dir_path, "/");
-    strcat(zip_dir_path, zip_dir_name);
+    sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
+    printf("DIR NAME: %s\n", zip_dir_path);
 
-    char command[strlen(shadow_path) + strlen(hex_name) + 50];
+    char command[strlen(shadow_path) + strlen(zip_dir_path) + strlen(hex_name) + 50];
     memset(command, 0, strlen(command));
     sprintf(command, "cd %s; zip %s *; mv %s.zip %s; rm -rf *", 
             shadow_path, hex_name, hex_name, zip_dir_path);
+    /*
+       strcat(command, "cd ");
+       strcat(command, shadow_path);
+       strcat(command, "; zip ");
+       strcat(command, hex_name);
+       strcat(command, "; mv ");
+       strcat(command, hex_name);
+       strcat(command, ".zip ");
+       strcat(command, zip_dir_path);
+       strcat(command, "; rm -rf *");
+       */
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
@@ -378,12 +398,13 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     // concat new data into buffer
     memcpy(new_buf + offset, buf, size);
 
+    printf("WRITING: %s\n", new_buf);
     // write to new file source
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY);
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IXUSR);
     if (pwrite(shadow_file, new_buf, sizeof(new_buf), 0) == -1)
         printf("error writing to shadow file\n");
     if (close(shadow_file))
@@ -401,7 +422,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
        zip_close(archive);
        archive = zip_open(zip_name, 0, 0);
        */
-
+    zipfs_fsync(NULL, 0, 0);
     return size;
 }
 
@@ -451,10 +472,12 @@ static
 int
 zipfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
-    zip_int64_t file_index = zip_name_locate(archive, path + 1, 0);
-    zip_delete(archive, file_index);
-    zip_close(archive);
-    archive = zip_open(zip_name, 0, 0);
+    /*
+       zip_int64_t file_index = zip_name_locate(archive, path + 1, 0);
+       zip_delete(archive, file_index);
+       zip_close(archive);
+       archive = zip_open(zip_name, 0, 0);
+       */
     return 0;
 }
 /**
@@ -467,10 +490,12 @@ static
 int
 zipfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
-    (void)mode;
-    zip_dir_add(archive, path + 1, ZIP_FL_ENC_UTF_8);
-    zip_close(archive);
-    archive = zip_open(zip_name, 0, 0);
+    /*
+       (void)mode;
+       zip_dir_add(archive, path + 1, ZIP_FL_ENC_UTF_8);
+       zip_close(archive);
+       archive = zip_open(zip_name, 0, 0);
+       */
     return 0;
 
 
@@ -484,13 +509,15 @@ zipfs_mkdir(const char* path, mode_t mode) {
 static
 int
 zipfs_rename(const char* from, const char* to) {
-    printf("RENAME: from: %s == to: %s\n", from, to);
+    /*
+       printf("RENAME: from: %s == to: %s\n", from, to);
 
-    zip_int64_t old_file_index = zip_name_locate(archive, from + 1, 0);
-    zip_file_rename(archive, old_file_index, to + 1, 0);
+       zip_int64_t old_file_index = zip_name_locate(archive, from + 1, 0);
+       zip_file_rename(archive, old_file_index, to + 1, 0);
 
-    zip_close(archive);
-    archive = zip_open(zip_name, 0, 0);
+       zip_close(archive);
+       archive = zip_open(zip_name, 0, 0);
+       */
 
     return 0;
 }
@@ -503,27 +530,29 @@ zipfs_rename(const char* from, const char* to) {
 static
 int
 zipfs_truncate(const char* path, off_t size) {
-    printf("TRUNCATE: %s\n", path);
+    /*
+       printf("TRUNCATE: %s\n", path);
     // get size of file
     struct stat file_stats;
     zipfs_getattr(path, &file_stats);
     unsigned int file_size = file_stats.st_size;
     int numZeros = 0;
     if (size >  file_size) {
-        numZeros = size - file_size;
+    numZeros = size - file_size;
     }
     char new_contents[size + numZeros];
     memset(new_contents, 0, size+numZeros);
     zipfs_read(path, new_contents, size, 0, NULL);
     zip_source_t* new_source;
     if ((new_source = zip_source_buffer(archive, new_contents, sizeof(new_contents), 0)) == NULL
-            || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
-        zip_source_free(new_source);
-        printf("error adding new file source %s\n", zip_strerror(archive));
-        return -1;
+    || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
+    zip_source_free(new_source);
+    printf("error adding new file source %s\n", zip_strerror(archive));
+    return -1;
     }
     zip_close(archive);
     archive = zip_open(zip_name, 0, 0);
+    */
 
     return 0;
 }
@@ -570,17 +599,17 @@ static struct fuse_operations zipfs_operations = {
     .getattr = zipfs_getattr,
     .readdir = zipfs_readdir,
     .read = zipfs_read,
-    //.fsync = zipfs_fsync,
-    // .fsyncdir = zipfS_fsyncdir,
-    // .mknod = zipfs_mknod, // create file
-    //.unlink = zipfs_unlink, // delete file
-    //.mkdir = zipfs_mkdir, // create directory
-    //.rename = zipfs_rename, // rename a file/directory
+    .fsync = zipfs_fsync,
+    //.fsyncdir = zipfS_fsyncdir,
+    .mknod = zipfs_mknod, // create file
+    .unlink = zipfs_unlink, // delete file
+    .mkdir = zipfs_mkdir, // create directory
+    .rename = zipfs_rename, // rename a file/directory
     .write = zipfs_write, // write to a file
-    //.truncate = zipfs_truncate, // truncates file to given size
+    .truncate = zipfs_truncate, // truncates file to given size
     .access = zipfs_access, // does file exist?
     .open = zipfs_open, // same as access
-    //.utimens = zipfs_utimens,
+    .utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
 };
 
