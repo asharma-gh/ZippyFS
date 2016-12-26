@@ -81,14 +81,14 @@ find_latest_archive(const char* path) {
 
         if (!zip_stat(temp_archive, folder_path, 0, &zipstbuf) 
                 || !zip_stat(temp_archive, path + 1, 0, &zipstbuf)) {
-            zip_close(latest_archive);
-            
-            if (difftime(zipstbuf.mtime,  latest_time) >= 0) {
+            double dif;  
+            if ((dif = difftime(zipstbuf.mtime,  latest_time)) >= 0) {
+                zip_close(latest_archive);
                 latest_archive = temp_archive;
                 latest_time = zipstbuf.mtime;
+                printf("DIF: %f\n", dif);
             }
             
-            latest_archive=temp_archive;
             printf("FOUND ENTRY IN AN ARCHIVE\n");
         } else {
             printf("ENTRY NOT IN HERE\n");
@@ -353,17 +353,6 @@ int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     memset(command, 0, strlen(command));
     sprintf(command, "cd %s; zip %s *; mv %s.zip %s; rm -rf *", 
             shadow_path, hex_name, hex_name, zip_dir_path);
-    /*
-       strcat(command, "cd ");
-       strcat(command, shadow_path);
-       strcat(command, "; zip ");
-       strcat(command, hex_name);
-       strcat(command, "; mv ");
-       strcat(command, hex_name);
-       strcat(command, ".zip ");
-       strcat(command, zip_dir_path);
-       strcat(command, "; rm -rf *");
-       */
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
@@ -383,7 +372,7 @@ int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
 static
 int
 zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-    printf("WRITE: %s\n", path);
+    printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
     // read old data from latest archive with path
     struct stat stbuf;
@@ -396,7 +385,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     zip_fread(file, new_buf, file_size);
     zip_fclose(file);
     // concat new data into buffer
-    memcpy(new_buf + offset, buf, size);
+    memcpy(new_buf + offset, buf, strlen(buf) + 1);
 
     printf("WRITING: %s\n", new_buf);
     // write to new file source
