@@ -29,8 +29,8 @@ static char* zip_dir_name;
 static char* shadow_path;
 
 /**
- * retrieve the latest archive with the given PATH
- * @param path is the path of the archive
+ * retrieve the latest archive with the given path
+ * @param path is the path of the entry to find
  * @return the pointer to the zip_file, NULL if it doesnt exist
  */
 static
@@ -45,7 +45,7 @@ find_latest_archive(const char* path) {
         folder_path[len] = '\0'; 
     }
     struct zip_stat zipstbuf;
-    // NEW!:
+
     // check each zip-file until u find the latest one
     struct zip* latest_archive = NULL;
     struct dirent* zip_file;
@@ -58,7 +58,7 @@ find_latest_archive(const char* path) {
                 || strcmp(zip_file_name, "..") == 0)
             continue;
         // make relative path to the zip file
-        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name)];
+        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 1];
         printf("dir name: %s zip file name: %s\n",zip_dir_name,  zip_file_name);
         memset(fixed_path, 0, sizeof(fixed_path));
         sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
@@ -66,14 +66,17 @@ find_latest_archive(const char* path) {
 
         // open zip file in dir
         struct zip* temp_archive;
-        if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
+        int err;
+        if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, &err))) {
             printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
+            printf("ERROR: %d\n", err);
         }
         // find file in temp archive
-
         if (!zip_stat(temp_archive, folder_path, 0, &zipstbuf) 
                 || !zip_stat(temp_archive, path + 1, 0, &zipstbuf)) {
-            double dif;  
+
+            double dif;
+            // check if its newer
             if ((dif = difftime(zipstbuf.mtime,  latest_time)) >= 0) {
                 zip_close(latest_archive);
                 latest_archive = temp_archive;
@@ -390,7 +393,9 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
         printf("error writing to shadow file\n");
     if (close(shadow_file))
         printf("error closing shadow file\n");
-    zipfs_fsync(NULL, 0, 0);
+
+    zipfs_fsync(NULL, 0,0);
+
     return size;
 }
 
