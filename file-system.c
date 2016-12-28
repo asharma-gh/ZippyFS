@@ -21,6 +21,14 @@
 #include <linux/random.h>
 /** using glib over switching languages */
 #include <glib.h>
+/** TODO: rest of write functions
+ * - test writing functions
+ * - test consistency with multiple processes on multiple mount points
+ * - implement networking
+ * - refactor cache to be block 
+ * - more to come...
+ */
+
 
 /** the name of the mounted directory of zip files */
 static char* zip_dir_name;
