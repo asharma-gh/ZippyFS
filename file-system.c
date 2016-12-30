@@ -426,13 +426,9 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY);
+    int shadow_file = mkdir(shadow_file_path, S_IRWXU | S_IRWXG);
     if (shadow_file == -1) {
         printf("error making shadow file descriptor\n");
-        printf("ERRNO: %s\n", strerror(errno));
-    }
-    if (close(shadow_file)) {
-        printf("error closing shadow file descriptor\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
     /*
@@ -471,6 +467,21 @@ static
 int
 zipfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
+    // create path to file
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY);
+    if (shadow_file == -1) {
+        printf("error making shadow file descriptor\n");
+        printf("ERRNO: %s\n", strerror(errno));
+    }
+    if (close(shadow_file)) {
+        printf("error closing shadow file descriptor\n");
+        printf("ERRNO: %s\n", strerror(errno));
+    }
+
     /*
        (void)mode;
        zip_dir_add(archive, path + 1, ZIP_FL_ENC_UTF_8);
