@@ -436,12 +436,6 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
         printf("ERRNO: %s\n", strerror(errno));
     }
 
-    /*
-       (void)mode;
-       zip_dir_add(archive, path + 1, ZIP_FL_ENC_UTF_8);
-       zip_close(archive);
-       archive = zip_open(zip_name, 0, 0);
-       */
     return 0;
 }
 /**
@@ -482,13 +476,6 @@ zipfs_mkdir(const char* path, mode_t mode) {
         printf("error making shadow file descriptor\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
-    /*
-    // char mt [0];
-    zip_source_t* dummy = zip_source_buffer(archive, NULL, 0, 0);
-    zip_file_add(archive, path + 1, dummy, ZIP_FL_OVERWRITE);
-    zip_close(archive);
-    archive = zip_open(zip_name, 0, 0);
-    */
     return 0;
 
 }
@@ -522,8 +509,8 @@ zipfs_rename(const char* from, const char* to) {
 static
 int
 zipfs_truncate(const char* path, off_t size) {
-    /*
-       printf("TRUNCATE: %s\n", path);
+    zipfs_fsync(NULL, 0, 0); // need to flush everytime currently
+    printf("TRUNCATE: %s\n", path);
     // get size of file
     struct stat file_stats;
     zipfs_getattr(path, &file_stats);
@@ -535,16 +522,18 @@ zipfs_truncate(const char* path, off_t size) {
     char new_contents[size + numZeros];
     memset(new_contents, 0, size+numZeros);
     zipfs_read(path, new_contents, size, 0, NULL);
-    zip_source_t* new_source;
-    if ((new_source = zip_source_buffer(archive, new_contents, sizeof(new_contents), 0)) == NULL
-    || zip_file_add(archive, path + 1, new_source, ZIP_FL_OVERWRITE) < 0) {
-    zip_source_free(new_source);
-    printf("error adding new file source %s\n", zip_strerror(archive));
-    return -1;
-    }
-    zip_close(archive);
-    archive = zip_open(zip_name, 0, 0);
-    */
+    // add new file to cache
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IXUSR);
+    if (pwrite(shadow_file, new_contents, sizeof(new_contents), 0) == -1)
+        printf("error writing to shadow file\n");
+    if (close(shadow_file))
+        printf("error closing shadow file\n");
+
+    
 
     return 0;
 }
