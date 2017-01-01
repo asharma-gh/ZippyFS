@@ -67,7 +67,7 @@ find_latest_archive(const char* path) {
             continue;
         // make relative path to the zip file
         char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 1];
-        printf("dir name: %s zip file name: %s\n",zip_dir_name,  zip_file_name);
+  //      printf("dir name: %s zip file name: %s\n",zip_dir_name,  zip_file_name);
         memset(fixed_path, 0, sizeof(fixed_path));
         sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
 
@@ -89,12 +89,12 @@ find_latest_archive(const char* path) {
                 zip_close(latest_archive);
                 latest_archive = temp_archive;
                 latest_time = zipstbuf.mtime;
-                printf("DIF: %f\n", dif);
+    //            printf("DIF: %f\n", dif);
             }
 
-            printf("FOUND ENTRY IN AN ARCHIVE\n");
+     //       printf("FOUND ENTRY IN AN ARCHIVE\n");
         } else {
-            printf("ENTRY NOT IN HERE\n");
+         //   printf("ENTRY NOT IN HERE\n");
             zip_close(temp_archive);
         }
     }
@@ -181,12 +181,10 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             continue;
 
         // make relative path to the zip file
-        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 2];
-        memset(fixed_path, 0, strlen(fixed_path));
-        memcpy(fixed_path, zip_dir_name, strlen(zip_dir_name));
-        fixed_path[strlen(zip_dir_name)] = '/';
-        memcpy(fixed_path + strlen(zip_dir_name) + 1, zip_file_name, strlen(zip_file_name));
-        printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
+        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 1];
+        memset(fixed_path, 0, sizeof(fixed_path));
+        sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
+       // printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
         // open zip file in dir
         struct zip* temp_archive;
         if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
@@ -195,7 +193,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         int numEntries = zip_get_num_entries(temp_archive, ZIP_FL_UNCHANGED);
         for (int i = 0; i < numEntries; i++) {
             const char* zip_entry_name = zip_get_name(temp_archive, i, 0);
-            printf("UNCHANGED ENTRY NAME %s\n", zip_entry_name);
+        //    printf("UNCHANGED ENTRY NAME %s\n", zip_entry_name);
             char temp[strlen(zip_entry_name)];
             strcpy(temp, zip_entry_name);
             char* fuse_name;
@@ -210,7 +208,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 strcpy(fuse_name + 1, temp);
                 fuse_name[0] = '/';
             }
-            printf("ENTRY NAME: %s\n", fuse_name);
+         //   printf("ENTRY NAME: %s\n", fuse_name);
 
             // check if the current file is in the directory in the given path
             char* temp_path = strdup(path);
@@ -375,29 +373,16 @@ int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
 static
 int
 zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
+
     printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
-    // read old data from latest archive with path
-    struct stat stbuf;
-    zipfs_getattr(path, &stbuf);
-    unsigned int file_size = stbuf.st_size;
-    char new_buf[file_size + size + offset];
-    memset(new_buf, 0, file_size + size + offset);
-    struct zip* latest_archive = find_latest_archive(path);
-    zip_file_t* file =  zip_fopen(latest_archive, path + 1, 0);
-    zip_fread(file, new_buf, file_size);
-    zip_fclose(file);
-    // concat new data into buffer
-    memcpy(new_buf + offset, buf, strlen(buf) + 1);
-
-    printf("WRITING: %s\n", new_buf);
     // write to new file source
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IXUSR);
-    if (pwrite(shadow_file, new_buf, sizeof(new_buf), 0) == -1)
+    if (pwrite(shadow_file, buf, size, offset) == -1)
         printf("error writing to shadow file\n");
     if (close(shadow_file))
         printf("error closing shadow file\n");
@@ -509,32 +494,18 @@ zipfs_rename(const char* from, const char* to) {
 static
 int
 zipfs_truncate(const char* path, off_t size) {
-    zipfs_fsync(NULL, 0, 0); // need to flush everytime currently
-    printf("TRUNCATE: %s\n", path);
-    // get size of file
-    struct stat file_stats;
-    zipfs_getattr(path, &file_stats);
-    unsigned int file_size = file_stats.st_size;
-    int numZeros = 0;
-    if (size >  file_size) {
-    numZeros = size - file_size;
-    }
-    char new_contents[size + numZeros];
-    memset(new_contents, 0, size+numZeros);
-    zipfs_read(path, new_contents, size, 0, NULL);
+        printf("TRUNCATE: %s\n", path);
     // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IXUSR);
-    if (pwrite(shadow_file, new_contents, sizeof(new_contents), 0) == -1)
+    if (ftruncate(shadow_file, size)  == -1)
         printf("error writing to shadow file\n");
     if (close(shadow_file))
         printf("error closing shadow file\n");
-
     
-
     return 0;
 }
 /**
