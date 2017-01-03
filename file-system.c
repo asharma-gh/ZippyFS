@@ -21,14 +21,6 @@
 #include <linux/random.h>
 /** using glib over switching languages */
 #include <glib.h>
-/** TODO: rest of write functions
- * - test writing functions
- * - test consistency with multiple processes on multiple mount points
- * - implement networking
- * - refactor cache to be block 
- * - more to come...
- */
-
 
 /** the name of the mounted directory of zip files */
 static char* zip_dir_name;
@@ -122,10 +114,12 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    if (lstat(shadow_file_path, stbuf) == -1) {
+    if (stat(shadow_file_path, stbuf) == -1) {
         printf("Item not in cache.. checking main dir\n");
+        memset(stbuf, 0, sizeof(stbuf));
     } else {
         printf("Found item in cache\n");
+        return 0; 
     }
 
     // convert the fuse path to 
@@ -202,7 +196,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                     || strcmp(de->d_name, "..") ==0)
                 continue;
 
-            printf("de name: %s\n", de->d_name);
+            printf("de name:|%s|\n", de->d_name);
             if (filler(buf, de->d_name, NULL, 0))
                 break;
             char* entry = strdup(de->d_name);
@@ -219,7 +213,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     // find the paths to things in the given path
     while((zip_file = readdir(zip_dir)) != NULL) {
         const char* zip_file_name = zip_file->d_name;
-        printf("FILE NAME %s\n", zip_file_name);
+        printf("FILE NAME |%s|\n", zip_file_name);
         if (strcmp(zip_file_name, ".") == 0
                 || strcmp(zip_file_name, "..") ==0)
             continue;
@@ -252,7 +246,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 strcpy(fuse_name + 1, temp);
                 fuse_name[0] = '/';
             }
-            //   printf("ENTRY NAME: %s\n", fuse_name);
+            printf("ENTRY NAME: |%s|\n", fuse_name + 1);
 
             // check if the current file is in the directory in the given path
             char* temp_path = strdup(path);
@@ -263,8 +257,9 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             char* ele;
             int inserted = 0;
             for (int j = 0; (ele = g_array_index(added_entries, char*, j)) != 0; j++) {
-                if (!strcmp(ele, fuse_name)) {
+                if (!strcmp(ele, fuse_name + 1)) {
                     inserted = 1;
+                    printf("PUT IN ALREADY\n");
                     break;
                 }
 
@@ -272,7 +267,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             // find file in system, add to buffer
             struct stat buffer;
             if (!inserted && !notInPath && zipfs_getattr(fuse_name, &buffer)== 0) {
-                char* entry = strdup(fuse_name);
+                char* entry = strdup(fuse_name + 1);
                 g_array_append_val(added_entries, entry);
                 filler(buf, basename(fuse_name), NULL, 0);
             }
@@ -326,12 +321,13 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
         printf("File is not in cache\n");
     } else {
         printf("FOUND file in cache\n");
-
-        if (pread(fd, buf, size, offset) == -1) {
+        int res = pread(fd, buf, size, offset);
+        if (res == -1) {
             printf("ERROR reading file in cache\n");
-            return -errno;
         }
-        return size;
+        printf("read %s\n", buf);
+        close(fd);
+        return res;
     }
 
     // file not in cache, checking in main dir
@@ -458,6 +454,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
         printf("error writing to shadow file\n");
     if (close(shadow_file))
         printf("error closing shadow file\n"); 
+
 
     return size;
 }
@@ -623,14 +620,14 @@ static struct fuse_operations zipfs_operations = {
     .fsync = zipfs_fsync,
     //.fsyncdir = zipfS_fsyncdir,
     .mknod = zipfs_mknod, // create file
-    .unlink = zipfs_unlink, // delete file
-    .mkdir = zipfs_mkdir, // create directory
-    .rename = zipfs_rename, // rename a file/directory
+    //.unlink = zipfs_unlink, // delete file
+    //.mkdir = zipfs_mkdir, // create directory
+    //.rename = zipfs_rename, // rename a file/directory
     .write = zipfs_write, // write to a file
     .truncate = zipfs_truncate, // truncates file to given size
     .access = zipfs_access, // does file exist?
     .open = zipfs_open, // same as access
-    .utimens = zipfs_utimens,
+    //.utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
 };
 
