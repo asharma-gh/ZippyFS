@@ -180,7 +180,33 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     printf("READDIR: %s\n", path);
     // unneeded
     (void) offset;
-    (void) fi;
+    (void) fi;    
+
+    // NEW!:
+    // checks cache first
+    // construct file path in cache
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+
+    int dp = opendir(path);
+	if (dp == NULL) {
+		printf("Not in cache, checking main dir..\n");
+    } else {
+        printf("Found item in cache\n");
+        while ((de = readdir(dp)) != NULL) {
+            struct stat st;
+            memset(&st, 0, sizeof(st));
+            st.st_ino = de->d_ino;
+            st.st_mode = de->d_type << 12;
+            if (filler(buf, de->d_name, &st, 0, 0))
+                break;
+        }
+
+        closedir(dp);
+        return 0;
+    }
 
     GArray* added_entries = g_array_new(TRUE, TRUE, sizeof(char*));
     DIR* zip_dir = opendir(zip_dir_name);
