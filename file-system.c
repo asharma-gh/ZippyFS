@@ -304,6 +304,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 static
 int
 zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
+    zipfs_fsync(NULL, 0, 0);
     //unused
     (void) fi;
     (void) offset;
@@ -388,7 +389,8 @@ zipfs_open(const char* path, struct fuse_file_info* fi) {
  * @param fi is not used
  * @return 0 on success, nonzero if cache is empty or other error occured.
  */
-int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
+int
+zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     // create archive name
     char num[16] = {'\0'};
     char hex_name[33] = {'\0'};
@@ -428,6 +430,13 @@ int zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     return 0;
 }
+
+int
+zipfs_fsyncdir(const char* path, int d, struct fuse_file_info* fi) {
+    zipfs_fsync(NULL, 0, 0);
+    return 0;
+}
+
 
 /**
  * writes bytes to a file at a specified offset
@@ -618,7 +627,7 @@ static struct fuse_operations zipfs_operations = {
     .readdir = zipfs_readdir,
     .read = zipfs_read,
     .fsync = zipfs_fsync,
-    //.fsyncdir = zipfS_fsyncdir,
+    .fsyncdir = zipfs_fsyncdir,
     .mknod = zipfs_mknod, // create file
     //.unlink = zipfs_unlink, // delete file
     //.mkdir = zipfs_mkdir, // create directory
