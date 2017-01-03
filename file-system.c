@@ -67,7 +67,7 @@ find_latest_archive(const char* path) {
             continue;
         // make relative path to the zip file
         char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 1];
-  //      printf("dir name: %s zip file name: %s\n",zip_dir_name,  zip_file_name);
+        //      printf("dir name: %s zip file name: %s\n",zip_dir_name,  zip_file_name);
         memset(fixed_path, 0, sizeof(fixed_path));
         sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
 
@@ -89,12 +89,12 @@ find_latest_archive(const char* path) {
                 zip_close(latest_archive);
                 latest_archive = temp_archive;
                 latest_time = zipstbuf.mtime;
-    //            printf("DIF: %f\n", dif);
+                //            printf("DIF: %f\n", dif);
             }
 
-     //       printf("FOUND ENTRY IN AN ARCHIVE\n");
+            //       printf("FOUND ENTRY IN AN ARCHIVE\n");
         } else {
-         //   printf("ENTRY NOT IN HERE\n");
+            //   printf("ENTRY NOT IN HERE\n");
             zip_close(temp_archive);
         }
     }
@@ -122,11 +122,10 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    if (lstat(shadow_file_path, stbuf) != -1) {
-        printf("Found item in cache\n");
-        return 0;
-    } else {
+    if (lstat(shadow_file_path, stbuf) == -1) {
         printf("Item not in cache.. checking main dir\n");
+    } else {
+        printf("Found item in cache\n");
     }
 
     // convert the fuse path to 
@@ -198,7 +197,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 1];
         memset(fixed_path, 0, sizeof(fixed_path));
         sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
-       // printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
+        // printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
         // open zip file in dir
         struct zip* temp_archive;
         if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
@@ -207,7 +206,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         int numEntries = zip_get_num_entries(temp_archive, ZIP_FL_UNCHANGED);
         for (int i = 0; i < numEntries; i++) {
             const char* zip_entry_name = zip_get_name(temp_archive, i, 0);
-        //    printf("UNCHANGED ENTRY NAME %s\n", zip_entry_name);
+            //    printf("UNCHANGED ENTRY NAME %s\n", zip_entry_name);
             char temp[strlen(zip_entry_name)];
             strcpy(temp, zip_entry_name);
             char* fuse_name;
@@ -222,7 +221,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 strcpy(fuse_name + 1, temp);
                 fuse_name[0] = '/';
             }
-         //   printf("ENTRY NAME: %s\n", fuse_name);
+            //   printf("ENTRY NAME: %s\n", fuse_name);
 
             // check if the current file is in the directory in the given path
             char* temp_path = strdup(path);
@@ -289,11 +288,11 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
         printf("File is not in cache\n");
     } else {
         printf("FOUND file in cache\n");
+
         if (pread(fd, buf, size, offset) == -1) {
             printf("ERROR reading file in cache\n");
             return -errno;
         }
-        printf("%s\n", buf);
         return size;
     }
 
@@ -527,7 +526,7 @@ zipfs_rename(const char* from, const char* to) {
 static
 int
 zipfs_truncate(const char* path, off_t size) {
-        printf("TRUNCATE: %s\n", path);
+    printf("TRUNCATE: %s\n", path);
     // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
@@ -538,7 +537,7 @@ zipfs_truncate(const char* path, off_t size) {
         printf("error writing to shadow file\n");
     if (close(shadow_file))
         printf("error closing shadow file\n");
-    
+
     return 0;
 }
 /**
