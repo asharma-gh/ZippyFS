@@ -116,7 +116,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     strcat(shadow_file_path, path+1);
     if (stat(shadow_file_path, stbuf) == -1) {
         printf("Item not in cache.. checking main dir\n");
-        memset(stbuf, 0, sizeof(stbuf));
+        memset(stbuf, 0, sizeof(struct stat));
     } else {
         printf("Found item in cache\n");
         return 0; 
@@ -629,14 +629,14 @@ static struct fuse_operations zipfs_operations = {
     .fsync = zipfs_fsync,
     .fsyncdir = zipfs_fsyncdir,
     .mknod = zipfs_mknod, // create file
-    //.unlink = zipfs_unlink, // delete file
-    //.mkdir = zipfs_mkdir, // create directory
-    //.rename = zipfs_rename, // rename a file/directory
+    .unlink = zipfs_unlink, // delete file
+    .mkdir = zipfs_mkdir, // create directory
+    .rename = zipfs_rename, // rename a file/directory
     .write = zipfs_write, // write to a file
     .truncate = zipfs_truncate, // truncates file to given size
     .access = zipfs_access, // does file exist?
     .open = zipfs_open, // same as access
-    //.utimens = zipfs_utimens,
+    .utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
 };
 
@@ -656,6 +656,7 @@ main(int argc, char *argv[]) {
         newarg[i] = argv[i];
         printf("%s\n", newarg[i]);
     }
+    
     // construct shadow directory name
     char shadow_name[10] = {0};
     sprintf(shadow_name,"PID%d" , getpid());
@@ -674,7 +675,7 @@ main(int argc, char *argv[]) {
 
     // make program directory if it doesn't exist yet
     if (mkdir(shadow_path, S_IRWXU)) {
-        printf("error making program directory ERRNO: %s\n", strerror(errno));
+        printf("error making zipfs directory ERRNO: %s\n", strerror(errno));
     }
     // construct shadow directory path
     strcat(shadow_path, shadow_name);
@@ -687,6 +688,6 @@ main(int argc, char *argv[]) {
     }
 
 
-    return fuse_main(argc, newarg, &zipfs_operations, NULL);
+   return fuse_main(argc, newarg, &zipfs_operations, NULL);
 
 }
