@@ -31,11 +31,13 @@ static char* shadow_path;
 /**
  * retrieve the latest archive with the given path
  * @param path is the path of the entry to find
+ * @param name is the name of the archive, NULL if unneeded
+ * @param size is the size of name
  * @return the pointer to the zip_file, NULL if it doesnt exist
  */
 static
 struct zip* 
-find_latest_archive(const char* path) {
+find_latest_archive(const char* path, char* name, int size) {
     printf("FINDING LATEST ARCHIVE CONTAINING: %s\n", path);
     int len = strlen(path);
     char folder_path[len + 1];
@@ -81,6 +83,10 @@ find_latest_archive(const char* path) {
                 zip_close(latest_archive);
                 latest_archive = temp_archive;
                 latest_time = zipstbuf.mtime;
+                if (name != NULL) {
+                    memset(name, 0, size * sizeof(char));
+                    strcpy(name, zip_file_name);
+                }
                 //            printf("DIF: %f\n", dif);
             }
 
@@ -134,7 +140,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
 
 
     // check each zip-file until u find the latest one
-    struct zip* latest_archive = find_latest_archive(path);
+    struct zip* latest_archive = find_latest_archive(path, NULL, 0);
 
     struct zip_stat zipstbuf;
     if (strlen(path)== 1 || !zip_stat(latest_archive, folder_path, 0, &zipstbuf)) {
@@ -333,7 +339,7 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
 
     // file not in cache, checking in main dir
     // find latest archive with this file
-    struct zip* latest_archive = find_latest_archive(path);
+    struct zip* latest_archive = find_latest_archive(path, NULL, 0);
     struct zip_file* file = zip_fopen(latest_archive, path + 1, 0);
     if (!latest_archive || !file) {
         printf("%s not found\n", path);
@@ -353,7 +359,7 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
     //strcpy(buf, tempBuf + offset);
     memcpy(buf, tempBuf + offset, size);
     zip_fclose(file);
-
+    zip_close(latest_archive);
     return size;
 
 }
@@ -399,6 +405,8 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     for (int i = 0; i < 16; i++) {
         sprintf(hex_name + i*2,"%02X", num[i]);
     }
+    // TODO:
+    // CREATE INDEX FILE FOR NEW ARCHIVE
 
     // create zip archive name
     char archive_path[strlen(zip_dir_name) + strlen(hex_name) + 1];
@@ -453,6 +461,30 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
 
     printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
+    // get latest archive name
+    char archive_name[PATH_MAX] = {0};
+    struct zip* latest_archive = find_latest_archive(path, archive_name, PATH_MAX);
+    if (latest_archive == NULL) {
+        printf("error writing\n");
+    }
+    zip_close(latest_archive);
+    
+    // unzip to cache
+    // first create path to zip file
+    char cwd[PATH_MAX];
+    memset(cwd, 0, strlen(cwd));
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+        printf("error getting current working directory\n");
+    printf("CWD: %s\n", cwd);
+    char path_to_archive[strlen(cwd) + 2 + strlen(zip_dir_name) + strlen(archive_name)];
+
+    sprintf(path_to_archive, "%s/%s/%s", cwd, zip_dir_name, archive_name);
+    char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + 20];
+        sprintf(unzip_command, "unzip -n %s -d %s", path_to_archive, shadow_path);
+    printf("UNZIPPING!!!: %s\n", unzip_command);
+    system(unzip_command);
+    chdir(cwd);
+
     // write to new file source
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
@@ -570,7 +602,32 @@ zipfs_rename(const char* from, const char* to) {
 static
 int
 zipfs_truncate(const char* path, off_t size) {
-    printf("TRUNCATE: %s\n", path);
+    printf("TRUNCATE: %s\n", path);   
+    
+    // get latest archive name
+    char archive_name[PATH_MAX] = {0};
+    struct zip* latest_archive = find_latest_archive(path, archive_name, PATH_MAX);
+    if (latest_archive == NULL) {
+        printf("error writing\n");
+    }
+    zip_close(latest_archive);
+    // unzip to cache
+    // first create path to zip file
+    char cwd[PATH_MAX];
+    memset(cwd, 0, strlen(cwd));
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+        printf("error getting current working directory\n");
+    printf("CWD: %s\n", cwd);    
+    char path_to_archive[strlen(cwd) + 2 + strlen(zip_dir_name) + strlen(archive_name)];
+
+    sprintf(path_to_archive, "%s/%s/%s", cwd, zip_dir_name, archive_name);
+    char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + 20];
+        sprintf(unzip_command, "unzip -n %s -d %s", path_to_archive, shadow_path);
+
+    printf("UNZIPPING!!!: %s\n", unzip_command);
+    system(unzip_command);
+    chdir(cwd);
+
     // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
@@ -656,7 +713,7 @@ main(int argc, char *argv[]) {
         newarg[i] = argv[i];
         printf("%s\n", newarg[i]);
     }
-    
+
     // construct shadow directory name
     char shadow_name[10] = {0};
     sprintf(shadow_name,"PID%d" , getpid());
@@ -688,6 +745,6 @@ main(int argc, char *argv[]) {
     }
 
 
-   return fuse_main(argc, newarg, &zipfs_operations, NULL);
+    return fuse_main(argc, newarg, &zipfs_operations, NULL);
 
 }
