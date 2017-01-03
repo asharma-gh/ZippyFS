@@ -115,6 +115,20 @@ int
 zipfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
+    // NEW!
+    // checks the cache first
+    // construct file path in cache
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    if (lstat(shadow_file_path, stbuf) != -1) {
+        printf("Found item in cache\n");
+        return 0;
+    } else {
+        printf("Item not in cache.. checking main dir\n");
+    }
+
     // convert the fuse path to 
     // the possible libzip folder path
     int len = strlen(path);
@@ -279,6 +293,7 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
             printf("ERROR reading file in cache\n");
             return -errno;
         }
+        printf("%s\n", buf);
         return size;
     }
 
@@ -405,9 +420,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     if (pwrite(shadow_file, buf, size, offset) == -1)
         printf("error writing to shadow file\n");
     if (close(shadow_file))
-        printf("error closing shadow file\n");
-
-    zipfs_fsync(NULL, 0,0);
+        printf("error closing shadow file\n"); 
 
     return size;
 }
