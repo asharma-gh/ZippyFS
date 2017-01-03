@@ -189,26 +189,31 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
+    GArray* added_entries = g_array_new(TRUE, TRUE, sizeof(char*));
 
-    int dp = opendir(path);
-	if (dp == NULL) {
-		printf("Not in cache, checking main dir..\n");
+    DIR* dp = opendir(shadow_file_path);
+    if (dp == NULL) {
+        printf("Not in cache, checking main dir..\n");
     } else {
         printf("Found item in cache\n");
+        struct dirent* de;
         while ((de = readdir(dp)) != NULL) {
-            struct stat st;
-            memset(&st, 0, sizeof(st));
-            st.st_ino = de->d_ino;
-            st.st_mode = de->d_type << 12;
-            if (filler(buf, de->d_name, &st, 0, 0))
+            if (strcmp(de->d_name,".") == 0
+                    || strcmp(de->d_name, "..") ==0)
+                continue;
+
+            printf("de name: %s\n", de->d_name);
+            if (filler(buf, de->d_name, NULL, 0))
                 break;
+            char* entry = strdup(de->d_name);
+            g_array_append_val(added_entries, entry);
+
         }
 
         closedir(dp);
-        return 0;
+
     }
 
-    GArray* added_entries = g_array_new(TRUE, TRUE, sizeof(char*));
     DIR* zip_dir = opendir(zip_dir_name);
     struct dirent* zip_file;
     // find the paths to things in the given path
@@ -267,13 +272,20 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             // find file in system, add to buffer
             struct stat buffer;
             if (!inserted && !notInPath && zipfs_getattr(fuse_name, &buffer)== 0) {
-                g_array_append_val(added_entries, fuse_name);
+                char* entry = strdup(fuse_name);
+                g_array_append_val(added_entries, entry);
                 filler(buf, basename(fuse_name), NULL, 0);
             }
         }
 
         zip_close(temp_archive);
-    }    
+    }
+    // clean up
+    char* release;
+    for (int i = 0; (release = g_array_index(added_entries, char*, i))
+            != 0; i++) {
+        free(release);
+    }
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
