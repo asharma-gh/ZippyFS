@@ -262,8 +262,28 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
+    // NEW!:
+    // CHECK THE CACHE FIRST
 
-    //find latest archive with this file
+    // construct file path in cache
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    int fd = open(shadow_file_path, O_RDONLY);
+    if (fd == -1) {
+        printf("File is not in cache\n");
+    } else {
+        printf("FOUND file in cache\n");
+        if (pread(fd, buf, size, offset) == -1) {
+            printf("ERROR reading file in cache\n");
+            return -errno;
+        }
+        return size;
+    }
+
+    // file not in cache, checking in main dir
+    // find latest archive with this file
     struct zip* latest_archive = find_latest_archive(path);
     struct zip_file* file = zip_fopen(latest_archive, path + 1, 0);
     if (!latest_archive || !file) {
