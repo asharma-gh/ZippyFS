@@ -468,7 +468,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
         printf("error writing\n");
     }
     zip_close(latest_archive);
-    
+
     // unzip to cache
     // first create path to zip file
     char cwd[PATH_MAX];
@@ -480,7 +480,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
 
     sprintf(path_to_archive, "%s/%s/%s", cwd, zip_dir_name, archive_name);
     char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + 20];
-        sprintf(unzip_command, "unzip -n %s -d %s", path_to_archive, shadow_path);
+    sprintf(unzip_command, "unzip -n %s -d %s", path_to_archive, shadow_path);
     printf("UNZIPPING!!!: %s\n", unzip_command);
     system(unzip_command);
     chdir(cwd);
@@ -603,7 +603,7 @@ static
 int
 zipfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);   
-    
+
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
     struct zip* latest_archive = find_latest_archive(path, archive_name, PATH_MAX);
@@ -622,7 +622,7 @@ zipfs_truncate(const char* path, off_t size) {
 
     sprintf(path_to_archive, "%s/%s/%s", cwd, zip_dir_name, archive_name);
     char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + 20];
-        sprintf(unzip_command, "unzip -n %s -d %s", path_to_archive, shadow_path);
+    sprintf(unzip_command, "unzip -n %s -d %s", path_to_archive, shadow_path);
 
     printf("UNZIPPING!!!: %s\n", unzip_command);
     system(unzip_command);
