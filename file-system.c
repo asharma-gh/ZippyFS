@@ -455,6 +455,66 @@ zipfs_open(const char* path, struct fuse_file_info* fi) {
        */
     return 0;
 }
+/**
+ * creates and records the file in PATH in an index file
+ * in cache
+ * @param path is the path of a file in cache
+ * @param deleted is whether this file should be considered deleted
+ * @return 0 on success, non-zero otherwise
+ */
+static
+int
+record_index(const char* path, int deleted) {
+    printf("NOW MAKING INDEX FILE FOR %s\n", path);
+    /**
+     * each write will now create/modify an index file
+     * this will contain information about the newly created file
+     * upon flushing, this will not be in the zip archive. It
+     * will eventually have the name <archive name>.idx upon zipping
+     * in fsync
+     */
+    // create path to index file
+    char idx_path[strlen(shadow_path) + 15];
+    sprintf(idx_path, "%s/index.idx", shadow_path);
+    
+    // open index file
+    int idxfd = open(idx_path, O_CREAT | O_WRONLY | O_APPEND, S_IRWXU);
+    /** format for index file entry
+     * PATH [PERMISSIONS] MODIFY-TIME DELETED?\n
+     * e.g.: 
+     * /foo/bar [RWX] 1024 0\n
+     * /foo/bar [R] 10 1\n
+     * checksum appended to the end of the file after
+     */
+    char input[PATH_MAX + 1024];
+
+    char permissions[6] = {0};
+    strcat(permissions, "[");
+    if (access(path, R_OK) == 0)
+        strcat(permissions, "R");
+    if (access(path, W_OK) == 0)
+        strcat(permissions, "W");
+    if (access(path, X_OK) == 0)
+        strcat(permissions, "X");
+    strcat(permissions, "]");
+
+    struct stat buf;
+    memset(&buf, 0, sizeof(struct stat));
+    if (stat(path, &buf) == -1)
+        printf("error retrieving file information\n");
+    
+    time_t file_time = buf.st_mtime;
+    double act_time = difftime(file_time, 0);
+
+    sprintf(input, "%s %s %f %d\n", path, permissions, act_time, deleted);
+    if (write(idxfd, input, strlen(input)) != strlen(input)) {
+        printf("Error writing to idx file\n");
+    }
+
+    return 0;
+
+}
+
 
 /**
  * writes bytes to a file at a specified offset
@@ -529,7 +589,7 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY);
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRWXU);
     if (shadow_file == -1) {
         printf("error making shadow file descriptor\n");
         printf("ERRNO: %s\n", strerror(errno));
@@ -711,7 +771,6 @@ static struct fuse_operations zipfs_operations = {
  * The main method of this program
  * calls fuse_main to initialize the filesystem
  * ./file-system <options> <mount point>  <dir>
- * temporary~!
  */
 int
 main(int argc, char *argv[]) { 
