@@ -327,6 +327,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     /** zip cache
      * - using the system() call and the "real" zip command
      * - in the future it may be worthwhile to use libzip and recursively make dirs/files
+     * - renames the index to the zip archive name!
      */
     char cwd[PATH_MAX];
     memset(cwd, 0, strlen(cwd));
@@ -340,8 +341,8 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     char command[strlen(shadow_path) + strlen(zip_dir_path) + strlen(hex_name) + 50];
     memset(command, 0, strlen(command));
-    sprintf(command, "cd %s; zip %s *; mv %s.zip %s", 
-            shadow_path, hex_name, hex_name, zip_dir_path);
+    sprintf(command, "cd %s; zip %s *; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
+            shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
@@ -484,7 +485,6 @@ record_index(const char* path, int deleted) {
      * e.g.: 
      * /foo/bar [RWX] 1024 0\n
      * /foo/bar [R] 10 1\n
-     * checksum appended to the end of the file after
      */
     char input[PATH_MAX + 1024];
 
@@ -512,7 +512,6 @@ record_index(const char* path, int deleted) {
     }
 
     return 0;
-
 }
 
 
@@ -566,6 +565,9 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     if (close(shadow_file))
         printf("error closing shadow file\n"); 
 
+    // record to index file
+    record_index(path, 0);
+
 
     return size;
 }
@@ -598,6 +600,8 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
         printf("error closing shadow file descriptor\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
+    // record to index file
+    record_index(path, 0);
 
     return 0;
 }
@@ -616,6 +620,7 @@ zipfs_unlink(const char* path) {
        zip_close(archive);
        archive = zip_open(zip_name, 0, 0);
        */
+    record_index(path, 1);
     return 0;
 }
 /**
@@ -639,6 +644,8 @@ zipfs_mkdir(const char* path, mode_t mode) {
         printf("error making shadow file descriptor\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
+    // record to index
+    record_index(path, 0);
     return 0;
 
 }
@@ -708,6 +715,9 @@ zipfs_truncate(const char* path, off_t size) {
         printf("error writing to shadow file\n");
     if (close(shadow_file))
         printf("error closing shadow file\n");
+
+    // record to index
+    record_index(path, 0);
 
     return 0;
 }
