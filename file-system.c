@@ -314,7 +314,7 @@ crc64(const char* message) {
         for (int j = 0; j < 7; j++) {
             // i found that if I don't change the mask in respect to the last bit
             // there are inputs such as "abc123" and "123abc" which will have the same hash
-            mask = -(crc&1) ^ special_bits; // will always be 0xbits0 if even or 0xbits1 if odd
+            mask = -(crc&1) ^ special_bits; // mask = 0xbits0 or 0xbits1 depending on crc
             crc = crc ^ mask;
             crc = crc >> 1;
         }
