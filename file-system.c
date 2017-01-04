@@ -297,6 +297,74 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
 }
 
+/** flushes cached changes / writes to directory
+ * - flushes the entire cache when called
+ * @param path is the path of the file
+ * @param isdatasync is not used
+ * @param fi is not used
+ * @return 0 on success, nonzero if cache is empty or other error occured.
+ */
+static
+int
+zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
+    // create archive name
+    char num[16] = {'\0'};
+    char hex_name[33] = {'\0'};
+    syscall(SYS_getrandom, num, sizeof(num), GRND_NONBLOCK);
+
+    for (int i = 0; i < 16; i++) {
+        sprintf(hex_name + i*2,"%02X", num[i]);
+    }
+    // TODO:
+    // CREATE INDEX FILE FOR NEW ARCHIVE
+
+    // create zip archive name
+    char archive_path[strlen(zip_dir_name) + strlen(hex_name) + 1];
+    strcat(archive_path, zip_dir_name);
+    archive_path[strlen(zip_dir_name)] =  '/';
+    strcat(archive_path + strlen(zip_dir_name) + 1, hex_name);
+
+    /** zip cache
+     * - using the system() call and the "real" zip command
+     * - in the future it may be worthwhile to use libzip and recursively make dirs/files
+     */
+    char cwd[PATH_MAX];
+    memset(cwd, 0, strlen(cwd));
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+        printf("error getting current working directory\n");
+    printf("CWD: %s\n", cwd);
+    char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
+    memset(zip_dir_path, 0, strlen(zip_dir_path));
+    sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
+    printf("DIR NAME: %s\n", zip_dir_path);
+
+    char command[strlen(shadow_path) + strlen(zip_dir_path) + strlen(hex_name) + 50];
+    memset(command, 0, strlen(command));
+    sprintf(command, "cd %s; zip %s *; mv %s.zip %s", 
+            shadow_path, hex_name, hex_name, zip_dir_path);
+    printf("MAGIC COMMAND: %s\n", command);
+    system(command);
+    chdir(cwd);
+
+    return 0;
+}
+/**
+ * like fsync but for directories
+ * @param path is the path of a file
+ * @param d is unused
+ * @param fi is unused
+ * @return 0 on success, non-zero otherwise
+ */
+static
+int
+zipfs_fsyncdir(const char* path, int d, struct fuse_file_info* fi) {
+    (void)d;
+    (void)fi;
+    zipfs_fsync(NULL, 0, 0);
+    return 0;
+}
+
+
 /**
  * Reads bytes from the given file into the buffer, starting from an
  * offset number of bytes into the file
@@ -387,64 +455,6 @@ zipfs_open(const char* path, struct fuse_file_info* fi) {
        */
     return 0;
 }
-
-/** flushes cached changes / writes to directory
- * - flushes the entire cache when called
- * @param path is the path of the file
- * @param isdatasync is not used
- * @param fi is not used
- * @return 0 on success, nonzero if cache is empty or other error occured.
- */
-int
-zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
-    // create archive name
-    char num[16] = {'\0'};
-    char hex_name[33] = {'\0'};
-    syscall(SYS_getrandom, num, sizeof(num), GRND_NONBLOCK);
-
-    for (int i = 0; i < 16; i++) {
-        sprintf(hex_name + i*2,"%02X", num[i]);
-    }
-    // TODO:
-    // CREATE INDEX FILE FOR NEW ARCHIVE
-
-    // create zip archive name
-    char archive_path[strlen(zip_dir_name) + strlen(hex_name) + 1];
-    strcat(archive_path, zip_dir_name);
-    archive_path[strlen(zip_dir_name)] =  '/';
-    strcat(archive_path + strlen(zip_dir_name) + 1, hex_name);
-
-    /** zip cache
-     * - using the system() call and the "real" zip command
-     * - in the future it may be worthwhile to use libzip and recursively make dirs/files
-     */
-    char cwd[PATH_MAX];
-    memset(cwd, 0, strlen(cwd));
-    if (getcwd(cwd, sizeof(cwd)) == NULL)
-        printf("error getting current working directory\n");
-    printf("CWD: %s\n", cwd);
-    char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
-    memset(zip_dir_path, 0, strlen(zip_dir_path));
-    sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
-    printf("DIR NAME: %s\n", zip_dir_path);
-
-    char command[strlen(shadow_path) + strlen(zip_dir_path) + strlen(hex_name) + 50];
-    memset(command, 0, strlen(command));
-    sprintf(command, "cd %s; zip %s *; mv %s.zip %s", 
-            shadow_path, hex_name, hex_name, zip_dir_path);
-    printf("MAGIC COMMAND: %s\n", command);
-    system(command);
-    chdir(cwd);
-
-    return 0;
-}
-
-int
-zipfs_fsyncdir(const char* path, int d, struct fuse_file_info* fi) {
-    zipfs_fsync(NULL, 0, 0);
-    return 0;
-}
-
 
 /**
  * writes bytes to a file at a specified offset
