@@ -312,15 +312,15 @@ crc64(const char* message) {
     for(int i = 0; message[i]; i++) {
         crc ^= (uint8_t)message[i];
         for (int j = 0; j < 7; j++) {
-         // i found that if I don't change the mask in respect to the last bit
-         // there are inputs such as "abc123" and "123abc" which will have the same hash
-         mask = -(crc&1) ^ special_bits; // will always be 0xbits0 if even or 0xbits1 if odd
-         crc = crc ^ mask;
-         crc = crc >> 1;
+            // i found that if I don't change the mask in respect to the last bit
+            // there are inputs such as "abc123" and "123abc" which will have the same hash
+            mask = -(crc&1) ^ special_bits; // will always be 0xbits0 if even or 0xbits1 if odd
+            crc = crc ^ mask;
+            crc = crc >> 1;
         }
     }
-        return crc;
-    }
+    return crc;
+}
 
 
 /** flushes cached changes / writes to directory
@@ -503,7 +503,7 @@ record_index(const char* path, int deleted) {
     // create path to index file
     char idx_path[strlen(shadow_path) + 15];
     sprintf(idx_path, "%s/index.idx", shadow_path);
-    
+
     // open index file
     int idxfd = open(idx_path, O_CREAT | O_WRONLY | O_APPEND, S_IRWXU);
     /** format for index file entry
@@ -528,7 +528,7 @@ record_index(const char* path, int deleted) {
     memset(&buf, 0, sizeof(struct stat));
     if (stat(path, &buf) == -1)
         printf("error retrieving file information\n");
-    
+
     time_t file_time = buf.st_mtime;
     double act_time = difftime(file_time, 0);
 
