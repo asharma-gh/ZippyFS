@@ -297,6 +297,32 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
 }
 
+/**
+ * lazy implementation of crc64 without a table
+ * - iterates thru each bit and applies a mask
+ * @param msg is the contents of the index file
+ * @return the encoded message
+ */
+uint64_t 
+crc64(const char* message) {
+    uint64_t crc = 0xFFFFFFFFFFFFFFFF;
+    uint64_t special_bits = 0xDEADBEEFABCD1234;
+    uint64_t mask = 0;
+
+    for(int i = 0; message[i]; i++) {
+        crc ^= (uint8_t)message[i];
+        for (int j = 0; j < 7; j++) {
+         // i found that if I don't change the mask in respect to the last bit
+         // there are inputs such as "abc123" and "123abc" which will have the same hash
+         mask = -(crc&1) ^ special_bits; // will always be 0xbits0 if even or 0xbits1 if odd
+         crc = crc ^ mask;
+         crc = crc >> 1;
+        }
+    }
+        return crc;
+    }
+
+
 /** flushes cached changes / writes to directory
  * - flushes the entire cache when called
  * @param path is the path of the file
