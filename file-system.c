@@ -29,7 +29,7 @@ static char* zip_dir_name;
 
 /** cache for writes */
 static char* shadow_path;
-
+uint64_t crc64(const char* content);
 /**
  * retrieve the latest archive with the given path
  * @param path is the path of the entry to find
@@ -51,10 +51,11 @@ find_latest_archive(const char* path, char* name, int size) {
     struct zip_stat zipstbuf;
 
     /** Finds latest archive based on index files **/
+
     DIR* dir = opendir(zip_dir_name);
     struct dirent* entry; 
-    char* entry_name = alloca(FILENAME_MAX);
-    char* latest_name = alloca(FILENAME_MAX);
+    char* entry_name;
+    char latest_name[FILENAME_MAX];
     time_t latest_t = 0;
     while ((entry = readdir(dir)) != NULL) {
         entry_name = entry->d_name;
@@ -78,10 +79,9 @@ find_latest_archive(const char* path, char* name, int size) {
         fseek(file, 0, SEEK_END);
         long fsize = ftell(file);
         rewind(file);
-        char* contents = alloca(fsize + 1);
+        char contents[fsize + 1];
         char* checksum;
         memset(contents, 0, strlen(contents) * sizeof(char));
-        memset(checksum, 0, strlen(checksum) * sizeof(char));
         fread(contents, fsize, 1, file);
         contents[fsize] = '\0';
         fclose(file);
@@ -91,25 +91,28 @@ find_latest_archive(const char* path, char* name, int size) {
             continue;
         }
         printf("---Checksum---\n%s\n", checksum);
-        char* checksum_cpy = strdup(checksum);
+        char checksum_cpy[strlen(checksum)];
+        strcpy(checksum_cpy, checksum);
         checksum[0] = '\0';
         printf("--- New Contents ---\n%s\n", contents);
         // extract numeric value of checksum
         // checksum_cpy + 8 = numeric value
-        int64_t checksum_val;
+        uint64_t checksum_val;
         char* endptr;
         checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
         printf("-----Value for checksum after conversion\n");
-        printf("%"PRIu64, checksum_val);
-        fflush(stdout);
+        printf("%"PRIu64"\n", checksum_val);
 
-        free(checksum_cpy);
 
-        
-                
-      //  uint64_t checksum = crc64(contents);
+        // free(checksum_cpy);
+        // make new checksum
+        uint64_t new_checksum = crc64(contents);
 
         // verify checksum
+        printf("~~~~~NEW CHECKSUM\n");
+        printf("%"PRIu64"\n", new_checksum);
+        fflush(stdout);
+
         // ok we have a valid index file
         // find our file entry in it
         // check if file is deleted
@@ -467,7 +470,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
     memset(command, 0, strlen(command));
-    sprintf(command, "cd %s; zip %s *; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
+    sprintf(command, "cd %s; zip %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
