@@ -56,7 +56,8 @@ find_latest_archive(const char* path, char* name, int size) {
     struct dirent* entry; 
     char* entry_name;
     char latest_name[FILENAME_MAX];
-    time_t latest_t = 0;
+    int is_deleted = 0;
+    double latest_time2 = 0;
     while ((entry = readdir(dir)) != NULL) {
         entry_name = entry->d_name;
         printf("ENTRY NAME  %s\n", entry_name);
@@ -120,9 +121,11 @@ find_latest_archive(const char* path, char* name, int size) {
         // the latest for this archive since all writes are appended. (O_APPEND)
         const char delim[2] = "\n";
         char* token;
-        char last_occurence[PATH_MAX];
+        char last_occurence[PATH_MAX + FILENAME_MAX];
         int in_index = 0;
-        token = strtok(contents, delim);
+        char contents_cpy[strlen(contents)];
+        strcpy(contents_cpy, contents);
+        token = strtok(contents_cpy, delim);
         while (token != NULL) {
             if (strstr(token, path) != NULL) {
                 in_index = 1;
@@ -132,18 +135,29 @@ find_latest_archive(const char* path, char* name, int size) {
             token = strtok(NULL, delim);
         }
         printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
-        fflush(stdout);
         if (!in_index)
             continue;
 
         // so we have a file's information from the index file now
         // now we need to interpret the entry
         // entry  is in the format: PATH [permissions] time-created deleted?
+        double file_time = 666;
+        int deleted = 0;
+        sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
+        printf("!!!--time gotten: %f deleted? %d\n", file_time, deleted);
+        fflush(stdout);
         // check times
-        // update latest file and time
+        if (file_time >= latest_time2) { // things can be instantaneous
+            // update latest file and time
+            latest_time2 = file_time;
+            memset(latest_name, 0, strlen(latest_name) * sizeof(char));
+            strcpy(latest_name, entry_name);
+            is_deleted = deleted;
+        }
     }
-    // after we found the latest entry, check if its a deletion. 
-    // If it is, then return NULL
+    if (is_deleted) {
+        return NULL;
+    }
 
 
 
@@ -169,8 +183,8 @@ find_latest_archive(const char* path, char* name, int size) {
         struct zip* temp_archive;
         int err;
         if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, &err))) {
-            printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
-            printf("ERROR: %d\n", err);
+       //     printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
+       //     printf("ERROR: %d\n", err);
         }
         // find file in temp archive
         if (!zip_stat(temp_archive, folder_path, 0, &zipstbuf) 
@@ -292,16 +306,16 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
     DIR* dp = opendir(shadow_file_path);
     if (dp == NULL) {
-        printf("Not in cache, checking main dir..\n");
+     //   printf("Not in cache, checking main dir..\n");
     } else {
-        printf("Found item in cache\n");
+       // printf("Found item in cache\n");
         struct dirent* de;
         while ((de = readdir(dp)) != NULL) {
             if (strcmp(de->d_name,".") == 0
                     || strcmp(de->d_name, "..") ==0)
                 continue;
 
-            printf("de name:|%s|\n", de->d_name);
+           // printf("de name:|%s|\n", de->d_name);
             if (filler(buf, de->d_name, NULL, 0))
                 break;
             char* entry = strdup(de->d_name);
@@ -318,7 +332,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     // find the paths to things in the given path
     while((zip_file = readdir(zip_dir)) != NULL) {
         const char* zip_file_name = zip_file->d_name;
-        printf("FILE NAME |%s|\n", zip_file_name);
+  //      printf("FILE NAME |%s|\n", zip_file_name);
         if (strcmp(zip_file_name, ".") == 0
                 || strcmp(zip_file_name, "..") ==0)
             continue;
@@ -351,7 +365,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 strcpy(fuse_name + 1, temp);
                 fuse_name[0] = '/';
             }
-            printf("ENTRY NAME: |%s|\n", fuse_name + 1);
+      //      printf("ENTRY NAME: |%s|\n", fuse_name + 1);
 
             // check if the current file is in the directory in the given path
             char* temp_path = strdup(path);
@@ -364,7 +378,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             for (int j = 0; (ele = g_array_index(added_entries, char*, j)) != 0; j++) {
                 if (!strcmp(ele, fuse_name + 1)) {
                     inserted = 1;
-                    printf("PUT IN ALREADY\n");
+      //              printf("PUT IN ALREADY\n");
                     break;
                 }
 
