@@ -103,22 +103,47 @@ find_latest_archive(const char* path, char* name, int size) {
         printf("-----Value for checksum after conversion\n");
         printf("%"PRIu64"\n", checksum_val);
 
-
-        // free(checksum_cpy);
         // make new checksum
         uint64_t new_checksum = crc64(contents);
 
         // verify checksum
         printf("~~~~~NEW CHECKSUM\n");
         printf("%"PRIu64"\n", new_checksum);
-        fflush(stdout);
+
+
+        if (new_checksum != checksum_val)
+            continue;
 
         // ok we have a valid index file
-        // find our file entry in it
-        // check if file is deleted
+        // multiple versions of a file entry can appear in the index file
+        // so we look for the last one. This is guaranteed to be
+        // the latest for this archive since all writes are appended. (O_APPEND)
+        const char delim[2] = "\n";
+        char* token;
+        char last_occurence[PATH_MAX];
+        int in_index = 0;
+        token = strtok(contents, delim);
+        while (token != NULL) {
+            if (strstr(token, path) != NULL) {
+                in_index = 1;
+                memset(last_occurence, 0, strlen(last_occurence) * sizeof(char));
+                strcpy(last_occurence, token);
+            }
+            token = strtok(NULL, delim);
+        }
+        printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
+        fflush(stdout);
+        if (!in_index)
+            continue;
+
+        // so we have a file's information from the index file now
+        // now we need to interpret the entry
+        // entry  is in the format: PATH [permissions] time-created deleted?
         // check times
         // update latest file and time
     }
+    // after we found the latest entry, check if its a deletion. 
+    // If it is, then return NULL
 
 
 
