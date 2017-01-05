@@ -95,6 +95,14 @@ find_latest_archive(const char* path, char* name, int size) {
         checksum[0] = '\0';
         printf("--- New Contents ---\n%s\n", contents);
         // extract numeric value of checksum
+        // checksum_cpy + 8 = numeric value
+        int64_t checksum_val;
+        char* endptr;
+        checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
+        printf("-----Value for checksum after conversion\n");
+        printf("%"PRIu64, checksum_val);
+        fflush(stdout);
+
         free(checksum_cpy);
 
         
