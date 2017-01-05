@@ -18,6 +18,8 @@
 #include <limits.h>
 #include <dirent.h>
 #include <wordexp.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <linux/random.h>
 /** using glib over switching languages */
 #include <glib.h>
@@ -333,6 +335,34 @@ crc64(const char* message) {
 static
 int
 zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
+
+    // add checksum to index file
+    // read contents of index file
+    char path_to_indx[PATH_MAX + strlen(shadow_path)];
+    sprintf(path_to_indx, "%s/index.idx", shadow_path);
+    if (access(path_to_indx, F_OK) == -1) {
+        printf("no index, no writes, exiting..\n");
+        return -1;
+    }
+    FILE* file  = fopen(path_to_indx, "r");
+    // get file size
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    rewind(file);
+    char* contents = alloca(fsize + 1);
+    memset(contents, 0, strlen(contents) * sizeof(char));
+    fread(contents, fsize, 1, file);
+    fclose(file);
+    // generate checksum
+    uint64_t checksum = crc64(contents);
+    // append to file
+    FILE* file_ap = fopen(path_to_indx, "a");
+    fprintf(file_ap, "CHECKSUM");
+    fprintf(file_ap, "%"PRIu64, checksum);
+    fclose(file_ap);
+    printf("CHECKSUM");
+    printf("%"PRIu64"\n", checksum);
+   
     // create archive name
     char num[16] = {'\0'};
     char hex_name[33] = {'\0'};
@@ -341,14 +371,14 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     for (int i = 0; i < 16; i++) {
         sprintf(hex_name + i*2,"%02X", num[i]);
     }
-    // TODO:
-    // CREATE INDEX FILE FOR NEW ARCHIVE
 
     // create zip archive name
     char archive_path[strlen(zip_dir_name) + strlen(hex_name) + 1];
     strcat(archive_path, zip_dir_name);
     archive_path[strlen(zip_dir_name)] =  '/';
     strcat(archive_path + strlen(zip_dir_name) + 1, hex_name);
+
+
 
     /** zip cache
      * - using the system() call and the "real" zip command
@@ -365,7 +395,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
     printf("DIR NAME: %s\n", zip_dir_path);
 
-    char command[strlen(shadow_path) + strlen(zip_dir_path) + strlen(hex_name) + 50];
+    char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
     memset(command, 0, strlen(command));
     sprintf(command, "cd %s; zip %s *; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
@@ -512,22 +542,29 @@ record_index(const char* path, int deleted) {
      * /foo/bar [RWX] 1024 0\n
      * /foo/bar [R] 10 1\n
      */
+
+    // make path to file in cache
+    char path_to_file[PATH_MAX + strlen(shadow_path) + 2];
+    memset(path_to_file, 0, strlen(path_to_file) * sizeof(char));
+    sprintf(path_to_file, "%s%s", shadow_path, path+1);
+    printf("Path to file %s\n", path_to_file);
     char input[PATH_MAX + 1024];
 
     char permissions[6] = {0};
     strcat(permissions, "[");
-    if (access(path, R_OK) == 0)
+    if (access(path_to_file, R_OK) == 0)
         strcat(permissions, "R");
-    if (access(path, W_OK) == 0)
+    if (access(path_to_file, W_OK) == 0)
         strcat(permissions, "W");
-    if (access(path, X_OK) == 0)
+    if (access(path_to_file, X_OK) == 0)
         strcat(permissions, "X");
-    strcat(permissions, "]");
 
+    strcat(permissions, "]");
     struct stat buf;
     memset(&buf, 0, sizeof(struct stat));
-    if (stat(path, &buf) == -1)
-        printf("error retrieving file information\n");
+    if (stat(path_to_file, &buf) == -1)
+        printf("error retrieving file information for %s\n ERRNO: %s\n", 
+                path_to_file, strerror(errno));
 
     time_t file_time = buf.st_mtime;
     double act_time = difftime(file_time, 0);
