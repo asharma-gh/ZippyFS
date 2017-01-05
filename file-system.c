@@ -59,7 +59,7 @@ find_latest_archive(const char* path, char* name, int size) {
     while ((entry = readdir(dir)) != NULL) {
         entry_name = entry->d_name;
         printf("ENTRY NAME  %s\n", entry_name);
-        if (strcmp(entry_name, "." == 0)
+        if (strcmp(entry_name, ".") == 0
                 || strcmp(entry_name, "..") == 0
                 || strlen(entry_name) < 4
                 || strcmp(entry_name + (strlen(entry_name) - 4), ".idx" ) != 0) {
@@ -70,10 +70,37 @@ find_latest_archive(const char* path, char* name, int size) {
         // make path to index file
         char path_to_indx[strlen(entry_name) + strlen(zip_dir_name) + 1];
         memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
-        sprintf(path_to_ind, "%s/%s", zip_dir_name, zip_file_name);
-        
+        sprintf(path_to_indx, "%s/%s", zip_dir_name, entry_name);
+
         // read contents
-        // read checksum
+        FILE* file  = fopen(path_to_indx, "r");
+        // get file size
+        fseek(file, 0, SEEK_END);
+        long fsize = ftell(file);
+        rewind(file);
+        char* contents = alloca(fsize + 1);
+        char* checksum;
+        memset(contents, 0, strlen(contents) * sizeof(char));
+        memset(checksum, 0, strlen(checksum) * sizeof(char));
+        fread(contents, fsize, 1, file);
+        contents[fsize] = '\0';
+        fclose(file);
+        printf("---Contents---\n%s\n", contents);
+        if ((checksum = strstr(contents, "CHECKSUM")) == NULL) {
+            printf("malformed index file\n");
+            continue;
+        }
+        printf("---Checksum---\n%s\n", checksum);
+        char* checksum_cpy = strdup(checksum);
+        checksum[0] = '\0';
+        printf("--- New Contents ---\n%s\n", contents);
+        // extract numeric value of checksum
+        free(checksum_cpy);
+
+        
+                
+      //  uint64_t checksum = crc64(contents);
+
         // verify checksum
         // ok we have a valid index file
         // find our file entry in it
@@ -386,6 +413,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     char* contents = alloca(fsize + 1);
     memset(contents, 0, strlen(contents) * sizeof(char));
     fread(contents, fsize, 1, file);
+    contents[fsize] = '\0';
     fclose(file);
     // generate checksum
     uint64_t checksum = crc64(contents);
@@ -396,7 +424,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     fclose(file_ap);
     printf("CHECKSUM");
     printf("%"PRIu64"\n", checksum);
-   
+
     // create archive name
     char num[16] = {'\0'};
     char hex_name[33] = {'\0'};
