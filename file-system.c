@@ -50,6 +50,40 @@ find_latest_archive(const char* path, char* name, int size) {
     }
     struct zip_stat zipstbuf;
 
+    /** Finds latest archive based on index files **/
+    DIR* dir = opendir(zip_dir_name);
+    struct dirent* entry; 
+    char* entry_name = alloca(FILENAME_MAX);
+    char* latest_name = alloca(FILENAME_MAX);
+    time_t latest_t = 0;
+    while ((entry = readdir(dir)) != NULL) {
+        entry_name = entry->d_name;
+        printf("ENTRY NAME  %s\n", entry_name);
+        if (strcmp(entry_name, "." == 0)
+                || strcmp(entry_name, "..") == 0
+                || strlen(entry_name) < 4
+                || strcmp(entry_name + (strlen(entry_name) - 4), ".idx" ) != 0) {
+            printf("not valid index file\n");
+            continue;
+        }
+
+        // make path to index file
+        char path_to_indx[strlen(entry_name) + strlen(zip_dir_name) + 1];
+        memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+        sprintf(path_to_ind, "%s/%s", zip_dir_name, zip_file_name);
+        
+        // read contents
+        // read checksum
+        // verify checksum
+        // ok we have a valid index file
+        // find our file entry in it
+        // check if file is deleted
+        // check times
+        // update latest file and time
+    }
+
+
+
     // check each zip-file until u find the latest one
     struct zip* latest_archive = NULL;
     struct dirent* zip_file;
@@ -314,7 +348,7 @@ crc64(const char* message) {
     for(int i = 0; message[i]; i++) {
         crc ^= (uint8_t)message[i];
         for (int j = 0; j < 7; j++) {
-            // i found that if I don't change the mask in respect to the last bit
+            // I found that if I don't change the mask in respect to the last bit in crc
             // there are inputs such as "abc123" and "123abc" which will have the same hash
             mask = -(crc&1) ^ special_bits; // mask = 0xbits0 or 0xbits1 depending on crc
             crc = crc ^ mask;
