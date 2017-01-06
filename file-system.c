@@ -29,7 +29,8 @@ static char* zip_dir_name;
 
 /** cache for writes */
 static char* shadow_path;
-uint64_t crc64(const char* content);
+static uint64_t crc64(const char* content);
+static int is_deleted_in_cache(const char* path);
 /**
  * retrieve the latest archive with the given path
  * @param path is the path of the entry to find
@@ -41,6 +42,10 @@ static
 struct zip* 
 find_latest_archive(const char* path, char* name, int size) {
     printf("FINDING LATEST ARCHIVE CONTAINING: %s\n", path);
+
+    if (is_deleted_in_cache(path))
+        return NULL;
+
     int len = strlen(path);
     char folder_path[len + 1];
     if (strlen(path) > 1) {
@@ -48,7 +53,6 @@ find_latest_archive(const char* path, char* name, int size) {
         folder_path[len - 1] = '/';
         folder_path[len] = '\0'; 
     }
-    struct zip_stat zipstbuf;
 
     /** Finds latest archive based on index files **/
 
@@ -172,61 +176,68 @@ find_latest_archive(const char* path, char* name, int size) {
         return latest_archive;
     }
 
-/*
-
-    // check each zip-file until u find the latest one
-    struct zip* latest_archive = NULL;
-    struct dirent* zip_file;
-    char* zip_file_name = alloca(FILENAME_MAX);
-    DIR* zip_dir = opendir(zip_dir_name);
-    time_t latest_time = 0;
-    while ((zip_file = readdir(zip_dir)) != NULL) {
-        zip_file_name = zip_file->d_name;
-        if (strcmp(zip_file_name, ".") == 0
-                || strcmp(zip_file_name, "..") == 0)
-            continue;
-        // make relative path to the zip file
-        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 1];
-        //      printf("dir name: %s zip file name: %s\n",zip_dir_name,  zip_file_name);
-        memset(fixed_path, 0, sizeof(fixed_path));
-        sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
-
-
-        // open zip file in dir
-        struct zip* temp_archive;
-        int err;
-        if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, &err))) {
-            //     printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
-            //     printf("ERROR: %d\n", err);
+}
+/**
+ * determines if the file specified in path
+ * was recently deleted, but the cache
+ * hasn't been flushed yet.
+ *  - the index file is not in the main dir, so the file
+ *  may seem to still exist.
+ * @return 1 if the file was recently deleted, 0 otherwise.
+ */
+static
+int
+is_deleted_in_cache(const char* path) {
+        // make path to index file
+        char path_to_indx[strlen(shadow_path) + 12];
+        memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+        sprintf(path_to_indx, "%sindex.idx", shadow_path);
+        printf("checking if %s exists..\n", path_to_indx); 
+        if (access(path_to_indx, F_OK) == -1) {
+            printf("does not exist\n");
+            return 0;
         }
-        // find file in temp archive
-        if (!zip_stat(temp_archive, folder_path, 0, &zipstbuf) 
-                || !zip_stat(temp_archive, path + 1, 0, &zipstbuf)) {
-
-            double dif;
-            // check if its newer
-            if ((dif = difftime(zipstbuf.mtime,  latest_time)) >= 0) {
-                zip_close(latest_archive);
-                latest_archive = temp_archive;
-                latest_time = zipstbuf.mtime;
-                if (name != NULL) {
-                    memset(name, 0, size * sizeof(char));
-                    strcpy(name, zip_file_name);
-                }
-                //            printf("DIF: %f\n", dif);
+        printf("does exist\n");
+        // read contents
+        FILE* file  = fopen(path_to_indx, "r");
+        // get file size
+        fseek(file, 0, SEEK_END);
+        long fsize = ftell(file);
+        rewind(file);
+        char contents[fsize + 1];
+        memset(contents, 0, strlen(contents) * sizeof(char));
+        fread(contents, fsize, 1, file);
+        contents[fsize] = '\0';
+        fclose(file);
+        printf("contents!%s\n", contents);
+        const char delim[2] = "\n";
+        char* token;
+        char last_occurence[PATH_MAX + FILENAME_MAX];
+        int in_index = 0;
+        char contents_cpy[strlen(contents)];
+        strcpy(contents_cpy, contents);
+        token = strtok(contents_cpy, delim);
+        while (token != NULL) {
+            if (strstr(token, path) != NULL) {
+                in_index = 1;
+                printf("TOKEN%s\n", token);
+                memset(last_occurence, 0, strlen(last_occurence) * sizeof(char));
+                strcpy(last_occurence, token);
             }
-
-            //       printf("FOUND ENTRY IN AN ARCHIVE\n");
-        } else {
-            //   printf("ENTRY NOT IN HERE\n");
-            zip_close(temp_archive);
+            token = strtok(NULL, delim);
         }
-    }
-    if(!closedir(zip_dir))
-        printf("successfully closed dir\n");
-    return latest_archive;
-    */
+        printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
 
+        if (!in_index)
+            return 0;
+
+        // so we have a file's information from the index file now
+        // now we need to interpret the entry
+        // entry  is in the format: PATH [permissions] time-created deleted?
+        int deleted = 0;
+        sscanf(last_occurence, "%*s %*s %*f %d", &deleted);
+        printf("--deleted? %d\n", deleted);
+        return deleted;
 }
 /** 
  *  retrieves the attributes of a specific file / directory
@@ -240,6 +251,9 @@ int
 zipfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
+    if (is_deleted_in_cache(path)) {
+        return -ENOENT;
+    }
     // NEW!
     // checks the cache first
     // construct file path in cache
@@ -430,6 +444,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
  * @param msg is the contents of the index file
  * @return the encoded message
  */
+static
 uint64_t 
 crc64(const char* message) {
     uint64_t crc = 0xFFFFFFFFFFFFFFFF;
@@ -675,8 +690,8 @@ record_index(const char* path, int deleted) {
     sprintf(path_to_file, "%s%s", shadow_path, path+1);
     printf("Path to file %s\n", path_to_file);
     char input[PATH_MAX + 1024];
-
     char permissions[6] = {0};
+
     strcat(permissions, "[");
     if (access(path_to_file, R_OK) == 0)
         strcat(permissions, "R");
@@ -690,12 +705,16 @@ record_index(const char* path, int deleted) {
     memset(&buf, 0, sizeof(struct stat));
     if (stat(path_to_file, &buf) == -1)
         printf("error retrieving file information for %s\n ERRNO: %s\n", 
-                path_to_file, strerror(errno));
-
-    time_t file_time = buf.st_mtime;
-    double act_time = difftime(file_time, 0);
+                path, strerror(errno));
+    double act_time;
+    if (deleted) { // no file time to be had
+        act_time = difftime(time(0), 0);
+    } else {
+        act_time = difftime((time_t)buf.st_mtime, 0);
+    }
 
     sprintf(input, "%s %s %f %d\n", path, permissions, act_time, deleted);
+    printf("====WRITING THE FOLLOWING TO INDEX====\n%s\n", input);
     if (write(idxfd, input, strlen(input)) != strlen(input)) {
         printf("Error writing to idx file\n");
     }
