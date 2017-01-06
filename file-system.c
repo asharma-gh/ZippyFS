@@ -464,8 +464,8 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 printf("ADDED %s to FILLER\n", basename(key_path));
             }
             // clean up
-            free(key);
-            free(value);
+            free(key_path);
+            free(val);
         }
     }
     filler(buf, ".", NULL, 0);
