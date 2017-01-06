@@ -188,56 +188,56 @@ find_latest_archive(const char* path, char* name, int size) {
 static
 int
 is_deleted_in_cache(const char* path) {
-        // make path to index file
-        char path_to_indx[strlen(shadow_path) + 12];
-        memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
-        sprintf(path_to_indx, "%sindex.idx", shadow_path);
-        printf("checking if %s exists..\n", path_to_indx); 
-        if (access(path_to_indx, F_OK) == -1) {
-            printf("does not exist\n");
-            return 0;
+    // make path to index file
+    char path_to_indx[strlen(shadow_path) + 12];
+    memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+    sprintf(path_to_indx, "%sindex.idx", shadow_path);
+    printf("checking if %s exists..\n", path_to_indx); 
+    if (access(path_to_indx, F_OK) == -1) {
+        printf("does not exist\n");
+        return 0;
+    }
+    printf("does exist\n");
+    // read contents
+    FILE* file  = fopen(path_to_indx, "r");
+    // get file size
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    rewind(file);
+    char contents[fsize + 1];
+    memset(contents, 0, strlen(contents) * sizeof(char));
+    fread(contents, fsize, 1, file);
+    contents[fsize] = '\0';
+    fclose(file);
+    printf("contents!%s\n", contents);
+    const char delim[2] = "\n";
+    char* token;
+    char last_occurence[PATH_MAX + FILENAME_MAX];
+    int in_index = 0;
+    char contents_cpy[strlen(contents)];
+    strcpy(contents_cpy, contents);
+    token = strtok(contents_cpy, delim);
+    while (token != NULL) {
+        if (strstr(token, path) != NULL) {
+            in_index = 1;
+            printf("TOKEN%s\n", token);
+            memset(last_occurence, 0, strlen(last_occurence) * sizeof(char));
+            strcpy(last_occurence, token);
         }
-        printf("does exist\n");
-        // read contents
-        FILE* file  = fopen(path_to_indx, "r");
-        // get file size
-        fseek(file, 0, SEEK_END);
-        long fsize = ftell(file);
-        rewind(file);
-        char contents[fsize + 1];
-        memset(contents, 0, strlen(contents) * sizeof(char));
-        fread(contents, fsize, 1, file);
-        contents[fsize] = '\0';
-        fclose(file);
-        printf("contents!%s\n", contents);
-        const char delim[2] = "\n";
-        char* token;
-        char last_occurence[PATH_MAX + FILENAME_MAX];
-        int in_index = 0;
-        char contents_cpy[strlen(contents)];
-        strcpy(contents_cpy, contents);
-        token = strtok(contents_cpy, delim);
-        while (token != NULL) {
-            if (strstr(token, path) != NULL) {
-                in_index = 1;
-                printf("TOKEN%s\n", token);
-                memset(last_occurence, 0, strlen(last_occurence) * sizeof(char));
-                strcpy(last_occurence, token);
-            }
-            token = strtok(NULL, delim);
-        }
-        printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
+        token = strtok(NULL, delim);
+    }
+    printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
 
-        if (!in_index)
-            return 0;
+    if (!in_index)
+        return 0;
 
-        // so we have a file's information from the index file now
-        // now we need to interpret the entry
-        // entry  is in the format: PATH [permissions] time-created deleted?
-        int deleted = 0;
-        sscanf(last_occurence, "%*s %*s %*f %d", &deleted);
-        printf("--deleted? %d\n", deleted);
-        return deleted;
+    // so we have a file's information from the index file now
+    // now we need to interpret the entry
+    // entry  is in the format: PATH [permissions] time-created deleted?
+    int deleted = 0;
+    sscanf(last_occurence, "%*s %*s %*f %d", &deleted);
+    printf("--deleted? %d\n", deleted);
+    return deleted;
 }
 /** 
  *  retrieves the attributes of a specific file / directory
@@ -251,9 +251,7 @@ int
 zipfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
-    if (is_deleted_in_cache(path)) {
-        return -ENOENT;
-    }
+
     // NEW!
     // checks the cache first
     // construct file path in cache
@@ -261,6 +259,11 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
+    // item can exist but be deleted
+    // so this check is necessary before stat
+    if (is_deleted_in_cache(path)) {
+        return -ENOENT;
+    }
     if (stat(shadow_file_path, stbuf) == -1) {
         printf("Item not in cache.. checking main dir\n");
         memset(stbuf, 0, sizeof(struct stat));
