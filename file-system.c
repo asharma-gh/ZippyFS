@@ -351,7 +351,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 || strcmp(index_file_name, "..") == 0
                 || strlen(index_file_name) < 4
                 || strcmp(index_file_name + (strlen(index_file_name) - 4), ".idx") != 0) {
-            printf("not valid index file...\n");
+            printf("%s not valid index file...\n", index_file_name);
             continue;
         }
 
@@ -372,30 +372,30 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         fread(contents, fsize, 1, file);
         contents[fsize] = '\0';
         fclose(file);
-        printf("---Contents---\n%s\n", contents);
+        //   printf("---Contents---\n%s\n", contents);
         if ((checksum = strstr(contents, "CHECKSUM")) == NULL) {
             printf("malformed index file\n");
             continue;
         }
-        printf("---Checksum---\n%s\n", checksum);
+        //    printf("---Checksum---\n%s\n", checksum);
         char checksum_cpy[strlen(checksum)];
         strcpy(checksum_cpy, checksum);
         checksum[0] = '\0';
-        printf("--- New Contents ---\n%s\n", contents);
+        //   printf("--- New Contents ---\n%s\n", contents);
         // extract numeric value of checksum
         // checksum_cpy + 8 = numeric value
         uint64_t checksum_val;
         char* endptr;
         checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
-        printf("-----Value for checksum after conversion\n");
-        printf("%"PRIu64"\n", checksum_val);
+        //      printf("-----Value for checksum after conversion\n");
+       // printf("%"PRIu64"\n", checksum_val);
 
         // make new checksum
         uint64_t new_checksum = crc64(contents);
 
         // verify checksum
-        printf("~~~~~NEW CHECKSUM\n");
-        printf("%"PRIu64"\n", new_checksum);
+        //       printf("~~~~~NEW CHECKSUM\n");
+        //       printf("%"PRIu64"\n", new_checksum);
 
 
         if (new_checksum != checksum_val)
@@ -414,9 +414,13 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             int deleted;
             sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
             printf("TOKEN%s\n", token);
+            printf("TOKEN PATH %s\n", token_path);
+            char* temp = strdup(token_path);
             // find out of this entry is in the directory
-            int is_in_path = strcmp(dirname(token_path), path);
-            if (is_in_path) {
+            int in_path = strcmp(dirname(temp), path);
+            free(temp);
+            if (in_path == 0) {
+                printf("PATH: %s token is in the path\n", token_path);
                 // so it is in the path, update our hash table if needed
                 index_entry* val;
                 char* old_name;
