@@ -61,7 +61,7 @@ find_latest_archive(const char* path, char* name, int size) {
     char* entry_name;
     char latest_name[FILENAME_MAX];
     int is_deleted = 0;
-    double latest_time2 = 0;
+    double latest_time = 0;
     while ((entry = readdir(dir)) != NULL) {
         entry_name = entry->d_name;
         printf("ENTRY NAME  %s\n", entry_name);
@@ -152,9 +152,9 @@ find_latest_archive(const char* path, char* name, int size) {
         printf("!!!--time gotten: %f deleted? %d\n", file_time, deleted);
         fflush(stdout);
         // check times
-        if (file_time >= latest_time2) { // things can be instantaneous
+        if (file_time >= latest_time) { // things can be instantaneous
             // update latest file and time
-            latest_time2 = file_time;
+            latest_time = file_time;
             memset(latest_name, 0, strlen(latest_name) * sizeof(char));
             strcpy(latest_name, entry_name);
             is_deleted = deleted;
