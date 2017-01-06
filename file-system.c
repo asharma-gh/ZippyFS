@@ -64,12 +64,12 @@ find_latest_archive(const char* path, char* name, int size) {
     double latest_time = 0;
     while ((entry = readdir(dir)) != NULL) {
         entry_name = entry->d_name;
-        printf("ENTRY NAME  %s\n", entry_name);
+    //    printf("ENTRY NAME  %s\n", entry_name);
         if (strcmp(entry_name, ".") == 0
                 || strcmp(entry_name, "..") == 0
                 || strlen(entry_name) < 4
                 || strcmp(entry_name + (strlen(entry_name) - 4), ".idx" ) != 0) {
-            printf("not valid index file\n");
+   //         printf("not valid index file\n");
             continue;
         }
 
@@ -90,30 +90,30 @@ find_latest_archive(const char* path, char* name, int size) {
         fread(contents, fsize, 1, file);
         contents[fsize] = '\0';
         fclose(file);
-        printf("---Contents---\n%s\n", contents);
+    //    printf("---Contents---\n%s\n", contents);
         if ((checksum = strstr(contents, "CHECKSUM")) == NULL) {
-            printf("malformed index file\n");
+  //          printf("malformed index file\n");
             continue;
         }
-        printf("---Checksum---\n%s\n", checksum);
+  //      printf("---Checksum---\n%s\n", checksum);
         char checksum_cpy[strlen(checksum)];
         strcpy(checksum_cpy, checksum);
         checksum[0] = '\0';
-        printf("--- New Contents ---\n%s\n", contents);
+  //      printf("--- New Contents ---\n%s\n", contents);
         // extract numeric value of checksum
         // checksum_cpy + 8 = numeric value
         uint64_t checksum_val;
         char* endptr;
         checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
-        printf("-----Value for checksum after conversion\n");
-        printf("%"PRIu64"\n", checksum_val);
+  //      printf("-----Value for checksum after conversion\n");
+  //      printf("%"PRIu64"\n", checksum_val);
 
         // make new checksum
         uint64_t new_checksum = crc64(contents);
 
         // verify checksum
-        printf("~~~~~NEW CHECKSUM\n");
-        printf("%"PRIu64"\n", new_checksum);
+//        printf("~~~~~NEW CHECKSUM\n");
+//        printf("%"PRIu64"\n", new_checksum);
 
 
         if (new_checksum != checksum_val)
@@ -139,7 +139,7 @@ find_latest_archive(const char* path, char* name, int size) {
             }
             token = strtok(NULL, delim);
         }
-        printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
+//        printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
         if (!in_index)
             continue;
 
@@ -149,7 +149,7 @@ find_latest_archive(const char* path, char* name, int size) {
         double file_time = 666;
         int deleted = 0;
         sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
-        printf("!!!--time gotten: %f deleted? %d\n", file_time, deleted);
+  //      printf("!!!--time gotten: %f deleted? %d\n", file_time, deleted);
         fflush(stdout);
         // check times
         if (file_time >= latest_time) { // things can be instantaneous
@@ -325,120 +325,156 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     printf("READDIR: %s\n", path);
     // unneeded
     (void) offset;
-    (void) fi;    
+    (void) fi;  
 
-    // NEW!:
-    // checks cache first
+    /** helper struct for storing entries in hash table */
+    typedef struct index_entry {
+        char* indx_name;
+        double added_time;
+        int deleted;
+    } index_entry;
+
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    GArray* added_entries = g_array_new(TRUE, TRUE, sizeof(char*));
 
-    DIR* dp = opendir(shadow_file_path);
-    if (dp == NULL) {
-        //   printf("Not in cache, checking main dir..\n");
-    } else {
-        // printf("Found item in cache\n");
-        struct dirent* de;
-        while ((de = readdir(dp)) != NULL) {
-            if (strcmp(de->d_name,".") == 0
-                    || strcmp(de->d_name, "..") ==0)
-                continue;
-
-            // printf("de name:|%s|\n", de->d_name);
-            if (filler(buf, de->d_name, NULL, 0))
-                break;
-            char* entry = strdup(de->d_name);
-            g_array_append_val(added_entries, entry);
-
-        }
-
-        closedir(dp);
-
-    }
+    GHashTable* added_entries = g_hash_table_new(g_str_hash, g_str_equal);
 
     DIR* zip_dir = opendir(zip_dir_name);
-    struct dirent* zip_file;
+    struct dirent* entry;
     // find the paths to things in the given path
-    while((zip_file = readdir(zip_dir)) != NULL) {
-        const char* zip_file_name = zip_file->d_name;
+    while((entry = readdir(zip_dir)) != NULL) {
+        const char* index_file_name = entry->d_name;
         //      printf("FILE NAME |%s|\n", zip_file_name);
-        if (strcmp(zip_file_name, ".") == 0
-                || strcmp(zip_file_name, "..") ==0)
+        if (strcmp(index_file_name, ".") == 0
+                || strcmp(index_file_name, "..") == 0
+                || strlen(index_file_name) < 4
+                || strcmp(index_file_name + (strlen(index_file_name) - 4), ".idx") != 0) {
+            printf("not valid index file...\n");
             continue;
-
-        // make relative path to the zip file
-        char fixed_path[strlen(zip_file_name) + strlen(zip_dir_name) + 1];
-        memset(fixed_path, 0, sizeof(fixed_path));
-        sprintf(fixed_path, "%s/%s", zip_dir_name, zip_file_name);
-        // printf("FIXED PATH TO ZIP FILE: %s\n", fixed_path);
-        // open zip file in dir
-        struct zip* temp_archive;
-        if (!(temp_archive = zip_open(fixed_path, ZIP_RDONLY, 0))) {
-            printf("ERROR OPENING ARCHIVE AT %s\n", fixed_path);
         }
-        int numEntries = zip_get_num_entries(temp_archive, ZIP_FL_UNCHANGED);
-        for (int i = 0; i < numEntries; i++) {
-            const char* zip_entry_name = zip_get_name(temp_archive, i, 0);
-            //    printf("UNCHANGED ENTRY NAME %s\n", zip_entry_name);
-            char temp[strlen(zip_entry_name)];
-            strcpy(temp, zip_entry_name);
-            char* fuse_name;
-            // fix libzip path to match the format in fuse
-            if (zip_entry_name[strlen(zip_entry_name) - 1] == '/') {
-                fuse_name = alloca(strlen(zip_entry_name) + 1);
-                temp[strlen(zip_entry_name) - 1] = '\0';
-                strcpy(fuse_name + 1, temp);
-                fuse_name[0] = '/';
-            } else {
-                fuse_name = alloca(strlen(zip_entry_name) + 2);
-                strcpy(fuse_name + 1, temp);
-                fuse_name[0] = '/';
-            }
-            //      printf("ENTRY NAME: |%s|\n", fuse_name + 1);
+       
+         // make path to index file
+        char path_to_indx[strlen(index_file_name) + strlen(zip_dir_name) + 1];
+        memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+        sprintf(path_to_indx, "%s/%s", zip_dir_name, index_file_name);
 
-            // check if the current file is in the directory in the given path
-            char* temp_path = strdup(path);
-            char* temp_fuse_path = strdup(fuse_name);
-            int notInPath = strcmp(dirname(temp_fuse_path), path);
-            free(temp_path);
-            free(temp_fuse_path);
-            char* ele;
-            int inserted = 0;
-            for (int j = 0; (ele = g_array_index(added_entries, char*, j)) != 0; j++) {
-                if (!strcmp(ele, fuse_name + 1)) {
-                    inserted = 1;
-                    //              printf("PUT IN ALREADY\n");
-                    break;
+        // read contents
+        FILE* file  = fopen(path_to_indx, "r");
+        // get file size
+        fseek(file, 0, SEEK_END);
+        long fsize = ftell(file);
+        rewind(file);
+        char contents[fsize + 1];
+        char* checksum;
+        memset(contents, 0, strlen(contents) * sizeof(char));
+        fread(contents, fsize, 1, file);
+        contents[fsize] = '\0';
+        fclose(file);
+        printf("---Contents---\n%s\n", contents);
+        if ((checksum = strstr(contents, "CHECKSUM")) == NULL) {
+            printf("malformed index file\n");
+            continue;
+        }
+        printf("---Checksum---\n%s\n", checksum);
+        char checksum_cpy[strlen(checksum)];
+        strcpy(checksum_cpy, checksum);
+        checksum[0] = '\0';
+        printf("--- New Contents ---\n%s\n", contents);
+        // extract numeric value of checksum
+        // checksum_cpy + 8 = numeric value
+        uint64_t checksum_val;
+        char* endptr;
+        checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
+        printf("-----Value for checksum after conversion\n");
+        printf("%"PRIu64"\n", checksum_val);
+
+        // make new checksum
+        uint64_t new_checksum = crc64(contents);
+
+        // verify checksum
+        printf("~~~~~NEW CHECKSUM\n");
+        printf("%"PRIu64"\n", new_checksum);
+
+
+        if (new_checksum != checksum_val)
+            continue;
+        // now we need to find all of the entries which are in the given path
+        // and update our hash table 
+        const char delim[2] = "\n";
+        char* token;
+        char contents_cpy[strlen(contents)];
+        strcpy(contents_cpy, contents);
+        token = strtok(contents_cpy, delim);
+        while (token != NULL) {
+            // get path out of token
+            char token_path[PATH_MAX];
+            double token_time;
+            int deleted;
+            sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
+            printf("TOKEN%s\n", token);
+            // find out of this entry is in the directory
+            int is_in_path = strcmp(dirname(token_path), path);
+            if (is_in_path) {
+                // so it is in the path, update our hash table if needed
+                index_entry* val;
+                char* old_name;
+                if (g_hash_table_lookup_extended(added_entries, token, (gpointer)&old_name, (gpointer)&val)) {
+                    // entry is in the hash table, compare times
+                    if (val->added_time <= token_time) {
+                        // this token is a later version. Create new hash-table entry
+                        index_entry* new_entry = malloc(sizeof(index_entry));
+                        new_entry->indx_name = strdup(index_file_name);
+                        new_entry->added_time = token_time;
+                        new_entry->deleted = deleted;
+
+                        // add to hash table
+                        char* new_name = strdup(token_path);
+                        g_hash_table_insert(added_entries, new_name, new_entry);
+
+                        // clean up old entry
+                        free(val->indx_name);
+                        free(val);
+                        free(old_name);
+
+                    }
+                } else {
+                    // it is not in the hash table so we need to add it
+                    index_entry* new_entry = malloc(sizeof(index_entry));
+                    new_entry->indx_name = strdup(index_file_name);
+                    new_entry->added_time = token_time;
+                    new_entry->deleted = deleted;
+                    char* new_name = strdup(token_path);
+                    g_hash_table_insert(added_entries, new_name, new_entry);
                 }
+            }
 
-            }
-            // find file in system, add to buffer
-            struct stat buffer;
-            if (!inserted && !notInPath && zipfs_getattr(fuse_name, &buffer)== 0) {
-                char* entry = strdup(fuse_name + 1);
-                g_array_append_val(added_entries, entry);
-                filler(buf, basename(fuse_name), NULL, 0);
-            }
+            token = strtok(NULL, delim);
         }
 
-        zip_close(temp_archive);
-    }
-    // clean up
-    char* release;
-    for (int i = 0; (release = g_array_index(added_entries, char*, i))
-            != 0; i++) {
-        free(release);
-    }
-    filler(buf, ".", NULL, 0);
-    filler(buf, "..", NULL, 0);
+
+
+        // find file in system, add to buffer
+        /*
+           struct stat buffer;
+           if (!inserted && !notInPath && zipfs_getattr(fuse_name, &buffer)== 0) {
+           char* entry = strdup(fuse_name + 1);
+           g_array_append_val(added_entries, entry);
+           filler(buf, basename(fuse_name), NULL, 0);
+           */
+}
+
+
+// clean up
+filler(buf, ".", NULL, 0);
+filler(buf, "..", NULL, 0);
 
 
     if (!closedir(zip_dir))
         printf("successfully closed dir\n");
-    return 0;
+return 0;
 
 }
 
