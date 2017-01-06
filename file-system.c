@@ -317,6 +317,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
  * @return 0 for normal exit status, non-zero otherwise.
  *
  */
+/** TODO: Rewrite readdir to iterate thru index files */
 static
 int
 zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
