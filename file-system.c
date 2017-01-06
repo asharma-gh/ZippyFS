@@ -129,6 +129,7 @@ find_latest_archive(const char* path, char* name, int size) {
         while (token != NULL) {
             if (strstr(token, path) != NULL) {
                 in_index = 1;
+                printf("TOKEN%s\n", token);
                 memset(last_occurence, 0, strlen(last_occurence) * sizeof(char));
                 strcpy(last_occurence, token);
             }
@@ -155,13 +156,23 @@ find_latest_archive(const char* path, char* name, int size) {
             is_deleted = deleted;
         }
     }
+    closedir(dir);
     if (is_deleted) {
         return NULL;
     } else {
         // open zip file and return i
+        struct zip* latest_archive;
+        // make relative path to the zip file
+        char fixed_path[strlen(latest_name) + strlen(zip_dir_name) + 1];
+        memset(fixed_path, 0, sizeof(fixed_path));
+        latest_name[(strlen(latest_name) - 4)] = '\0';
+        sprintf(fixed_path, "%s/%s.zip", zip_dir_name, latest_name);
+
+        latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
+        return latest_archive;
     }
 
-
+/*
 
     // check each zip-file until u find the latest one
     struct zip* latest_archive = NULL;
@@ -214,6 +225,7 @@ find_latest_archive(const char* path, char* name, int size) {
     if(!closedir(zip_dir))
         printf("successfully closed dir\n");
     return latest_archive;
+    */
 
 }
 /** 
