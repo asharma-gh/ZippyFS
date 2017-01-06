@@ -148,7 +148,7 @@ find_latest_archive(const char* path, char* name, int size) {
         // entry  is in the format: PATH [permissions] time-created deleted?
         double file_time = 666;
         int deleted = 0;
-        sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
+        sscanf(last_occurence, "%*s %*s %lf %d %*d", &file_time, &deleted);
         printf("!!!--time gotten: %f deleted? %d\n", file_time, deleted);
         fflush(stdout);
         // check times
@@ -235,7 +235,7 @@ is_deleted_in_cache(const char* path) {
     // now we need to interpret the entry
     // entry  is in the format: PATH [permissions] time-created deleted?
     int deleted = 0;
-    sscanf(last_occurence, "%*s %*s %*f %d", &deleted);
+    sscanf(last_occurence, "%*s %*s %*f %d %*d", &deleted);
     printf("--deleted? %d\n", deleted);
     return deleted;
 }
@@ -661,11 +661,12 @@ zipfs_open(const char* path, struct fuse_file_info* fi) {
  * in cache
  * @param path is the path of a file in cache
  * @param deleted is whether this file should be considered deleted
+ * @param dir is whether this file is a directory
  * @return 0 on success, non-zero otherwise
  */
 static
 int
-record_index(const char* path, int deleted) {
+record_index(const char* path, int deleted, int dir) {
     printf("NOW MAKING INDEX FILE FOR %s\n", path);
     /**
      * each write will now create/modify an index file
@@ -681,10 +682,10 @@ record_index(const char* path, int deleted) {
     // open index file
     int idxfd = open(idx_path, O_CREAT | O_WRONLY | O_APPEND, S_IRWXU);
     /** format for index file entry
-     * PATH [PERMISSIONS] MODIFY-TIME DELETED?\n
+     * PATH [PERMISSIONS] MODIFY-TIME DELETED? DIRECTORY?\n
      * e.g.: 
-     * /foo/bar [RWX] 1024 0\n
-     * /foo/bar [R] 10 1\n
+     * /foo/bar [RWX] 1024 0 1\n
+     * /foo/bar [R] 10 1 0\n
      */
 
     // make path to file in cache
@@ -716,7 +717,7 @@ record_index(const char* path, int deleted) {
         act_time = difftime((time_t)buf.st_mtime, 0);
     }
 
-    sprintf(input, "%s %s %f %d\n", path, permissions, act_time, deleted);
+    sprintf(input, "%s %s %f %d %d\n", path, permissions, act_time, deleted, dir);
     printf("====WRITING THE FOLLOWING TO INDEX====\n%s\n", input);
     if (write(idxfd, input, strlen(input)) != strlen(input)) {
         printf("Error writing to idx file\n");
@@ -777,7 +778,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
         printf("error closing shadow file\n"); 
 
     // record to index file
-    record_index(path, 0);
+    record_index(path, 0, 0);
 
 
     return size;
@@ -812,7 +813,7 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
         printf("ERRNO: %s\n", strerror(errno));
     }
     // record to index file
-    record_index(path, 0);
+    record_index(path, 0, 0);
 
     return 0;
 }
@@ -831,7 +832,7 @@ zipfs_unlink(const char* path) {
        zip_close(archive);
        archive = zip_open(zip_name, 0, 0);
        */
-    record_index(path, 1);
+    record_index(path, 1, 0);
     return 0;
 }
 /**
@@ -856,7 +857,7 @@ zipfs_mkdir(const char* path, mode_t mode) {
         printf("ERRNO: %s\n", strerror(errno));
     }
     // record to index
-    record_index(path, 0);
+    record_index(path, 0, 1);
     return 0;
 
 }
@@ -928,7 +929,7 @@ zipfs_truncate(const char* path, off_t size) {
         printf("error closing shadow file\n");
 
     // record to index
-    record_index(path, 0);
+    record_index(path, 0, 0);
 
     return 0;
 }
