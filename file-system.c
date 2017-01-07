@@ -442,73 +442,73 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         in_cache = 0;
     }
     if (in_cache) {
-    printf("does exist\n");
-    // read contents
-    FILE* file  = fopen(path_to_indx, "r");
-    // get file size
-    fseek(file, 0, SEEK_END);
-    long fsize = ftell(file);
-    rewind(file);
-    char contents[fsize + 1];
-    memset(contents, 0, strlen(contents) * sizeof(char));
-    fread(contents, fsize, 1, file);
-    contents[fsize] = '\0';
-    fclose(file);
-    printf("contents!%s\n", contents);
-    const char delim[2] = "\n";
-    char* token;
-    char last_occurence[PATH_MAX + FILENAME_MAX];
+        printf("does exist\n");
+        // read contents
+        FILE* file  = fopen(path_to_indx, "r");
+        // get file size
+        fseek(file, 0, SEEK_END);
+        long fsize = ftell(file);
+        rewind(file);
+        char contents[fsize + 1];
+        memset(contents, 0, strlen(contents) * sizeof(char));
+        fread(contents, fsize, 1, file);
+        contents[fsize] = '\0';
+        fclose(file);
+        printf("contents!%s\n", contents);
+        const char delim[2] = "\n";
+        char* token;
+        char last_occurence[PATH_MAX + FILENAME_MAX];
 
-    char contents_cpy[strlen(contents)];
-    strcpy(contents_cpy, contents);
-    token = strtok(contents_cpy, delim);
-    while (token != NULL) {
-        // get path out of token
-        char token_path[PATH_MAX];
-        double token_time;
-        int deleted;
-        sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
-        printf("TOKEN%s\n", token);
-        printf("TOKEN PATH %s\n", token_path);
-        char* temp = strdup(token_path);
-        // find out of this entry is in the directory
-        int in_path = strcmp(dirname(temp), path);
-        free(temp);
-        if (in_path == 0) {
-            printf("PATH: %s token is in the path\n", token_path);
-            // so it is in the path, update our hash table if needed
-            index_entry* val;
-            char* old_name;
-            if (g_hash_table_lookup_extended(added_entries, token, (void*)&old_name, (void*)&val)) {
-                // entry is in the hash table, compare times
-                if (val->added_time <= token_time) {
-                    // this token is a later version. Create new hash-table entry
+        char contents_cpy[strlen(contents)];
+        strcpy(contents_cpy, contents);
+        token = strtok(contents_cpy, delim);
+        while (token != NULL) {
+            // get path out of token
+            char token_path[PATH_MAX];
+            double token_time;
+            int deleted;
+            sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
+            printf("TOKEN%s\n", token);
+            printf("TOKEN PATH %s\n", token_path);
+            char* temp = strdup(token_path);
+            // find out of this entry is in the directory
+            int in_path = strcmp(dirname(temp), path);
+            free(temp);
+            if (in_path == 0) {
+                printf("PATH: %s token is in the path\n", token_path);
+                // so it is in the path, update our hash table if needed
+                index_entry* val;
+                char* old_name;
+                if (g_hash_table_lookup_extended(added_entries, token, (void*)&old_name, (void*)&val)) {
+                    // entry is in the hash table, compare times
+                    if (val->added_time <= token_time) {
+                        // this token is a later version. Create new hash-table entry
+                        index_entry* new_entry = malloc(sizeof(index_entry));
+                        new_entry->added_time = token_time;
+                        new_entry->deleted = deleted;
+
+                        // add to hash table
+                        char* new_name = strdup(token_path);
+                        g_hash_table_insert(added_entries, new_name, new_entry);
+
+                        // clean up old entry
+                        free(val);
+                        free(old_name);
+
+                    }
+                } else {
+                    // it is not in the hash table so we need to add it
                     index_entry* new_entry = malloc(sizeof(index_entry));
                     new_entry->added_time = token_time;
                     new_entry->deleted = deleted;
-
-                    // add to hash table
                     char* new_name = strdup(token_path);
                     g_hash_table_insert(added_entries, new_name, new_entry);
-
-                    // clean up old entry
-                    free(val);
-                    free(old_name);
-
                 }
-            } else {
-                // it is not in the hash table so we need to add it
-                index_entry* new_entry = malloc(sizeof(index_entry));
-                new_entry->added_time = token_time;
-                new_entry->deleted = deleted;
-                char* new_name = strdup(token_path);
-                g_hash_table_insert(added_entries, new_name, new_entry);
             }
-        }
-        token = strtok(NULL, delim);
+            token = strtok(NULL, delim);
 
-    }
-    printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
+        }
+        printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
     }
 
     // iterate thru it and add them to filler unless its a deletion
