@@ -309,7 +309,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
@@ -605,17 +605,17 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
      * - renames the index to the zip archive name!
      */
     char cwd[PATH_MAX];
-    memset(cwd, 0, strlen(cwd));
+    memset(cwd, 0, strlen(cwd) * sizeof(char));
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
     printf("CWD: %s\n", cwd);
     char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
-    memset(zip_dir_path, 0, strlen(zip_dir_path));
+    memset(zip_dir_path, 0, strlen(zip_dir_path) * sizeof(char));
     sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
     printf("DIR NAME: %s\n", zip_dir_path);
 
     char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
-    memset(command, 0, strlen(command));
+    memset(command, 0, strlen(command) * sizeof(char));
     sprintf(command, "cd %s; zip %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
     printf("MAGIC COMMAND: %s\n", command);
@@ -664,7 +664,7 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
 
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int fd = open(shadow_file_path, O_RDONLY);
@@ -827,7 +827,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     // unzip to cache
     // first create path to zip file
     char cwd[PATH_MAX];
-    memset(cwd, 0, strlen(cwd));
+    memset(cwd, 0, strlen(cwd) * sizeof(char));
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
     printf("CWD: %s\n", cwd);
@@ -842,7 +842,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
 
     // write to new file source
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IXUSR);
@@ -874,7 +874,7 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     (void)rdev;
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRWXU);
@@ -934,7 +934,7 @@ zipfs_mkdir(const char* path, mode_t mode) {
 
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int shadow_file = mkdir(shadow_file_path, mode);
@@ -989,7 +989,7 @@ zipfs_truncate(const char* path, off_t size) {
     // unzip to cache
     // first create path to zip file
     char cwd[PATH_MAX];
-    memset(cwd, 0, strlen(cwd));
+    memset(cwd, 0, strlen(cwd) * sizeof(char));
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
     printf("CWD: %s\n", cwd);    
@@ -1005,7 +1005,7 @@ zipfs_truncate(const char* path, off_t size) {
 
     // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path));
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IXUSR);
@@ -1099,7 +1099,7 @@ main(int argc, char *argv[]) {
 
     // construct program directory path
     char* temp_path = alloca(PATH_MAX * sizeof(char));
-    memset(temp_path, 0, strlen(temp_path));
+    memset(temp_path, 0, strlen(temp_path) * sizeof(char));
     strcat(temp_path, "~/.cache/zipfs/");
     printf("shadow dir path: %s\n", temp_path);
     wordexp_t path;
