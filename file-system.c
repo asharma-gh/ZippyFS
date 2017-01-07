@@ -24,16 +24,20 @@
 /** using glib over switching languages */
 #include <glib.h>
 /** TODO: rework read / writes to files
- * get rm -rf to work
- */
+*/
 
-/** the name of the mounted directory of zip files */
+/** the path of the mounted directory of zip files */
 static char* zip_dir_name;
 
-/** cache for writes */
+/** cache path */
 static char* shadow_path;
+
+/** finds the latest zip archive with the given path,
+ * if it isn't deleted */
 static struct zip* find_latest_archive(const char* path, char* name, int size);
+/** returns a crc64 checksum based on content */
 static uint64_t crc64(const char* content);
+/** determines if the given file has been deleted while in cache */
 static int is_deleted_in_cache(const char* path);
 /** puts the latest entry of path in the index index into buf */
 static int get_latest_entry(const char* index, int in_cache, const char* path, char* buf);
