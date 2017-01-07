@@ -23,6 +23,9 @@
 #include <linux/random.h>
 /** using glib over switching languages */
 #include <glib.h>
+/** TODO: rework read / writes to files
+ * get rm -rf to work
+ */
 
 /** the name of the mounted directory of zip files */
 static char* zip_dir_name;
@@ -903,6 +906,18 @@ zipfs_unlink(const char* path) {
     return 0;
 }
 /**
+ * deletes the given directory
+ * @param path is the path to the directory
+ * assumes it is empty
+ */
+static
+int
+zipfs_rmdir(const char* path) {
+    printf("RMDIR: %s\n", path);
+    record_index(path, 1);
+    return 0;
+}
+/**
  * creates a directory with the given name
  * @param path is the name of the directory
  * @param mode is the permissions
@@ -1052,6 +1067,7 @@ static struct fuse_operations zipfs_operations = {
     .truncate = zipfs_truncate, // truncates file to given size
     .access = zipfs_access, // does file exist?
     .open = zipfs_open, // same as access
+    .rmdir = zipfs_rmdir,
     .utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
 };
