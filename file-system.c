@@ -29,8 +29,76 @@ static char* zip_dir_name;
 
 /** cache for writes */
 static char* shadow_path;
+static struct zip* find_latest_archive(const char* path, char* name, int size);
 static uint64_t crc64(const char* content);
 static int is_deleted_in_cache(const char* path);
+/** puts the latest entry of path in the index index into buf */
+static int get_latest_entry(const char* index, int in_cache, const char* path, char* buf);
+
+/**
+ * gets the latest entry of path in the index file index
+ * @param index is the path to the index file
+ * @param path is the path of the entry
+ * @param in_cache is whether the index file is in cache
+ * @param buf is a buffer for the result.
+ * If the index file is in cache, checksum is not verified.
+ * @return 0 on success, -1 if error occured;
+ */
+static
+int
+get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
+
+    // read contents
+    FILE* file  = fopen(index, "r");
+    // get file size
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    rewind(file);
+    char contents[fsize + 1];
+    char* checksum;
+    memset(contents, 0, strlen(contents) * sizeof(char));
+    fread(contents, fsize, 1, file);
+    contents[fsize] = '\0';
+    fclose(file);
+
+    if (!in_cache) {
+        if ((checksum = strstr(contents, "CHECKSUM")) == NULL) {
+            return -1;
+
+            char checksum_cpy[strlen(checksum)];
+            strcpy(checksum_cpy, checksum);
+            checksum[0] = '\0';
+            uint64_t checksum_val;
+            char* endptr;
+            checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
+            // make new checksum
+            uint64_t new_checksum = crc64(contents);
+
+            if (new_checksum != checksum_val) {
+                return -1; 
+            }
+        }
+
+        const char delim[2] = "\n";
+        char* token;
+        int in_index = 0;
+        char contents_cpy[strlen(contents)];
+        strcpy(contents_cpy, contents);
+        token = strtok(contents_cpy, delim);
+        while (token != NULL) {
+            if (strstr(token, path) != NULL) {
+                in_index = 1;
+                printf("TOKEN%s\n", token);
+                memset(buf, 0, strlen(buf) * sizeof(char));
+                strcpy(buf, token);
+            }
+            token = strtok(NULL, delim);
+        }
+        if (!in_index)
+            return -1;
+    }
+    return 0;
+}
 /**
  * retrieve the latest archive with the given path
  * @param path is the path of the entry to find
@@ -46,13 +114,7 @@ find_latest_archive(const char* path, char* name, int size) {
     if (is_deleted_in_cache(path))
         return NULL;
 
-    int len = strlen(path);
-    char folder_path[len + 1];
-    if (strlen(path) > 1) {
-        strcpy(folder_path, path + 1);
-        folder_path[len - 1] = '/';
-        folder_path[len] = '\0'; 
-    }
+
 
     /** Finds latest archive based on index files **/
 
@@ -78,69 +140,10 @@ find_latest_archive(const char* path, char* name, int size) {
         memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
         sprintf(path_to_indx, "%s/%s", zip_dir_name, entry_name);
 
-        // read contents
-        FILE* file  = fopen(path_to_indx, "r");
-        // get file size
-        fseek(file, 0, SEEK_END);
-        long fsize = ftell(file);
-        rewind(file);
-        char contents[fsize + 1];
-        char* checksum;
-        memset(contents, 0, strlen(contents) * sizeof(char));
-        fread(contents, fsize, 1, file);
-        contents[fsize] = '\0';
-        fclose(file);
-        //    printf("---Contents---\n%s\n", contents);
-        if ((checksum = strstr(contents, "CHECKSUM")) == NULL) {
-            //          printf("malformed index file\n");
-            continue;
-        }
-        //      printf("---Checksum---\n%s\n", checksum);
-        char checksum_cpy[strlen(checksum)];
-        strcpy(checksum_cpy, checksum);
-        checksum[0] = '\0';
-        //      printf("--- New Contents ---\n%s\n", contents);
-        // extract numeric value of checksum
-        // checksum_cpy + 8 = numeric value
-        uint64_t checksum_val;
-        char* endptr;
-        checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
-        //      printf("-----Value for checksum after conversion\n");
-        //      printf("%"PRIu64"\n", checksum_val);
 
-        // make new checksum
-        uint64_t new_checksum = crc64(contents);
-
-        // verify checksum
-        //        printf("~~~~~NEW CHECKSUM\n");
-        //        printf("%"PRIu64"\n", new_checksum);
-
-
-        if (new_checksum != checksum_val)
-            continue;
-
-        // ok we have a valid index file
-        // multiple versions of a file entry can appear in the index file
-        // so we look for the last one. This is guaranteed to be
-        // the latest for this archive since all writes are appended. (O_APPEND)
-        const char delim[2] = "\n";
-        char* token;
         char last_occurence[PATH_MAX + FILENAME_MAX];
-        int in_index = 0;
-        char contents_cpy[strlen(contents)];
-        strcpy(contents_cpy, contents);
-        token = strtok(contents_cpy, delim);
-        while (token != NULL) {
-            if (strstr(token, path) != NULL) {
-                in_index = 1;
-                printf("TOKEN%s\n", token);
-                memset(last_occurence, 0, strlen(last_occurence) * sizeof(char));
-                strcpy(last_occurence, token);
-            }
-            token = strtok(NULL, delim);
-        }
-        //        printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
-        if (!in_index)
+        int res = get_latest_entry(path_to_indx, 0, path, last_occurence);
+        if (res == -1)
             continue;
 
         // so we have a file's information from the index file now
@@ -149,8 +152,6 @@ find_latest_archive(const char* path, char* name, int size) {
         double file_time = 666;
         int deleted = 0;
         sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
-        //      printf("!!!--time gotten: %f deleted? %d\n", file_time, deleted);
-        fflush(stdout);
         // check times
         if (file_time >= latest_time) { // things can be instantaneous
             // update latest file and time
@@ -171,6 +172,8 @@ find_latest_archive(const char* path, char* name, int size) {
         memset(fixed_path, 0, sizeof(fixed_path));
         latest_name[(strlen(latest_name) - 4)] = '\0';
         sprintf(fixed_path, "%s/%s.zip", zip_dir_name, latest_name);
+        if (size > 0)
+            sprintf(name, "%s.zip", latest_name);
 
         latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
         return latest_archive;
@@ -198,39 +201,11 @@ is_deleted_in_cache(const char* path) {
         return 0;
     }
     printf("does exist\n");
-    // read contents
-    FILE* file  = fopen(path_to_indx, "r");
-    // get file size
-    fseek(file, 0, SEEK_END);
-    long fsize = ftell(file);
-    rewind(file);
-    char contents[fsize + 1];
-    memset(contents, 0, strlen(contents) * sizeof(char));
-    fread(contents, fsize, 1, file);
-    contents[fsize] = '\0';
-    fclose(file);
-    printf("contents!%s\n", contents);
-    const char delim[2] = "\n";
-    char* token;
+
     char last_occurence[PATH_MAX + FILENAME_MAX];
-    int in_index = 0;
-    char contents_cpy[strlen(contents)];
-    strcpy(contents_cpy, contents);
-    token = strtok(contents_cpy, delim);
-    while (token != NULL) {
-        if (strstr(token, path) != NULL) {
-            in_index = 1;
-            printf("TOKEN%s\n", token);
-            memset(last_occurence, 0, strlen(last_occurence) * sizeof(char));
-            strcpy(last_occurence, token);
-        }
-        token = strtok(NULL, delim);
-    }
-    printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
-
-    if (!in_index)
+    int res = get_latest_entry(path_to_indx, 1, path, last_occurence);
+    if (res == -1)
         return 0;
-
     // so we have a file's information from the index file now
     // now we need to interpret the entry
     // entry  is in the format: PATH [permissions] time-created deleted?
@@ -317,7 +292,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
  * @return 0 for normal exit status, non-zero otherwise.
  *
  */
-/** TODO: Rewrite readdir to iterate thru index files */
+
 static
 int
 zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
@@ -388,7 +363,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         char* endptr;
         checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
         //      printf("-----Value for checksum after conversion\n");
-       // printf("%"PRIu64"\n", checksum_val);
+        // printf("%"PRIu64"\n", checksum_val);
 
         // make new checksum
         uint64_t new_checksum = crc64(contents);
@@ -453,25 +428,107 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
             token = strtok(NULL, delim);
         }
-        // now we have all of the entries for this directory in our hash map
-        // iterate thru it and add them to filler unless its a deletion
-        GHashTableIter  iter;
-        void* key;
-        void* value;
-        g_hash_table_iter_init(&iter, added_entries);
-        while (g_hash_table_iter_next(&iter, &key, &value)) {
-            char* key_path = key;
-            index_entry* val = value;
-
-            if (!val->deleted) {
-                filler(buf, basename(key_path), NULL, 0);
-                printf("ADDED %s to FILLER\n", basename(key_path));
-            }
-            // clean up
-            free(key_path);
-            free(val);
-        }
     }
+    // now we have all of the entries for this directory in our hash map
+    // we need to check the cache now for any new updates
+    // make path to index file
+    char path_to_indx[strlen(shadow_path) + 12];
+    memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+    sprintf(path_to_indx, "%sindex.idx", shadow_path);
+    int in_cache = 1;
+    printf("checking if %s exists..\n", path_to_indx); 
+    if (access(path_to_indx, F_OK) == -1) {
+        printf("does not exist\n");
+        in_cache = 0;
+    }
+    if (in_cache) {
+    printf("does exist\n");
+    // read contents
+    FILE* file  = fopen(path_to_indx, "r");
+    // get file size
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    rewind(file);
+    char contents[fsize + 1];
+    memset(contents, 0, strlen(contents) * sizeof(char));
+    fread(contents, fsize, 1, file);
+    contents[fsize] = '\0';
+    fclose(file);
+    printf("contents!%s\n", contents);
+    const char delim[2] = "\n";
+    char* token;
+    char last_occurence[PATH_MAX + FILENAME_MAX];
+
+    char contents_cpy[strlen(contents)];
+    strcpy(contents_cpy, contents);
+    token = strtok(contents_cpy, delim);
+    while (token != NULL) {
+        // get path out of token
+        char token_path[PATH_MAX];
+        double token_time;
+        int deleted;
+        sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
+        printf("TOKEN%s\n", token);
+        printf("TOKEN PATH %s\n", token_path);
+        char* temp = strdup(token_path);
+        // find out of this entry is in the directory
+        int in_path = strcmp(dirname(temp), path);
+        free(temp);
+        if (in_path == 0) {
+            printf("PATH: %s token is in the path\n", token_path);
+            // so it is in the path, update our hash table if needed
+            index_entry* val;
+            char* old_name;
+            if (g_hash_table_lookup_extended(added_entries, token, (void*)&old_name, (void*)&val)) {
+                // entry is in the hash table, compare times
+                if (val->added_time <= token_time) {
+                    // this token is a later version. Create new hash-table entry
+                    index_entry* new_entry = malloc(sizeof(index_entry));
+                    new_entry->added_time = token_time;
+                    new_entry->deleted = deleted;
+
+                    // add to hash table
+                    char* new_name = strdup(token_path);
+                    g_hash_table_insert(added_entries, new_name, new_entry);
+
+                    // clean up old entry
+                    free(val);
+                    free(old_name);
+
+                }
+            } else {
+                // it is not in the hash table so we need to add it
+                index_entry* new_entry = malloc(sizeof(index_entry));
+                new_entry->added_time = token_time;
+                new_entry->deleted = deleted;
+                char* new_name = strdup(token_path);
+                g_hash_table_insert(added_entries, new_name, new_entry);
+            }
+        }
+        token = strtok(NULL, delim);
+
+    }
+    printf(":---LAST ENTRY OCCURENCE---: %s\n", last_occurence);
+    }
+
+    // iterate thru it and add them to filler unless its a deletion
+    GHashTableIter  iter;
+    void* key;
+    void* value;
+    g_hash_table_iter_init(&iter, added_entries);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        char* key_path = key;
+        index_entry* val = value;
+
+        if (!val->deleted) {
+            filler(buf, basename(key_path), NULL, 0);
+            printf("ADDED %s to FILLER\n", basename(key_path));
+        }
+        // clean up
+        free(key_path);
+        free(val);
+    }
+
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
