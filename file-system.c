@@ -719,17 +719,16 @@ int
 zipfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
     (void)fi;
-    /*
-       char folder_path[strlen(path)];
-       strcpy(folder_path, path + 1);
-       folder_path[strlen(path) - 2] = '/';
-       folder_path[strlen(path - 1)] = '\0';
-       if (zip_name_locate(archive, path + 1, 0) >= 0 
-       || zip_name_locate(archive, folder_path, 0)) {
-       return 0;
-       }
-       */
-    return 0;
+    char idx_path[strlen(shadow_path) + 15];
+    sprintf(idx_path, "%s/index.idx", shadow_path);
+    char temp_buf[PATH_MAX + PATH_MAX];
+    int res = get_latest_entry(idx_path, 1, path, temp_buf);
+    struct zip* archive = find_latest_archive(path, NULL, 0);
+    if (archive != NULL) {
+        zip_close(archive);
+        return 0;
+    }
+    return res;
 }
 /**
  * creates and records the file in PATH in an index file
@@ -1017,7 +1016,7 @@ zipfs_truncate(const char* path, off_t size) {
 /**
  * check user permissions of a file
  * @param path is the path to the file
- * @param mask is for permissions, unused
+ * @param mask is for permissions, unus ed
  * @return 0 for success, non-zero otherwise
  */
 static
@@ -1025,7 +1024,48 @@ int
 zipfs_access(const char* path, int mode) {
     printf("ACCESS: %s\n", path);
     (void)mode;
-    return zipfs_open(path, NULL);
+    char idx_path[strlen(shadow_path) + 15];
+    sprintf(idx_path, "%s/index.idx", shadow_path);
+    char temp_buf[PATH_MAX + PATH_MAX];
+    int res = get_latest_entry(idx_path, 1, path, temp_buf);
+    int in_main = 0;
+    if (res == -1) {
+        // check main archive
+        char name_buf[FILENAME_MAX];
+        struct zip* archive = find_latest_archive(path, name_buf, strlen(name_buf));
+        if (archive != NULL) {
+            zip_close(archive);
+            char cwd[PATH_MAX];
+            memset(cwd, 0, strlen(cwd) * sizeof(char));
+            getcwd(cwd, sizeof(cwd));
+
+            memset(idx_path, 0, strlen(idx_path) * sizeof(char));
+            sprintf(idx_path, "%s/%s/%s", cwd, zip_dir_name, name_buf);
+            memset(temp_buf, 0, strlen(temp_buf) * sizeof(char));
+
+            in_main = get_latest_entry(idx_path, 0, path, temp_buf);
+
+
+        }
+    }
+    if (res == 0 || in_main == 0) {
+        // entry is in temp_buf to interpret
+        char modifiers[5] = {0};
+        sscanf(temp_buf, "%*s [%s] %*f %*d", modifiers);
+        if (mode & F_OK)
+            return 0;
+        if (mode & R_OK)
+            if (strstr(modifiers, "R"))
+                return 0;
+        if (mode & W_OK)
+            if (strstr(modifiers, "W"))
+                return 0;
+        if (mode & X_OK)
+            if (strstr(modifiers, "X"))
+                return 0;
+
+    }
+    return -1;
 }
 
 /**
