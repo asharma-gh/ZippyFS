@@ -12,7 +12,7 @@ if os.path.exists(path) and os.stat(path).st_size > 0:
     # check if it is running
     is_running = True
     try:
-        os.kill(int(file.readline()), 0)
+        os.kill(int(f.readline()), 0)
     except OSError:
         is_running = False
 
@@ -20,19 +20,20 @@ if os.path.exists(path) and os.stat(path).st_size > 0:
     if (is_running):
         sys.exit()
 
-    # clean up file
-    f.truncate()
+    # close file
+    f.close()
+    
 
-else:
-    f = open(path, "w+");
+# remake / make file to erase old contents
+f = open(path, "w+");
 
 
 # write our pid to file
-f.write(str(getpid()))
+f.write(str(os.getpid()))
 
 # close file
 f.close()
 
-# do something every so often
+# call rsync every so often
 
 
