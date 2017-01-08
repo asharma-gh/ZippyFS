@@ -23,8 +23,6 @@
 #include <linux/random.h>
 /** using glib over switching languages */
 #include <glib.h>
-/** TODO: rework read / writes to files
-*/
 
 /** the path of the mounted directory of zip files */
 static char* zip_dir_name;
