@@ -28,10 +28,10 @@ else:
 
 
 # write our pid to file
-    f.write(str(getpid()))
+f.write(str(getpid()))
 
 # close file
-    f.close()
+f.close()
 
 # do something every so often
 
