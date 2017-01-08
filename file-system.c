@@ -900,12 +900,7 @@ static
 int
 zipfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
-    /*
-       zip_int64_t file_index = zip_name_locate(archive, path + 1, 0);
-       zip_delete(archive, file_index);
-       zip_close(archive);
-       archive = zip_open(zip_name, 0, 0);
-       */
+
     record_index(path, 1);
     return 0;
 }
@@ -956,16 +951,16 @@ zipfs_mkdir(const char* path, mode_t mode) {
 static
 int
 zipfs_rename(const char* from, const char* to) {
-    /*
-       printf("RENAME: from: %s == to: %s\n", from, to);
-
-       zip_int64_t old_file_index = zip_name_locate(archive, from + 1, 0);
-       zip_file_rename(archive, old_file_index, to + 1, 0);
-
-       zip_close(archive);
-       archive = zip_open(zip_name, 0, 0);
-       */
-
+    // read all of old source
+    struct stat stbuf;
+    zipfs_getattr(from, &stbuf);
+    char buf[stbuf.st_size + 1];
+    memset(buf, 0, strlen(buf) * sizeof(char));
+    zipfs_read(from, buf, stbuf.st_size, 0, NULL);
+    // write to new file
+    zipfs_write(to, buf, stbuf.st_size, 0, NULL);
+    // unlink old
+    zipfs_unlink(from);
     return 0;
 }
 /**
