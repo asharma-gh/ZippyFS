@@ -6,7 +6,7 @@ path = os.path.expanduser("~/.cache/zipfs/sync.pid")
 
 
 if os.path.exists(path) and os.stat(path).st_size > 0:
-    file = open(path, "r+")
+    f = open(path, "r+")
 
     # read the previous pid
     # check if it is running
@@ -17,15 +17,21 @@ if os.path.exists(path) and os.stat(path).st_size > 0:
         is_running = False
 
     # if another process is running, then we don't need to
-    if (is_running)
+    if (is_running):
         sys.exit()
 
+    # clean up file
+    f.truncate()
+
 else:
-    file = open(path, "w+");
+    f = open(path, "w+");
 
 
 # write our pid to file
+    f.write(str(getpid()))
 
+# close file
+    f.close()
 
 # do something every so often
 
