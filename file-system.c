@@ -1048,7 +1048,13 @@ zipfs_utimens(const char* path,  const struct timespec ts[2]) {
 void
 zipfs_destroy(void* private_data) {
     (void)private_data;
-    free(shadow_path);
+    // flush
+    zipfs_fsync(NULL, 0, 0);
+    // delete process cache directory
+    char removal_cmd[PATH_MAX + 12];
+    sprintf(removal_cmd, "rm -rf %s", shadow_path);
+    system(removal_cmd);
+    rmdir(shadow_path);
 
 }
 /** represents available functionality */
