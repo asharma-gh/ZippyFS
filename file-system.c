@@ -24,9 +24,9 @@
 /** using glib over switching languages */
 #include <glib.h>
 /** TODO: 
- * - Work out how flushing cache works async
+ * - Work out how flushing cache async
  * - garbage collection
- * - 'read' should never flush
+ * - 'read' rn is probably fine
  */
 
 /** the path of the mounted directory of zip files */
@@ -623,7 +623,23 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     system(command);
     chdir(cwd);
 
+
     return 0;
+}
+/**
+ * removes fully updated zip archives
+ * log is located in 
+ */
+static
+int
+garbage_collect() {
+ // build path to local
+ //char path_to_log[]
+ // check if file exists
+ // generate box id
+ // scan indexes
+ // if one is outdated, log and remove it
+ return 0;
 }
 /**
  * like fsync but for directories
@@ -1162,6 +1178,12 @@ main(int argc, char *argv[]) {
         printf("error making shadow directory\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
+    // construct rmlog path
+    char rmlog_path[strlen(zip_dir_name) + 10];
+    memset(rmlog_path, 0, strlen(rmlog_path) * sizeof(char));
+    
+    if (mkdir(rmlog_path, S_IRWXU))
+        printf("error making rmlog dir ERRNO:%s\n", strerror(errno));
 
 
     return fuse_main(argc, newarg, &zipfs_operations, NULL);
