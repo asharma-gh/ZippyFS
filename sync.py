@@ -37,12 +37,14 @@ def init():
     f.close()
 
 def sync():
+    #check rm log
     # resync every 5 minutes. This works like a delayed recursive call
     threading.Timer(300, sync).start()
     #upload new contents to server
     os.system("rsync --ignore-existing -r -a -v -e ssh ~/FileSystem/zipfs/o/dir/ arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/")
     #download content from server
     os.system("rsync --ignore-existing -r -a -v -e ssh arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/ ~/FileSystem/zipfs/o/dir/")
+    #delete rm log'd files locally
 
 
 #sync on SIGUSR1
