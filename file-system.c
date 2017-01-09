@@ -52,7 +52,9 @@ static int get_latest_entry(const char* index, int in_cache, const char* path, c
 static
 int
 get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
-
+    // check if index path exists
+    if (access(index, F_OK) != 0)
+        return -1;
     // read contents
     FILE* file  = fopen(index, "r");
     // get file size
@@ -67,40 +69,38 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     fclose(file);
 
     if (!in_cache) {
-        if ((checksum = strstr(contents, "CHECKSUM")) == NULL) {
+        if ((checksum = strstr(contents, "CHECKSUM")) == NULL) 
             return -1;
 
-            char checksum_cpy[strlen(checksum)];
-            strcpy(checksum_cpy, checksum);
-            checksum[0] = '\0';
-            uint64_t checksum_val;
-            char* endptr;
-            checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
-            // make new checksum
-            uint64_t new_checksum = crc64(contents);
+        char checksum_cpy[strlen(checksum)];
+        strcpy(checksum_cpy, checksum);
+        checksum[0] = '\0';
+        uint64_t checksum_val;
+        char* endptr;
+        checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
+        // make new checksum
+        uint64_t new_checksum = crc64(contents);
 
-            if (new_checksum != checksum_val) {
-                return -1; 
-            }
-        }
-
-        const char delim[2] = "\n";
-        char* token;
-        int in_index = 0;
-        char contents_cpy[strlen(contents)];
-        strcpy(contents_cpy, contents);
-        token = strtok(contents_cpy, delim);
-        while (token != NULL) {
-            if (strstr(token, path) != NULL) {
-                in_index = 1;
-                memset(buf, 0, strlen(buf) * sizeof(char));
-                strcpy(buf, token);
-            }
-            token = strtok(NULL, delim);
-        }
-        if (!in_index)
-            return -1;
+        if (new_checksum != checksum_val) 
+            return -1;  
     }
+
+    const char delim[2] = "\n";
+    char* token;
+    int in_index = 0;
+    char contents_cpy[strlen(contents)];
+    strcpy(contents_cpy, contents);
+    token = strtok(contents_cpy, delim);
+    while (token != NULL) {
+        if (strstr(token, path) != NULL) {
+            in_index = 1;
+            memset(buf, 0, strlen(buf) * sizeof(char));
+            strcpy(buf, token);
+        }
+        token = strtok(NULL, delim);
+    }
+    if (!in_index)
+        return -1;
     return 0;
 }
 /**
@@ -1020,9 +1020,11 @@ zipfs_truncate(const char* path, off_t size) {
 static
 int
 zipfs_access(const char* path, int mode) {
-    printf("ACCESS: %s\n", path);
+    printf("ACCESS: %s %d\n", path, mode);
     (void)mode;
-    char idx_path[strlen(shadow_path) + 15];
+    if (strcmp(path, "/") == 0)
+        return 0;
+    char idx_path[strlen(shadow_path) + PATH_MAX];
     sprintf(idx_path, "%s/index.idx", shadow_path);
     char temp_buf[PATH_MAX + PATH_MAX];
     int res = get_latest_entry(idx_path, 1, path, temp_buf);
@@ -1030,15 +1032,16 @@ zipfs_access(const char* path, int mode) {
     if (res == -1) {
         // check main archive
         char name_buf[FILENAME_MAX];
-        struct zip* archive = find_latest_archive(path, name_buf, strlen(name_buf));
+        struct zip* archive = find_latest_archive(path, name_buf, FILENAME_MAX);
         if (archive != NULL) {
             zip_close(archive);
             char cwd[PATH_MAX];
             memset(cwd, 0, strlen(cwd) * sizeof(char));
             getcwd(cwd, sizeof(cwd));
+            name_buf[strlen(name_buf) - 4] = '\0';
 
             memset(idx_path, 0, strlen(idx_path) * sizeof(char));
-            sprintf(idx_path, "%s/%s/%s", cwd, zip_dir_name, name_buf);
+            sprintf(idx_path, "%s/%s/%s.idx", cwd, zip_dir_name, name_buf);
             memset(temp_buf, 0, strlen(temp_buf) * sizeof(char));
 
             in_main = get_latest_entry(idx_path, 0, path, temp_buf);
@@ -1050,17 +1053,17 @@ zipfs_access(const char* path, int mode) {
         // entry is in temp_buf to interpret
         char modifiers[5] = {0};
         sscanf(temp_buf, "%*s [%s] %*f %*d", modifiers);
+        int mod_mode = 0;
         if (mode & F_OK)
+        if (strstr(modifiers, "R"))
+            mod_mode = mod_mode |  R_OK;
+        if (strstr(modifiers, "W"))
+            mod_mode = mod_mode | W_OK;
+        if (strstr(modifiers, "X"))
+            mod_mode = mod_mode | W_OK;
+        printf("mode == %d my mode == %d\n", mode, mod_mode);
+        if (mod_mode == mode)
             return 0;
-        if (mode & R_OK)
-            if (strstr(modifiers, "R"))
-                return 0;
-        if (mode & W_OK)
-            if (strstr(modifiers, "W"))
-                return 0;
-        if (mode & X_OK)
-            if (strstr(modifiers, "X"))
-                return 0;
 
     }
     return -1;
