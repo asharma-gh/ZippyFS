@@ -23,6 +23,11 @@
 #include <linux/random.h>
 /** using glib over switching languages */
 #include <glib.h>
+/** TODO: 
+ * - Work out how flushing cache works async
+ * - garbage collection
+ * - 'read' should never flush
+ */
 
 /** the path of the mounted directory of zip files */
 static char* zip_dir_name;
