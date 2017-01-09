@@ -40,9 +40,8 @@ def sync():
     print("TODO..")
     # sync every 5 minutes
     threading.Timer(300, sync).start()
-    # upload: rsync -anzP --ignore-existing ~/dir/to/localarchive arvinsharma@ssh.neu.edu:/dir/to/archive
+    #upload: rsync -r -a -v -e ssh ~/FileSystem/zipfs/o/dir/ arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test
     #os.system(...)
-    # download: rsync -anzP --ignore-existing arvinsharma@ssh.neu.edu:/dir/to/archive ~/dir/to/localarchive
 
 #sync on SIGUSR1
 def signal_handler(signum, frame):
