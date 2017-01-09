@@ -1066,7 +1066,7 @@ zipfs_access(const char* path, int mode) {
         if (strstr(modifiers, "W"))
             mod_mode = mod_mode | W_OK;
         if (strstr(modifiers, "X"))
-            mod_mode = mod_mode | W_OK;
+            mod_mode = mod_mode | X_OK;
         printf("mode == %d my mode == %d\n", mode, mod_mode);
         if (mod_mode == mode)
             return 0;
