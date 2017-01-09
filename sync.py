@@ -27,7 +27,7 @@ def init():
         f.close()
 
     # remake / make file to erase old contents
-    f = open(path, "w+");
+    f = open(path, "w+")
 
 
     # write our pid to file
