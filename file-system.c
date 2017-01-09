@@ -35,6 +35,7 @@ static char* zip_dir_name;
 /** cache path */
 static char* shadow_path;
 
+
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
 static struct zip* find_latest_archive(const char* path, char* name, int size);
@@ -1178,13 +1179,36 @@ main(int argc, char *argv[]) {
         printf("error making shadow directory\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
-    // construct rmlog path
+    // construct process-local rmlog path and dir
     char rmlog_path[strlen(zip_dir_name) + 10];
     memset(rmlog_path, 0, strlen(rmlog_path) * sizeof(char));
-    
+    sprintf(rmlog_path, "%s/rmlog", zip_dir_name);
     if (mkdir(rmlog_path, S_IRWXU))
         printf("error making rmlog dir ERRNO:%s\n", strerror(errno));
 
+    // construct machine-local rmlog path and dir
+    char machine_rmlog_path[strlen(zip_dir_name) + PATH_MAX];
+    memset(machine_rmlog_path, 0, strlen(machine_rmlog_path) * sizeof(char));
+
+    sprintf(machine_rmlog_path, "~/.config/zipfs/");
+    wordexp(machine_rmlog_path, &path, 0);
+    strcpy(machine_rmlog_path, *(path.we_wordv));
+    wordfree(&path);
+    printf("machine path %s\n", machine_rmlog_path);
+
+    if (mkdir(machine_rmlog_path, S_IRWXU))
+        printf("error making machine rmlog path ERRNO: %s\n", strerror(errno));
+
+/*
+ *     // create archive name
+    char num[16] = {'\0'};
+    char hex_name[33] = {'\0'};
+    syscall(SYS_getrandom, num, sizeof(num), GRND_NONBLOCK);
+
+    for (int i = 0; i < 16; i++) {
+        sprintf(hex_name + i*2,"%02X", num[i]);
+    }
+    */
 
     return fuse_main(argc, newarg, &zipfs_operations, NULL);
 
