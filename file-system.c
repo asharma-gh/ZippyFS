@@ -231,8 +231,6 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
 
-    // NEW!
-    // checks the cache first
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
@@ -662,9 +660,6 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
-    // NEW!:
-    // CHECK THE CACHE FIRST
-
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
@@ -1132,8 +1127,6 @@ static struct fuse_operations zipfs_operations = {
 int
 main(int argc, char *argv[]) { 
     zip_dir_name = argv[--argc];
-    //zip_name = argv[--argc];
-    //archive = zip_open(zip_name, 0, error);
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
         newarg[i] = argv[i];
