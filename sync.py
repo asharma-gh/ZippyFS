@@ -37,11 +37,13 @@ def init():
     f.close()
 
 def sync():
-    print("TODO..")
     # resync every 5 minutes. This works like a delayed recursive call
     threading.Timer(300, sync).start()
-    #upload: rsync -r -a -v -e ssh ~/FileSystem/zipfs/o/dir/ arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test
-    #os.system(...)
+    #upload new contents to server
+    os.system("rsync --ignore-existing -r -a -v -e ssh ~/FileSystem/zipfs/o/dir/ arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/")
+    #download content from server
+    os.system("rsync --ignore-existing -r -a -v -e ssh arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/ ~/FileSystem/zipfs/o/dir/")
+
 
 #sync on SIGUSR1
 def signal_handler(signum, frame):
