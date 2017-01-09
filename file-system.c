@@ -1055,6 +1055,7 @@ zipfs_access(const char* path, int mode) {
         sscanf(temp_buf, "%*s [%s] %*f %*d", modifiers);
         int mod_mode = 0;
         if (mode & F_OK)
+            mod_mode = mod_mode | F_OK;
         if (strstr(modifiers, "R"))
             mod_mode = mod_mode |  R_OK;
         if (strstr(modifiers, "W"))
