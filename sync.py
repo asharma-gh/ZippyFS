@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import os
 import signal
+import threading
 
 def init():
     # open sync file
@@ -17,12 +18,13 @@ def init():
         except OSError:
             is_running = False
 
-    # if another process is running, then we don't need to
-    if (is_running):
-        sys.exit()
+        # if another process is running, then we don't need to
+        if (is_running):
+            f.close()
+            sys.exit()
 
-    # close file
-    f.close()
+        # close file
+        f.close()
 
     # remake / make file to erase old contents
     f = open(path, "w+");
@@ -36,12 +38,13 @@ def init():
 
 def sync():
     print("TODO..")
-    # call rsync every so often
-
+    # sync every 5 minutes
+    threading.Timer(300, sync).start()
     # upload: rsync -anzP --ignore-existing ~/dir/to/localarchive arvinsharma@ssh.neu.edu:/dir/to/archive
-
+    #os.system(...)
     # download: rsync -anzP --ignore-existing arvinsharma@ssh.neu.edu:/dir/to/archive ~/dir/to/localarchive
 
+#sync on SIGUSR1
 def signal_handler(signum, frame):
     print('Received Signal ', signum)
     sync()
@@ -49,4 +52,6 @@ def signal_handler(signum, frame):
 
 ## Begin Execution ##
 init()
+## sync on start ##
+sync()
 
