@@ -38,7 +38,7 @@ def init():
 
 def sync():
     print("TODO..")
-    # sync every 5 minutes
+    # resync every 5 minutes. This works like a delayed recursive call
     threading.Timer(300, sync).start()
     #upload: rsync -r -a -v -e ssh ~/FileSystem/zipfs/o/dir/ arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test
     #os.system(...)
