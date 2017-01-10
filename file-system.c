@@ -222,6 +222,7 @@ is_deleted_in_cache(const char* path) {
     sscanf(last_occurence, "%*s %*s %*f %d", &deleted);
     return deleted;
 }
+
 /** 
  *  retrieves the attributes of a specific file / directory
  *  - returns the attributes of the LATEST file / directory
@@ -285,6 +286,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     return 0;
 
 }
+
 /**
  * Provides contents of a directory
  * @param path is the path to the directory
@@ -296,7 +298,6 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
  * @return 0 for normal exit status, non-zero otherwise.
  *
  */
-
 static
 int
 zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
@@ -673,45 +674,59 @@ garbage_collect() {
     // create path to zip dir
     DIR* zip_dir = opendir(zip_dir_name);
     struct dirent* archive_entry;
-    GHashTable* paths_in_index = g_hash_table_new(g_str_hash, g_str_equal;
-            while ((archive_entry = readdir(zip_dir)) != NULL) {
-            if (strstr(archive_entry->d_name, ".idx")) {
-            // make path to file
-            // make path to index file
-            char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
-            memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
-            sprintf(path_to_indx, "%s/%s", zip_dir_name, index_file_name);
+    GHashTable* paths_in_index = g_hash_table_new(g_str_hash, g_str_equal);
+    while ((archive_entry = readdir(zip_dir)) != NULL) {
+        if (strstr(archive_entry->d_name, ".idx") == NULL)
+            continue;
+        // make path to file
+        // make path to index file
+        char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
+        memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+        sprintf(path_to_indx, "%s/%s", zip_dir_name, archive_entry->d_name);
 
-            // read contents
-            FILE* file  = fopen(path_to_indx, "r");
-            // get file size
-            fseek(file, 0, SEEK_END);
-            long fsize = ftell(file);
-            rewind(file);
-            char contents[fsize + 1];
-            memset(contents, 0, strlen(contents) * sizeof(char));
-            fread(contents, fsize, 1, file);
-            contents[fsize] = '\0';
-            fclose(file);
-            const char delim[2] = "\n";
-            char* token;
-            char contents_cpy[strlen(contents)];
-            strcpy(contents_cpy, contents);
-            token = strtok(contents_cpy, delim);
-            while (token != NULL) {
-
+        // read contents
+        FILE* file  = fopen(path_to_indx, "r");
+        // get file size
+        fseek(file, 0, SEEK_END);
+        long fsize = ftell(file);
+        rewind(file);
+        char contents[fsize + 1];
+        memset(contents, 0, strlen(contents) * sizeof(char));
+        fread(contents, fsize, 1, file);
+        contents[fsize] = '\0';
+        fclose(file);
+        const char delim[2] = "\n";
+        char* token;
+        char contents_cpy[strlen(contents)];
+        strcpy(contents_cpy, contents);
+        token = strtok(contents_cpy, delim);
+        while (token != NULL) {
+            // fetch path from token
+            char token_path[PATH_MAX];
+            sscanf(token, "%s %*s %*f %*d", token_path);
+            // check if path is in table already, then we don't to add this entry
+            char* old_name;
+            if (g_hash_table_lookup_extended(paths_in_index, token_path, (void*)&old_name, NULL)) {
+                // go to next entry / path
+                continue;
             }
-            }
-            }
+            // grab next entry
+            token = strtok(NULL, delim);
+        }
+
+        // check if this index file is outdated. If it is, mark it as such.
+
+    }
 
 
-            // go thru each archive
-            // grab all of the paths in the archive
-            // check the latest archives for each path
-            // if every path has a different latest archive than this 1
-            // log this archive in rmlog
-            // if it is, log its name into the rmlog
-            return 0;
+
+    // go thru each archive
+    // grab all of the paths in the archive
+    // check the latest archives for each path
+    // if every path has a different latest archive than this 1
+    // log this archive in rmlog
+    // if it is, log its name into the rmlog
+    return 0;
 }
 /**
  * like fsync but for directories
