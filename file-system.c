@@ -669,6 +669,13 @@ garbage_collect() {
     int fd = open (path_local_log, O_CREAT | O_APPEND, S_IRWXU);
     if (fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
+    // scan each archive to see if is out dated
+    // go thru each archive
+    // grab all of the paths in the archive
+    // check the latest archives for each path
+    // if every path has a different latest archive than this 1
+    // log this archive in rmlog
+    // if it is, log its name into the rmlog
     return 0;
 }
 /**
