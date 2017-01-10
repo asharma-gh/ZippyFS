@@ -45,6 +45,8 @@ static uint64_t crc64(const char* content);
 static int is_deleted_in_cache(const char* path);
 /** puts the latest entry of path in the index index into buf */
 static int get_latest_entry(const char* index, int in_cache, const char* path, char* buf);
+/** removes unneeded zip archives and logs in a machine specific rmlog */
+static int garbage_collect();
 
 /**
  * gets the latest entry of path in the index file index
@@ -623,21 +625,43 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-
-
+    garbage_collect();
     return 0;
 }
 /**
  * removes fully updated zip archives
- * log is located in 
+ * log is located in
+ * @return 0 on success, non-zero otherwise
  */
 static
 int
 garbage_collect() {
-    // build path to local
-    //char path_to_log[]
-    // check if file exists
-    // generate box id
+
+    // make path to rmlog
+    char rmlog_path[PATH_MAX];
+    sprintf(rmlog_path, "~/.config/zipfs/");
+    // tilde expansion
+    wordexp_t path;
+    wordexp(rmlog_path, &path, 0);
+    memset(rmlog_path, 0, strlen(rmlog_path) * sizeof(char));
+    strcpy(rmlog_path, *path.we_wordv);
+    wordfree(&path);
+
+    // open directory containing rm log
+    DIR* log_dir = opendir(rmlog_path);
+    struct dirent* entry;
+    char log_name[FILENAME_MAX];
+    while((entry = readdir(log_dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0
+                || strcmp(entry->d_name, "..") == 0)
+            continue;
+        else {
+            // only one entry in archive
+            strcpy(log_name, entry->d_name);
+            break;
+        }
+    }
+    printf("BoxID from gc: %s\n", log_name);
     // scan indexes
     // if one is outdated, log and remove it
     return 0;
