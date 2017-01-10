@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import os
 import signal
-import threading
+import time
 
 def init():
     # open sync file
@@ -45,9 +45,9 @@ def sync():
 
     #delete rm log'd files locally
     ####TODO...
-    # resync every 5 minutes, spawns thread which sleeps until time
-    threading.Timer(300, sync).start()
-
+    # resync every 5 minutes
+    time.sleep(10)
+    sync()
 #sync on SIGUSR1
 def signal_handler(signum, frame):
     print('Received Signal ', signum)
