@@ -715,6 +715,23 @@ garbage_collect() {
         }
 
         // check if this index file is outdated. If it is, mark it as such.
+        // iterate thru the hash table
+        GHashTableIter  iter;
+        void* key;
+        void* value;
+        g_hash_table_iter_init(&iter, added_entries);
+        while (g_hash_table_iter_next(&iter, &key, &value)) {
+            char* key_path = key;
+            index_entry* val = value;
+
+            if (!val->deleted) {
+                filler(buf, basename(key_path), NULL, 0);
+                printf("ADDED %s to FILLER\n", basename(key_path));
+            }
+            // clean up
+            free(key_path);
+            free(val);
+        }
 
     }
 
