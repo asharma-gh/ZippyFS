@@ -27,6 +27,7 @@
  * - Work out how flushing cache async
  * - garbage collection
  * - 'read' rn is probably fine
+ * - grab attributes properly in getattr
  */
 
 /** the path of the mounted directory of zip files */
