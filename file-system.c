@@ -663,8 +663,12 @@ garbage_collect() {
         }
     }
     printf("BoxID from gc: %s\n", log_name);
-    // scan indexes
-    // if one is outdated, log and remove it
+    // make machine specific log file in zip directory if it doesn't exist
+    char path_local_log[PATH_MAX + strlen(log_name)];
+    memset(path_local_log, 0, strlen(path_local_log) * sizeof(char));
+    int fd = open (path_local_log, O_CREAT | O_APPEND, S_IRWXU);
+    if (fd == -1)
+        printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
     return 0;
 }
 /**
