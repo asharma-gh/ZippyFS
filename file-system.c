@@ -26,7 +26,6 @@
 /** TODO: 
  * - Work out how flushing cache async
  * - garbage collection
- * - 'read' rn is probably fine
  * - grab attributes properly in getattr
  */
 
@@ -585,8 +584,8 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     fprintf(file_ap, "CHECKSUM");
     fprintf(file_ap, "%"PRIu64, checksum);
     fclose(file_ap);
-    printf("CHECKSUM");
-    printf("%"PRIu64"\n", checksum);
+    //printf("CHECKSUM");
+    //printf("%"PRIu64"\n", checksum);
 
     // create archive name
     char num[16] = {'\0'};
@@ -614,17 +613,17 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     memset(cwd, 0, strlen(cwd) * sizeof(char));
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
-    printf("CWD: %s\n", cwd);
+   // printf("CWD: %s\n", cwd);
     char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
     memset(zip_dir_path, 0, strlen(zip_dir_path) * sizeof(char));
     sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
-    printf("DIR NAME: %s\n", zip_dir_path);
+    //printf("DIR NAME: %s\n", zip_dir_path);
 
     char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
     memset(command, 0, strlen(command) * sizeof(char));
     sprintf(command, "cd %s; zip %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
-    printf("MAGIC COMMAND: %s\n", command);
+  //  printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
     garbage_collect();
@@ -676,7 +675,14 @@ garbage_collect() {
     int log_fd = open(path_local_log, O_CREAT | O_APPEND, S_IRWXU);
     if (log_fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
-    close(log_fd);
+    else {
+        close(log_fd);
+        char command[strlen(path_local_log) + 16];
+        sprintf(command, "python sync.py %s &", path_local_log);
+        // run python script
+
+        system(command);
+    }
     // scan each archive to see if is out dated
     // create path to zip dir
     DIR* zip_dir = opendir(zip_dir_name);
@@ -1267,6 +1273,10 @@ zipfs_destroy(void* private_data) {
     sprintf(removal_cmd, "rm -rf %s", shadow_path);
     system(removal_cmd);
     rmdir(shadow_path);
+    // kill python script
+    char kill_py[17];
+    sprintf(kill_py, "pkill -f sync.py");
+    system(kill_py);
 
 }
 /** represents available functionality */

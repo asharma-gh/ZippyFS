@@ -17,6 +17,7 @@ def init():
         try:
             os.kill(int(f.readline()), 0)
         except OSError:
+            print("ALREADY RUNNING .. QUITTING..")
             is_running = False
 
         # if another process is running, then we don't need to
