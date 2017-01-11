@@ -663,22 +663,31 @@ garbage_collect() {
             break;
         }
     }
+    closedir(log_dir);
     printf("BoxID from gc: %s\n", log_name);
     // make machine specific log file in zip directory if it doesn't exist
-    char path_local_log[PATH_MAX + strlen(log_name)];
+    /** OK. malloc needs to be used here because alloca / normal
+     * allocation results in this array being cleared / free'd
+     * while in the loop!?!?!?! */
+    char* path_local_log = malloc(PATH_MAX + strlen(log_name));
     memset(path_local_log, 0, strlen(path_local_log) * sizeof(char));
     sprintf(path_local_log, "%s/rmlog/%s", zip_dir_name, log_name);
-    int fd = open (path_local_log, O_CREAT | O_APPEND, S_IRWXU);
-    if (fd == -1)
+    printf("LOCAL  LOG BEFORE LOOP %s\n", path_local_log);
+    int log_fd = open (path_local_log, O_CREAT | O_APPEND, S_IRWXU);
+    if (log_fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
+    printf("FD IN QUESTION B4 LOOP %d\n", log_fd);
+    //close(log_fd);
     // scan each archive to see if is out dated
     // create path to zip dir
     DIR* zip_dir = opendir(zip_dir_name);
     struct dirent* archive_entry;
-    GHashTable* paths_in_index = g_hash_table_new(g_str_hash, g_str_equal);
     while ((archive_entry = readdir(zip_dir)) != NULL) {
         if (strstr(archive_entry->d_name, ".idx") == NULL)
             continue;
+        /** hash set for paths in index, since there can be duplicates
+         * value will just be 0 for each entry */
+        GHashTable* paths_in_index = g_hash_table_new(g_str_hash, g_str_equal);
         // make path to file
         // make path to index file
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
@@ -725,37 +734,45 @@ garbage_collect() {
             // grab next entry
             token = strtok(NULL, delim);
         }
-        /*
+        
         // check if this index file is outdated. If it is, mark it as such.
         // iterate thru the hash table
         GHashTableIter  iter;
         void* key;
         void* value;
+        int is_outdated = 1;
         g_hash_table_iter_init(&iter, paths_in_index);
         while (g_hash_table_iter_next(&iter, &key, &value)) {
             char* key_path = key;
             char latest_archive_name[FILENAME_MAX];
             find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
                 printf("CURRENT ARCHIVE NAME: %s   LATEST NAME: %s\n", archive_entry->d_name, latest_archive_name);
-                if (strcmp(archive_entry->d_name, latest_archive_name) != 0) {
-                    // set value to 1
-                }
-            
-            // clean up
-            free(key_path);
+                // if we already know its not outdated, we don't need to keep checking
+                // we continue this loop because it allows us to free while we're here.
+                // This saves us from remaking an iter and looping again.. darn glib!
+                if (is_outdated && strcmp(archive_entry->d_name, latest_archive_name) == 0)
+                    is_outdated = 0;
+                free(key_path);
+
         }
-        */
+        if (is_outdated) {
+            printf("THIS ARCHIVE IS OUTDATED\n");
+            // write to machine log file
+            FILE* log_file = fopen(path_local_log, "a");
+            int res =  fprintf(log_file, "%s\n", archive_entry->d_name);
+            if (res == -1) {
+                printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
+            }
+            fclose(log_file);
+
+        }
+        g_hash_table_destroy(paths_in_index);
+
+
 
     }
-
-
-
-    // go thru each archive
-    // grab all of the paths in the archive
-    // check the latest archives for each path
-    // if every path has a different latest archive than this 1
-    // log this archive in rmlog
-    // if it is, log its name into the rmlog
+    free(path_local_log);
+    closedir(zip_dir);
     return 0;
 }
 /**
