@@ -676,8 +676,7 @@ garbage_collect() {
     int log_fd = open (path_local_log, O_CREAT | O_APPEND, S_IRWXU);
     if (log_fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
-    printf("FD IN QUESTION B4 LOOP %d\n", log_fd);
-    //close(log_fd);
+    close(log_fd);
     // scan each archive to see if is out dated
     // create path to zip dir
     DIR* zip_dir = opendir(zip_dir_name);
@@ -688,7 +687,7 @@ garbage_collect() {
         /** hash set for paths in index, since there can be duplicates
          * value will just be 0 for each entry */
         GHashTable* paths_in_index = g_hash_table_new(g_str_hash, g_str_equal);
-        // make path to file
+
         // make path to index file
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
         memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
