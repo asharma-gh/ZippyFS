@@ -667,6 +667,7 @@ garbage_collect() {
     // make machine specific log file in zip directory if it doesn't exist
     char path_local_log[PATH_MAX + strlen(log_name)];
     memset(path_local_log, 0, strlen(path_local_log) * sizeof(char));
+    sprintf(path_local_log, "%s/rmlog/%s", zip_dir_name, log_name);
     int fd = open (path_local_log, O_CREAT | O_APPEND, S_IRWXU);
     if (fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
@@ -719,18 +720,18 @@ garbage_collect() {
         GHashTableIter  iter;
         void* key;
         void* value;
-        g_hash_table_iter_init(&iter, added_entries);
+        g_hash_table_iter_init(&iter, paths_in_index);
         while (g_hash_table_iter_next(&iter, &key, &value)) {
             char* key_path = key;
-            index_entry* val = value;
-
-            if (!val->deleted) {
-                filler(buf, basename(key_path), NULL, 0);
-                printf("ADDED %s to FILLER\n", basename(key_path));
-            }
+            char latest_archive_name[FILENAME_MAX];
+            find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
+                printf("CURRENT ARCHIVE NAME: %s   LATEST NAME: %s\n", archive_entry->d_name, latest_archive_name);
+                if (strcmp(archive_entry->d_name, latest_archive_name) != 0) {
+                    // set value to 1
+                }
+            
             // clean up
             free(key_path);
-            free(val);
         }
 
     }
@@ -1174,13 +1175,15 @@ zipfs_access(const char* path, int mode) {
         char modifiers[5] = {0};
         sscanf(temp_buf, "%*s [%s] %*f %*d", modifiers);
         int mod_mode = 0;
-        if (mode & F_OK)
+        if (mode & F_OK) {
             mod_mode = mod_mode | F_OK;
-        if (strstr(modifiers, "R"))
+            return 0;
+        }
+        if (mode & R_OK && strstr(modifiers, "R"))
             mod_mode = mod_mode |  R_OK;
-        if (strstr(modifiers, "W"))
+        if (mode & W_OK && strstr(modifiers, "W"))
             mod_mode = mod_mode | W_OK;
-        if (strstr(modifiers, "X"))
+        if (mode & X_OK && strstr(modifiers, "X"))
             mod_mode = mod_mode | X_OK;
         printf("mode == %d my mode == %d\n", mode, mod_mode);
         if (mod_mode == mode)
