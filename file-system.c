@@ -733,7 +733,7 @@ garbage_collect() {
             // grab next entry
             token = strtok(NULL, delim);
         }
-        
+
         // check if this index file is outdated. If it is, mark it as such.
         // iterate thru the hash table
         GHashTableIter  iter;
@@ -750,15 +750,15 @@ garbage_collect() {
             char* key_path = key;
             char latest_archive_name[FILENAME_MAX];
             find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
-                printf("CURRENT ARCHIVE NAME: %s   LATEST NAME: %s\n", archive_entry->d_name, latest_archive_name);
-                // if every file has an entry in a later archive,
-                // is_outdated will be 1 and this file is outdated
-                if (strcmp(index_zip, latest_archive_name) == 0)
-                    is_outdated = 0;
-                else
-                    is_outdated = 1;
+            printf("CURRENT ARCHIVE NAME: %s   LATEST NAME: %s\n", archive_entry->d_name, latest_archive_name);
+            // if every file has an entry in a later archive,
+            // is_outdated will be 1 and this file is outdated
+            if (strcmp(index_zip, latest_archive_name) == 0)
+                is_outdated = 0;
+            else
+                is_outdated = 1;
 
-                free(key_path);
+            free(key_path);
 
         }
         if (is_outdated) {
