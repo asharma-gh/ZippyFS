@@ -2,6 +2,7 @@
 import os
 import signal
 import time
+import sys
 
 def init():
     # open sync file
@@ -43,10 +44,10 @@ def sync():
     #download content from server
     os.system("rsync --ignore-existing -r -a -v -e ssh arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/ ~/FileSystem/zipfs/o/dir/")
 
-    #delete rm log'd files locally
+    #delete rm log'd files on server
     ####TODO...
     # resync every 5 minutes
-    time.sleep(10)
+    time.sleep(300)
     sync()
 #sync on SIGUSR1
 def signal_handler(signum, frame):
