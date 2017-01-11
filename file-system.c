@@ -673,7 +673,7 @@ garbage_collect() {
     memset(path_local_log, 0, strlen(path_local_log) * sizeof(char));
     sprintf(path_local_log, "%s/rmlog/%s", zip_dir_name, log_name);
     printf("LOCAL  LOG BEFORE LOOP %s\n", path_local_log);
-    int log_fd = open (path_local_log, O_CREAT | O_APPEND, S_IRWXU);
+    int log_fd = open(path_local_log, O_CREAT | O_APPEND, S_IRWXU);
     if (log_fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
     close(log_fd);
@@ -742,6 +742,11 @@ garbage_collect() {
         int is_outdated = 1;
         g_hash_table_iter_init(&iter, paths_in_index);
         while (g_hash_table_iter_next(&iter, &key, &value)) {
+            // make the zip file name given this index file
+            char index_zip[strlen(archive_entry->d_name)];
+            strcpy(index_zip, archive_entry->d_name);
+            index_zip[strlen(index_zip) - 4] = '\0';
+            strcat(index_zip, ".zip");
             char* key_path = key;
             char latest_archive_name[FILENAME_MAX];
             find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
@@ -749,7 +754,7 @@ garbage_collect() {
                 // if we already know its not outdated, we don't need to keep checking
                 // we continue this loop because it allows us to free while we're here.
                 // This saves us from remaking an iter and looping again.. darn glib!
-                if (is_outdated && strcmp(archive_entry->d_name, latest_archive_name) == 0)
+                if (is_outdated && strcmp(index_zip, latest_archive_name) == 0)
                     is_outdated = 0;
                 free(key_path);
 
@@ -763,6 +768,18 @@ garbage_collect() {
                 printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
             }
             fclose(log_file);
+            /**
+             * now locally delete zip file and index, since its
+             * outdated!
+             */
+            char indx_name_no_type[strlen(archive_entry->d_name)];
+            strcpy(indx_name_no_type, archive_entry->d_name);
+            indx_name_no_type[strlen(indx_name_no_type) - 4] = '\0';
+            // create command to remove both index and zip file
+            char command[(strlen(indx_name_no_type) * 2) + (strlen(zip_dir_name) * 2) + 10];
+            sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, indx_name_no_type, zip_dir_name, indx_name_no_type);
+            printf("--- REMOVAL COMMAND ---\n %s\n", command);
+            system(command);
 
         }
         g_hash_table_destroy(paths_in_index);
