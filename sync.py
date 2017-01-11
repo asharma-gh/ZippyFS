@@ -45,9 +45,17 @@ def sync():
     os.system("rsync --ignore-existing -r -a -v -e ssh arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/ ~/FileSystem/zipfs/o/dir/")
 
     #delete rm log'd files on server
-    ####TODO...
+    #PATH to rmlog in zip file directory will be passed in as a command line argument.
+    path_to_log = sys.argv[1]
+    lines = open(path_to_log,  "r").readlines()
+    for line in lines:
+        path_to_idx = "/home/arvinsharma/test/" + line.strip()
+        path_to_zip = "/home/arvinsharma/test/" + line.strip()[:len(line.strip()) - 4] + ".zip"
+        os.system("ssh arvinsharma@login.ccs.neu.edu 'rm " + path_to_idx + " && rm " + path_to_zip + "'")
+
+
     # resync every 5 minutes
-    time.sleep(300)
+    time.sleep(10)
     sync()
 #sync on SIGUSR1
 def signal_handler(signum, frame):
