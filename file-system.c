@@ -751,11 +751,13 @@ garbage_collect() {
             char latest_archive_name[FILENAME_MAX];
             find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
                 printf("CURRENT ARCHIVE NAME: %s   LATEST NAME: %s\n", archive_entry->d_name, latest_archive_name);
-                // if we already know its not outdated, we don't need to keep checking
-                // we continue this loop because it allows us to free while we're here.
-                // This saves us from remaking an iter and looping again.. darn glib!
-                if (is_outdated && strcmp(index_zip, latest_archive_name) == 0)
+                // if every file has an entry in a later archive,
+                // is_outdated will be 1 and this file is outdated
+                if (strcmp(index_zip, latest_archive_name) == 0)
                     is_outdated = 0;
+                else
+                    is_outdated = 1;
+
                 free(key_path);
 
         }
