@@ -701,20 +701,31 @@ garbage_collect() {
         char contents_cpy[strlen(contents)];
         strcpy(contents_cpy, contents);
         token = strtok(contents_cpy, delim);
+        /**
+         * TODO: abstract checksum verification and do it here
+         */
         while (token != NULL) {
             // fetch path from token
             char token_path[PATH_MAX];
+            if (strstr(token, "CHECKSUM"))
+                // basically done with the file at this point
+                break;
             sscanf(token, "%s %*s %*f %*d", token_path);
             // check if path is in table already, then we don't to add this entry
             char* old_name;
             if (g_hash_table_lookup_extended(paths_in_index, token_path, (void*)&old_name, NULL)) {
                 // go to next entry / path
+                token = strtok(NULL, delim);
                 continue;
+            } else {
+                printf("PATH!!: %s\n", token_path);
+                // add the path to the hash, with value 0
+                g_hash_table_insert(paths_in_index, strdup(token_path), 0);
             }
             // grab next entry
             token = strtok(NULL, delim);
         }
-
+        /*
         // check if this index file is outdated. If it is, mark it as such.
         // iterate thru the hash table
         GHashTableIter  iter;
@@ -733,6 +744,7 @@ garbage_collect() {
             // clean up
             free(key_path);
         }
+        */
 
     }
 
