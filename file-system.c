@@ -535,6 +535,8 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
     if (!closedir(zip_dir))
         printf("successfully closed dir\n");
+
+
     return 0;
 
 }
@@ -643,6 +645,28 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
+
+    /** signal sync program **/
+    // open sync pid
+    wordexp_t we;
+    char tild_exp[PATH_MAX];
+    char path_to_sync[PATH_MAX];
+    sprintf(tild_exp, "~");
+    wordexp(tild_exp, &we, 0);
+    sprintf(path_to_sync, "%s/.cache/zipfs/sync.pid", *we.we_wordv);
+    wordfree(&we);
+    if (access(path_to_sync, F_OK) == -1)
+        printf("Error finding sync pid file\n");
+    // read pid
+    FILE* pid_sync = fopen(path_to_sync, "r");
+    char pidstr[64];
+    fgets(pidstr, 64, pid_sync);
+    unsigned int pid = atoi(pidstr);
+    // send signal to sync code
+    int res = kill(pid, SIGUSR1);
+    if (res == -1)
+        printf("Error signalling, ERRNO: %s\n", strerror(errno));
+
     garbage_collect();
     return 0;
 }

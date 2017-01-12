@@ -59,13 +59,14 @@ def sync():
     sync()
 #sync on SIGUSR1
 def signal_handler(signum, frame):
-    if (signum == 30): # on sigusr1 
         print('Received Signal ', signum)
         sync()
 
 
 ## Begin Execution ##
 init()
+## sync on sigusr1 ##
+signal.signal(signal.SIGUSR1, signal_handler)
 ## sync on start ##
 sync()
 
