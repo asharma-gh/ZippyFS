@@ -17,7 +17,6 @@ def init():
         try:
             os.kill(int(f.readline()), 0)
         except OSError:
-            print("ALREADY RUNNING .. QUITTING..")
             is_running = False
 
         # if another process is running, then we don't need to
@@ -60,8 +59,9 @@ def sync():
     sync()
 #sync on SIGUSR1
 def signal_handler(signum, frame):
-    print('Received Signal ', signum)
-    sync()
+    if (signum == 30): # on sigusr1 
+        print('Received Signal ', signum)
+        sync()
 
 
 ## Begin Execution ##
