@@ -883,7 +883,6 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
     if (numRead == -1 ) {
         printf("error reading %s\n", path);
     }
-    //strcpy(buf, tempBuf + offset);
     memcpy(buf, tempBuf + offset, size);
     zip_fclose(file);
     zip_close(latest_archive);
