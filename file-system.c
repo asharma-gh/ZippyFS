@@ -265,16 +265,33 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
         folder_path[len] = '\0'; 
     }
 
+    char entry_name[FILENAME_MAX];
+    char buf[PATH_MAX];
+    int mode = 0;
+    struct zip* latest_archive = find_latest_archive(path, entry_name, FILENAME_MAX);
+    if (latest_archive) {
+        char index_path[strlen(entry_name) + strlen(zip_dir_name) + 2];
+        entry_name[strlen(entry_name) - 4] = '\0';
+        sprintf(index_path, "%s/%s.idx", zip_dir_name, entry_name);
+        get_latest_entry(index_path, 0, path, buf);
+        char permissions[6] = {0};
+        sscanf(buf, "%*s %s %*f %*d", permissions);
+        if (strstr(permissions, "R"))
+            mode = mode | S_IRUSR | S_IRGRP | S_IROTH;
+        if (strstr(permissions, "W"))
+            mode = mode | S_IWUSR | S_IWGRP | S_IWOTH;
+        if (strstr(permissions, "X"))
+            mode = mode | S_IXUSR | S_IXGRP | S_IXOTH;
 
-    // check each zip-file until u find the latest one
-    struct zip* latest_archive = find_latest_archive(path, NULL, 0);
+
+    }
 
     struct zip_stat zipstbuf;
     if (strlen(path)== 1 || !zip_stat(latest_archive, folder_path, 0, &zipstbuf)) {
-        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_mode = S_IFDIR | mode;
         stbuf->st_nlink = 2;
     } else if (!zip_stat(latest_archive, path + 1, 0, &zipstbuf)) {
-        stbuf->st_mode = S_IFREG | 0777;
+        stbuf->st_mode = S_IFREG | mode;
         stbuf->st_nlink = 1;
         stbuf->st_size = zipstbuf.size;
 
@@ -1047,7 +1064,8 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRWXU);
+   // int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRWXU);
+    int shadow_file = mknod(shadow_file_path, mode, rdev);
     if (shadow_file == -1) {
         printf("error making shadow file descriptor\n");
         printf("ERRNO: %s\n", strerror(errno));
