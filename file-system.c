@@ -35,8 +35,6 @@ static char* zip_dir_name;
 /** cache path */
 static char* shadow_path;
 
-/** pid of sync program **/
-pid_t sync_pid;
 
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
@@ -628,9 +626,9 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
     memset(command, 0, strlen(command) * sizeof(char));
-    sprintf(command, "cd %s; zip %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
+    sprintf(command, "cd %s; zip -r %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
-    //  printf("MAGIC COMMAND: %s\n", command);
+      printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
     garbage_collect();
@@ -682,22 +680,8 @@ garbage_collect() {
     int log_fd = open(path_local_log, O_CREAT | O_APPEND, S_IRWXU);
     if (log_fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
-    else {
-        close(log_fd);
-        char* argv[2];
-        argv[0] = "sync.py";
-        argv[1] = path_local_log;
-        /**** 
-         * forking here to start sync script
-         * if one is already running it will kill itself
-         ****/
-        sync_pid = fork();
-        if (sync_pid == 0) {
-            execvp("python", argv);
-        } else {
-            // do nothing, continue on 
-        }
-    }
+    close(log_fd);
+    
     // scan each archive to see if is out dated
     // create path to zip dir
     DIR* zip_dir = opendir(zip_dir_name);
@@ -1244,7 +1228,6 @@ zipfs_access(const char* path, int mode) {
         sscanf(temp_buf, "%*s [%s] %*f %*d", modifiers);
         int mod_mode = 0;
         if (mode & F_OK) {
-            mod_mode = mod_mode | F_OK;
             return 0;
         }
         if (mode & R_OK && strstr(modifiers, "R"))
@@ -1288,17 +1271,6 @@ zipfs_destroy(void* private_data) {
     sprintf(removal_cmd, "rm -rf %s", shadow_path);
     system(removal_cmd);
     rmdir(shadow_path);
-    // kill python script
-    printf("my pid %d python pid %d\n", getpid(), sync_pid);
-    // if we have a child process for this process,
-    // then we're responsible for killing it
-    if (sync_pid != 0) {
-        int res = kill(sync_pid, SIGKILL);
-        if (res == -1)
-            printf("error killing python ERRNO: %s\n", strerror(errno));
-        else
-            printf("KILLED PYTHON SCRIPT\n");
-    }
 }
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
