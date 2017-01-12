@@ -25,8 +25,6 @@
 #include <glib.h>
 /** TODO: 
  * - Work out how flushing cache async
- * - garbage collection
- * - grab attributes properly in getattr
  */
 
 /** the path of the mounted directory of zip files */
@@ -131,7 +129,6 @@ find_latest_archive(const char* path, char* name, int size) {
         return NULL;
 
     /** Finds latest archive based on index files **/
-
     DIR* dir = opendir(zip_dir_name);
     struct dirent* entry; 
     char* entry_name;
@@ -606,8 +603,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     fprintf(file_ap, "CHECKSUM");
     fprintf(file_ap, "%"PRIu64, checksum);
     fclose(file_ap);
-    //printf("CHECKSUM");
-    //printf("%"PRIu64"\n", checksum);
+
 
     // create archive name
     char num[16] = {'\0'};
@@ -635,17 +631,16 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     memset(cwd, 0, strlen(cwd) * sizeof(char));
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
-    // printf("CWD: %s\n", cwd);
+
     char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
     memset(zip_dir_path, 0, strlen(zip_dir_path) * sizeof(char));
     sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
-    //printf("DIR NAME: %s\n", zip_dir_path);
-
     char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
     memset(command, 0, strlen(command) * sizeof(char));
     sprintf(command, "cd %s; zip -r %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
-      printf("MAGIC COMMAND: %s\n", command);
+
+    printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
     garbage_collect();
@@ -698,7 +693,7 @@ garbage_collect() {
     if (log_fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
     close(log_fd);
-    
+
     // scan each archive to see if is out dated
     // create path to zip dir
     DIR* zip_dir = opendir(zip_dir_name);
@@ -1064,7 +1059,6 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-   // int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRWXU);
     int shadow_file = mknod(shadow_file_path, mode, rdev);
     if (shadow_file == -1) {
         printf("error making shadow file descriptor\n");
