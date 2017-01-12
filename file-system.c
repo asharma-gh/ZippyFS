@@ -35,16 +35,22 @@ static char* zip_dir_name;
 /** cache path */
 static char* shadow_path;
 
+/** pid of sync program **/
+pid_t sync_pid;
 
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
 static struct zip* find_latest_archive(const char* path, char* name, int size);
+
 /** returns a crc64 checksum based on content */
 static uint64_t crc64(const char* content);
+
 /** determines if the given file has been deleted while in cache */
 static int is_deleted_in_cache(const char* path);
+
 /** puts the latest entry of path in the index index into buf */
 static int get_latest_entry(const char* index, int in_cache, const char* path, char* buf);
+
 /** removes unneeded zip archives and logs in a machine specific rmlog */
 static int garbage_collect();
 
@@ -558,6 +564,7 @@ crc64(const char* message) {
 static
 int
 zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
+    printf("FSYNC!!\n");
 
     // add checksum to index file
     // read contents of index file
@@ -613,7 +620,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     memset(cwd, 0, strlen(cwd) * sizeof(char));
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
-   // printf("CWD: %s\n", cwd);
+    // printf("CWD: %s\n", cwd);
     char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
     memset(zip_dir_path, 0, strlen(zip_dir_path) * sizeof(char));
     sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
@@ -623,7 +630,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     memset(command, 0, strlen(command) * sizeof(char));
     sprintf(command, "cd %s; zip %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
-  //  printf("MAGIC COMMAND: %s\n", command);
+    //  printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
     garbage_collect();
@@ -677,11 +684,19 @@ garbage_collect() {
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
     else {
         close(log_fd);
-        char command[strlen(path_local_log) + 16];
-        sprintf(command, "python sync.py %s &", path_local_log);
-        // run python script
-
-        system(command);
+        char* argv[2];
+        argv[0] = "sync.py";
+        argv[1] = path_local_log;
+        /**** 
+         * forking here to start sync script
+         * if one is already running it will kill itself
+         ****/
+        sync_pid = fork();
+        if (sync_pid == 0) {
+            execvp("python", argv);
+        } else {
+            // do nothing, continue on 
+        }
     }
     // scan each archive to see if is out dated
     // create path to zip dir
@@ -1274,10 +1289,16 @@ zipfs_destroy(void* private_data) {
     system(removal_cmd);
     rmdir(shadow_path);
     // kill python script
-    char kill_py[17];
-    sprintf(kill_py, "pkill -f sync.py");
-    system(kill_py);
-
+    printf("my pid %d python pid %d\n", getpid(), sync_pid);
+    // if we have a child process for this process,
+    // then we're responsible for killing it
+    if (sync_pid != 0) {
+        int res = kill(sync_pid, SIGKILL);
+        if (res == -1)
+            printf("error killing python ERRNO: %s\n", strerror(errno));
+        else
+            printf("KILLED PYTHON SCRIPT\n");
+    }
 }
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
