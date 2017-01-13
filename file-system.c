@@ -1051,7 +1051,13 @@ zipfs_unlink(const char* path) {
 static
 int
 zipfs_rmdir(const char* path) {
-    printf("RMDIR: %s\n", path);
+    printf("RMDIR: %s\n", path);;
+    // create path to file
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    rmdir(shadow_file_path);
     record_index(path, 1);
     return 0;
 }
