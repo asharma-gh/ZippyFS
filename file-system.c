@@ -49,6 +49,8 @@ static int get_latest_entry(const char* index, int in_cache, const char* path, c
 
 /** removes unneeded zip archives and logs in a machine specific rmlog */
 static int garbage_collect();
+/** loads either path or dirname of path to cache */
+static int load_to_cache(const char* path);
 
 /**
  * gets the latest entry of path in the index file index
@@ -240,73 +242,18 @@ int
 zipfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
-
+    load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    // item can exist but be deleted
-    // so this check is necessary before stat
-    if (is_deleted_in_cache(path)) {
-        return -ENOENT;
-    }
+
     if (stat(shadow_file_path, stbuf) == -1) {
         memset(stbuf, 0, sizeof(struct stat));
-    } else {
-        return 0; 
-    }
-
-    // convert the fuse path to 
-    // the possible libzip folder path
-    int len = strlen(path);
-    char folder_path[len + 1];
-    if (strlen(path) > 1) {
-        strcpy(folder_path, path + 1);
-        folder_path[len - 1] = '/';
-        folder_path[len] = '\0'; 
-    }
-
-    char entry_name[FILENAME_MAX];
-    char buf[PATH_MAX];
-    int mode = 0;
-    struct zip* latest_archive = find_latest_archive(path, entry_name, FILENAME_MAX);
-    if (latest_archive) {
-        char index_path[strlen(entry_name) + strlen(zip_dir_name) + 2];
-        entry_name[strlen(entry_name) - 4] = '\0';
-        sprintf(index_path, "%s/%s.idx", zip_dir_name, entry_name);
-        get_latest_entry(index_path, 0, path, buf);
-        char permissions[6] = {0};
-        sscanf(buf, "%*s %s %*f %*d", permissions);
-        if (strstr(permissions, "R"))
-            mode = mode | S_IRUSR | S_IRGRP | S_IROTH;
-        if (strstr(permissions, "W"))
-            mode = mode | S_IWUSR | S_IWGRP | S_IWOTH;
-        if (strstr(permissions, "X"))
-            mode = mode | S_IXUSR | S_IXGRP | S_IXOTH;
-
-
-    }
-
-    struct zip_stat zipstbuf;
-    if (strlen(path)== 1 || !zip_stat(latest_archive, folder_path, 0, &zipstbuf)) {
-        stbuf->st_mode = S_IFDIR | mode;
-        stbuf->st_nlink = 2;
-    } else if (!zip_stat(latest_archive, path + 1, 0, &zipstbuf)) {
-        stbuf->st_mode = S_IFREG | mode;
-        stbuf->st_nlink = 1;
-        stbuf->st_size = zipstbuf.size;
-
-
-    } else {
-        if (latest_archive)
-            zip_close(latest_archive);
         return -ENOENT;
     }
-    if (latest_archive)
-        zip_close(latest_archive);
-    return 0;
-
+        return 0; 
 }
 
 /**
