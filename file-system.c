@@ -601,7 +601,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-
+    garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;
@@ -623,7 +623,6 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     if (res == -1)
         printf("Error signalling, ERRNO: %s\n", strerror(errno));
 
-    garbage_collect();
     return 0;
 }
 /**
