@@ -215,7 +215,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
         memset(stbuf, 0, sizeof(struct stat));
         return -ENOENT;
     }
-        return 0; 
+    return 0; 
 }
 
 /**
