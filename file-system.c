@@ -972,8 +972,13 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     strcat(shadow_file_path, path+1);
     struct stat st;
     memset(&st, 0, sizeof(struct stat));
-    zipfs_getattr(path, &st);
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, st.st_mode);
+    mode_t mode = 0;
+    int res = stat(shadow_file_path, &st);
+    if (res == -1)
+        mode = S_IRUSR | S_IWUSR | S_IXUSR;
+    else
+        mode = st.st_mode;
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, mode);
     if (pwrite(shadow_file, buf, size, offset) == -1)
         printf("error writing to shadow file\n");
     if (close(shadow_file))
@@ -1085,6 +1090,22 @@ zipfs_mkdir(const char* path, mode_t mode) {
 static
 int
 zipfs_rename(const char* from, const char* to) {
+    load_to_cache(from);
+    load_to_cache(to);
+    // add new file to cache
+    char shadow_file_path_f[strlen(from) + strlen(shadow_path)];
+    char shadow_file_path_t[strlen(to) + strlen(shadow_path)];
+    memset(shadow_file_path_f, 0, strlen(shadow_file_path_f) * sizeof(char));
+    memset(shadow_file_path_t, 0, strlen(shadow_file_path_t) * sizeof(char));
+    strcat(shadow_file_path_f, shadow_path);
+    strcat(shadow_file_path_t, shadow_path);
+    strcat(shadow_file_path_f, from+1);
+    strcat(shadow_file_path_t, to+1);
+    int res = rename(shadow_file_path_f, shadow_file_path_t);
+    zipfs_unlink(from);
+    record_index(to, 0);
+    return res;
+/*
     // read all of old source
     struct stat stbuf;
     zipfs_getattr(from, &stbuf);
@@ -1096,6 +1117,7 @@ zipfs_rename(const char* from, const char* to) {
     // unlink old
     zipfs_unlink(from);
     return 0;
+    */
 }
 /**
  * extend a given file / shrink it by the given bytes
@@ -1117,8 +1139,15 @@ zipfs_truncate(const char* path, off_t size) {
     strcat(shadow_file_path, path+1);
     struct stat st;
     memset(&st, 0, sizeof(struct stat));
-    zipfs_getattr(path, &st);
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, st.st_mode);
+    stat(shadow_file_path, &st);
+    mode_t mode = 0;
+    int res = stat(shadow_file_path, &st);
+    if (res == -1)
+        mode = S_IRUSR | S_IWUSR | S_IXUSR;
+    else
+        mode = st.st_mode;
+
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, mode);
     if (ftruncate(shadow_file, size)  == -1)
         printf("error writing to shadow file\n");
     if (close(shadow_file))
