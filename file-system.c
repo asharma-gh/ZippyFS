@@ -167,20 +167,20 @@ find_latest_archive(const char* path, char* name, int size) {
         }
     }
     closedir(dir);
-        // open zip file and return i
-        struct zip* latest_archive;
-        // make relative path to the zip file
-        char fixed_path[strlen(latest_name) + strlen(zip_dir_name) + 1];
-        memset(fixed_path, 0, sizeof(fixed_path));
-        latest_name[(strlen(latest_name) - 4)] = '\0';
-        sprintf(fixed_path, "%s/%s.zip", zip_dir_name, latest_name);
-        if (size > 0)
-            sprintf(name, "%s.zip", latest_name);
-        if (is_deleted)
-            return NULL;
+    // open zip file and return i
+    struct zip* latest_archive;
+    // make relative path to the zip file
+    char fixed_path[strlen(latest_name) + strlen(zip_dir_name) + 1];
+    memset(fixed_path, 0, sizeof(fixed_path));
+    latest_name[(strlen(latest_name) - 4)] = '\0';
+    sprintf(fixed_path, "%s/%s.zip", zip_dir_name, latest_name);
+    if (size > 0)
+        sprintf(name, "%s.zip", latest_name);
+    if (is_deleted)
+        return NULL;
 
-        latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
-        return latest_archive;
+    latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
+    return latest_archive;
 
 
 }
@@ -244,6 +244,107 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     return 0; 
 }
 
+/** flushes cached changes / writes to directory
+ * - flushes the entire cache when called
+ * @param path is the path of the file
+ * @param isdatasync is not used
+ * @param fi is not used
+ * @return 0 on success, nonzero if cache is empty or other error occured.
+ */
+static
+int
+zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
+    printf("FSYNC!!\n");
+
+    // add checksum to index file
+    // read contents of index file
+    char path_to_indx[PATH_MAX + strlen(shadow_path)];
+    sprintf(path_to_indx, "%s/index.idx", shadow_path);
+    if (access(path_to_indx, F_OK) == -1) {
+        printf("no index, no writes, exiting..\n");
+        return -1;
+    }
+    FILE* file  = fopen(path_to_indx, "r");
+    // get file size
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    rewind(file);
+    char* contents = alloca(fsize + 1);
+    memset(contents, 0, strlen(contents) * sizeof(char));
+    fread(contents, fsize, 1, file);
+    contents[fsize] = '\0';
+    fclose(file);
+    // generate checksum
+    uint64_t checksum = crc64(contents);
+    // append to file
+    FILE* file_ap = fopen(path_to_indx, "a");
+    fprintf(file_ap, "CHECKSUM");
+    fprintf(file_ap, "%"PRIu64, checksum);
+    fclose(file_ap);
+
+
+    // create archive name
+    char num[16] = {'\0'};
+    char hex_name[33] = {'\0'};
+    syscall(SYS_getrandom, num, sizeof(num), GRND_NONBLOCK);
+
+    for (int i = 0; i < 16; i++) {
+        sprintf(hex_name + i*2,"%02X", num[i]);
+    }
+
+    // create zip archive name
+    char archive_path[strlen(zip_dir_name) + strlen(hex_name) + 1];
+    strcat(archive_path, zip_dir_name);
+    archive_path[strlen(zip_dir_name)] =  '/';
+    strcat(archive_path + strlen(zip_dir_name) + 1, hex_name);
+
+
+
+    /** zip cache
+     * - using the system() call and the "real" zip command
+     * - in the future it may be worthwhile to use libzip and recursively make dirs/files
+     * - renames the index to the zip archive name!
+     */
+    char cwd[PATH_MAX];
+    memset(cwd, 0, strlen(cwd) * sizeof(char));
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+        printf("error getting current working directory\n");
+
+    char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
+    memset(zip_dir_path, 0, strlen(zip_dir_path) * sizeof(char));
+    sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
+    char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
+    memset(command, 0, strlen(command) * sizeof(char));
+    sprintf(command, "cd %s; zip -rm %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
+            shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
+
+    printf("MAGIC COMMAND: %s\n", command);
+    system(command);
+    chdir(cwd);
+    // garbage_collect();
+    /** signal sync program **/
+    // open sync pid
+    wordexp_t we;
+    char tild_exp[PATH_MAX];
+    char path_to_sync[PATH_MAX];
+    sprintf(tild_exp, "~");
+    wordexp(tild_exp, &we, 0);
+    sprintf(path_to_sync, "%s/.cache/zipfs/sync.pid", *we.we_wordv);
+    wordfree(&we);
+    if (access(path_to_sync, F_OK) == -1)
+        printf("Error finding sync pid file\n");
+    // read pid
+    FILE* pid_sync = fopen(path_to_sync, "r");
+    char pidstr[64];
+    fgets(pidstr, 64, pid_sync);
+    unsigned int pid = atoi(pidstr);
+    // send signal to sync code
+    int res = kill(pid, SIGUSR1);
+    if (res == -1)
+        printf("Error signalling, ERRNO: %s\n", strerror(errno));
+
+    return 0;
+}
 /**
  * Provides contents of a directory
  * @param path is the path to the directory
@@ -259,6 +360,7 @@ static
 int
 zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         off_t offset, struct fuse_file_info* fi) {
+    zipfs_fsync(NULL, 0, 0);
     printf("READDIR: %s\n", path);
     // unneeded
     (void) offset;
@@ -276,7 +378,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
-    GHashTable* added_entries = g_hash_table_new(g_str_hash, g_str_equal);
+    GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
     DIR* zip_dir = opendir(zip_dir_name);
     struct dirent* entry;
@@ -323,7 +425,9 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             char token_path[PATH_MAX];
             double token_time;
             int deleted;
+            printf("TOKEN!! %s\n", token);
             sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
+            printf("PATH!!!! %s\n", token_path);
             char* temp = strdup(token_path);
             // find out of this entry is in the directory
             int in_path = strcmp(dirname(temp), path);
@@ -331,108 +435,32 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             if (in_path == 0) {
                 index_entry* val;
                 char* old_name;
-                if (g_hash_table_lookup_extended(added_entries, token, (void*)&old_name, (void*)&val)) {
+                if (g_hash_table_lookup_extended(added_entries, token_path, (void*)&old_name, (void*)&val)) {
                     // entry is in the hash table, compare times
                     if (val->added_time <= token_time) {
                         // this token is a later version. Create new hash-table entry
-                        index_entry* new_entry = malloc(sizeof(index_entry));
+                        index_entry* new_entry = g_malloc(sizeof(index_entry));
                         new_entry->added_time = token_time;
                         new_entry->deleted = deleted;
-
                         // add to hash table
-                        char* new_name = strdup(token_path);
+                        char* new_name = g_strdup(token_path);
                         g_hash_table_insert(added_entries, new_name, new_entry);
-                        //printf("ADDED ENTRY FROM  %s\n", entry->d_name);
+                        printf("ADDED ENTRY FROM  %s\n", entry->d_name);
 
-                        // clean up old entry
-                        free(val);
-                        free(old_name);
+
 
                     }
                 } else {
                     // it is not in the hash table so we need to add it
-                    index_entry* new_entry = malloc(sizeof(index_entry));
+                    index_entry* new_entry = g_malloc(sizeof(index_entry));
                     new_entry->added_time = token_time;
                     new_entry->deleted = deleted;
-                    char* new_name = strdup(token_path);
+                    char* new_name = g_strdup(token_path);
                     g_hash_table_insert(added_entries, new_name, new_entry);
                 }
             }
 
             token = strtok(NULL, delim);
-        }
-    }
-    // now we have all of the entries for this directory in our hash map
-    // we need to check the cache now for any new updates
-    // make path to index file
-    char path_to_indx[strlen(shadow_path) + 12];
-    memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
-    sprintf(path_to_indx, "%sindex.idx", shadow_path);
-    int in_cache = 1;
-
-    if (access(path_to_indx, F_OK) == -1) {
-        in_cache = 0;
-    }
-    if (in_cache) {
-        // read contents
-        FILE* file  = fopen(path_to_indx, "r");
-        // get file size
-        fseek(file, 0, SEEK_END);
-        long fsize = ftell(file);
-        rewind(file);
-        char contents[fsize + 1];
-        memset(contents, 0, strlen(contents) * sizeof(char));
-        fread(contents, fsize, 1, file);
-        contents[fsize] = '\0';
-        fclose(file);
-        const char delim[2] = "\n";
-        char* token;
-
-
-        char contents_cpy[strlen(contents)];
-        strcpy(contents_cpy, contents);
-        token = strtok(contents_cpy, delim);
-        while (token != NULL) {
-            // get path out of token
-            char token_path[PATH_MAX];
-            double token_time;
-            int deleted;
-            sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
-            char* temp = strdup(token_path);
-            // find out of this entry is in the directory
-            int in_path = strcmp(dirname(temp), path);
-            free(temp);
-            if (in_path == 0) {
-                index_entry* val;
-                char* old_name;
-                if (g_hash_table_lookup_extended(added_entries, token, (void*)&old_name, (void*)&val)) {
-                    // entry is in the hash table, compare times
-                    if (val->added_time <= token_time) {
-                        // this token is a later version. Create new hash-table entry
-                        index_entry* new_entry = malloc(sizeof(index_entry));
-                        new_entry->added_time = token_time;
-                        new_entry->deleted = deleted;
-
-                        // add to hash table
-                        char* new_name = strdup(token_path);
-                        g_hash_table_insert(added_entries, new_name, new_entry);
-
-                        // clean up old entry
-                        free(val);
-                        free(old_name);
-
-                    }
-                } else {
-                    // it is not in the hash table so we need to add it
-                    index_entry* new_entry = malloc(sizeof(index_entry));
-                    new_entry->added_time = token_time;
-                    new_entry->deleted = deleted;
-                    char* new_name = strdup(token_path);
-                    g_hash_table_insert(added_entries, new_name, new_entry);
-                }
-            }
-            token = strtok(NULL, delim);
-
         }
     }
 
@@ -444,14 +472,11 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     while (g_hash_table_iter_next(&iter, &key, &value)) {
         char* key_path = key;
         index_entry* val = value;
-
+        printf("*****KEY %s DELETED %d\n", key_path, val->deleted);
         if (!val->deleted) {
             filler(buf, basename(key_path), NULL, 0);
             printf("ADDED %s to FILLER\n", basename(key_path));
         }
-        // clean up
-        free(key_path);
-        free(val);
     }
 
     filler(buf, ".", NULL, 0);
@@ -536,107 +561,7 @@ load_to_cache(const char* path) {
     return 0;
 }
 
-/** flushes cached changes / writes to directory
- * - flushes the entire cache when called
- * @param path is the path of the file
- * @param isdatasync is not used
- * @param fi is not used
- * @return 0 on success, nonzero if cache is empty or other error occured.
- */
-static
-int
-zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
-    printf("FSYNC!!\n");
 
-    // add checksum to index file
-    // read contents of index file
-    char path_to_indx[PATH_MAX + strlen(shadow_path)];
-    sprintf(path_to_indx, "%s/index.idx", shadow_path);
-    if (access(path_to_indx, F_OK) == -1) {
-        printf("no index, no writes, exiting..\n");
-        return -1;
-    }
-    FILE* file  = fopen(path_to_indx, "r");
-    // get file size
-    fseek(file, 0, SEEK_END);
-    long fsize = ftell(file);
-    rewind(file);
-    char* contents = alloca(fsize + 1);
-    memset(contents, 0, strlen(contents) * sizeof(char));
-    fread(contents, fsize, 1, file);
-    contents[fsize] = '\0';
-    fclose(file);
-    // generate checksum
-    uint64_t checksum = crc64(contents);
-    // append to file
-    FILE* file_ap = fopen(path_to_indx, "a");
-    fprintf(file_ap, "CHECKSUM");
-    fprintf(file_ap, "%"PRIu64, checksum);
-    fclose(file_ap);
-
-
-    // create archive name
-    char num[16] = {'\0'};
-    char hex_name[33] = {'\0'};
-    syscall(SYS_getrandom, num, sizeof(num), GRND_NONBLOCK);
-
-    for (int i = 0; i < 16; i++) {
-        sprintf(hex_name + i*2,"%02X", num[i]);
-    }
-
-    // create zip archive name
-    char archive_path[strlen(zip_dir_name) + strlen(hex_name) + 1];
-    strcat(archive_path, zip_dir_name);
-    archive_path[strlen(zip_dir_name)] =  '/';
-    strcat(archive_path + strlen(zip_dir_name) + 1, hex_name);
-
-
-
-    /** zip cache
-     * - using the system() call and the "real" zip command
-     * - in the future it may be worthwhile to use libzip and recursively make dirs/files
-     * - renames the index to the zip archive name!
-     */
-    char cwd[PATH_MAX];
-    memset(cwd, 0, strlen(cwd) * sizeof(char));
-    if (getcwd(cwd, sizeof(cwd)) == NULL)
-        printf("error getting current working directory\n");
-
-    char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
-    memset(zip_dir_path, 0, strlen(zip_dir_path) * sizeof(char));
-    sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
-    char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
-    memset(command, 0, strlen(command) * sizeof(char));
-    sprintf(command, "cd %s; zip -rm %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
-            shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
-
-    printf("MAGIC COMMAND: %s\n", command);
-    system(command);
-    chdir(cwd);
-    garbage_collect();
-    /** signal sync program **/
-    // open sync pid
-    wordexp_t we;
-    char tild_exp[PATH_MAX];
-    char path_to_sync[PATH_MAX];
-    sprintf(tild_exp, "~");
-    wordexp(tild_exp, &we, 0);
-    sprintf(path_to_sync, "%s/.cache/zipfs/sync.pid", *we.we_wordv);
-    wordfree(&we);
-    if (access(path_to_sync, F_OK) == -1)
-        printf("Error finding sync pid file\n");
-    // read pid
-    FILE* pid_sync = fopen(path_to_sync, "r");
-    char pidstr[64];
-    fgets(pidstr, 64, pid_sync);
-    unsigned int pid = atoi(pidstr);
-    // send signal to sync code
-    int res = kill(pid, SIGUSR1);
-    if (res == -1)
-        printf("Error signalling, ERRNO: %s\n", strerror(errno));
-
-    return 0;
-}
 /**
  * removes fully updated zip archives
  * log is located in
@@ -940,7 +865,7 @@ record_index(const char* path, int deleted) {
         act_time = difftime(time(0), 0);
     else
         act_time = difftime((time_t)buf.st_mtime, 0);
-    
+
 
     sprintf(input, "%s %s %f %d\n", path, permissions, act_time, deleted);
     printf("====WRITING THE FOLLOWING TO INDEX====\n%s\n", input);
@@ -1043,7 +968,7 @@ zipfs_unlink(const char* path) {
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     record_index(path, 1);
-       zipfs_fsync(NULL, 0, 0);
+    zipfs_fsync(NULL, 0, 0);
     return 0;
 }
 /**
