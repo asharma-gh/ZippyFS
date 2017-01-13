@@ -155,9 +155,11 @@ find_latest_archive(const char* path, char* name, int size) {
         double file_time = 0;
         int deleted = 0;
         sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
+        printf("--- COMPARING TIMES ---: %lf %lf\n", file_time, latest_time);
         // check times
         if (file_time >= latest_time) { // things can be instantaneous
             // update latest file and time
+            printf("------%lf----- WINS\n", file_time);
             latest_time = file_time;
             memset(latest_name, 0, strlen(latest_name) * sizeof(char));
             strcpy(latest_name, entry_name);
@@ -165,9 +167,6 @@ find_latest_archive(const char* path, char* name, int size) {
         }
     }
     closedir(dir);
-    if (is_deleted) {
-        return NULL;
-    } else {
         // open zip file and return i
         struct zip* latest_archive;
         // make relative path to the zip file
@@ -177,10 +176,12 @@ find_latest_archive(const char* path, char* name, int size) {
         sprintf(fixed_path, "%s/%s.zip", zip_dir_name, latest_name);
         if (size > 0)
             sprintf(name, "%s.zip", latest_name);
+        if (is_deleted)
+            return NULL;
 
         latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
         return latest_archive;
-    }
+
 
 }
 /**
@@ -341,6 +342,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                         // add to hash table
                         char* new_name = strdup(token_path);
                         g_hash_table_insert(added_entries, new_name, new_entry);
+                        //printf("ADDED ENTRY FROM  %s\n", entry->d_name);
 
                         // clean up old entry
                         free(val);
@@ -605,7 +607,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
     char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
     memset(command, 0, strlen(command) * sizeof(char));
-    sprintf(command, "cd %s; zip -r %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
+    sprintf(command, "cd %s; zip -rm %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
 
     printf("MAGIC COMMAND: %s\n", command);
@@ -755,14 +757,15 @@ garbage_collect() {
             strcat(index_zip, ".zip");
             char* key_path = key;
             char latest_archive_name[FILENAME_MAX];
-            find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
+            struct zip* archive = find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
             // if every file has an entry in a later archive,
             // is_outdated will be 1 and this file is outdated
             if (strcmp(index_zip, latest_archive_name) == 0)
                 is_outdated = 0;
             else
                 is_outdated = 1;
-
+            if (archive)
+                zip_close(archive);
             free(key_path);
 
         }
@@ -933,11 +936,11 @@ record_index(const char* path, int deleted) {
         printf("error retrieving file information for %s\n ERRNO: %s\n", 
                 path, strerror(errno));
     double act_time;
-    if (deleted) { // no file time to be had
+    if (deleted)
         act_time = difftime(time(0), 0);
-    } else {
+    else
         act_time = difftime((time_t)buf.st_mtime, 0);
-    }
+    
 
     sprintf(input, "%s %s %f %d\n", path, permissions, act_time, deleted);
     printf("====WRITING THE FOLLOWING TO INDEX====\n%s\n", input);
@@ -1039,8 +1042,8 @@ zipfs_unlink(const char* path) {
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    unlink(shadow_file_path);
     record_index(path, 1);
+       zipfs_fsync(NULL, 0, 0);
     return 0;
 }
 /**
@@ -1057,8 +1060,9 @@ zipfs_rmdir(const char* path) {
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    rmdir(shadow_file_path);
     record_index(path, 1);
+    rmdir(shadow_file_path);
+    zipfs_fsync(NULL, 0, 0);
     return 0;
 }
 /**
@@ -1107,23 +1111,10 @@ zipfs_rename(const char* from, const char* to) {
     strcat(shadow_file_path_t, shadow_path);
     strcat(shadow_file_path_f, from+1);
     strcat(shadow_file_path_t, to+1);
+    record_index(from, 1);
     int res = rename(shadow_file_path_f, shadow_file_path_t);
-    zipfs_unlink(from);
     record_index(to, 0);
     return res;
-/*
-    // read all of old source
-    struct stat stbuf;
-    zipfs_getattr(from, &stbuf);
-    char buf[stbuf.st_size + 1];
-    memset(buf, 0, strlen(buf) * sizeof(char));
-    zipfs_read(from, buf, stbuf.st_size, 0, NULL);
-    // write to new file
-    zipfs_write(to, buf, stbuf.st_size, 0, NULL);
-    // unlink old
-    zipfs_unlink(from);
-    return 0;
-    */
 }
 /**
  * extend a given file / shrink it by the given bytes
