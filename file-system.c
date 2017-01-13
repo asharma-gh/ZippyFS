@@ -102,7 +102,9 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     strcpy(contents_cpy, contents);
     token = strtok(contents_cpy, delim);
     while (token != NULL) {
-        if (strstr(token, path) != NULL) {
+        char token_path[PATH_MAX];
+        sscanf(token, "%s %*s %*f %*d", token_path);
+        if (strcmp(token_path, path) == 0) {
             in_index = 1;
             memset(buf, 0, strlen(buf) * sizeof(char));
             strcpy(buf, token);
@@ -1026,7 +1028,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     struct zip* latest_archive = find_latest_archive(path, archive_name, PATH_MAX);
     if (latest_archive == NULL) {
         printf("error writing\n");
-    }
+    } else {
     zip_close(latest_archive);
 
     // unzip to cache
@@ -1044,6 +1046,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     printf("UNZIPPING!!!: %s\n", unzip_command);
     system(unzip_command);
     chdir(cwd);
+    }
 
     // write to new file source
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
