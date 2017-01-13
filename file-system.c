@@ -160,7 +160,7 @@ find_latest_archive(const char* path, char* name, int size) {
         // so we have a file's information from the index file now
         // now we need to interpret the entry
         // entry  is in the format: PATH [permissions] time-created deleted?
-        double file_time = 666;
+        double file_time = 0;
         int deleted = 0;
         sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
         // check times
