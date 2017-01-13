@@ -224,6 +224,11 @@ int
 zipfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
+    if (strlen(path) == 1) {
+        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_nlink = 2;
+        return 0;
+    }
     load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -828,6 +833,8 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
+
+    load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
@@ -846,32 +853,10 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
         close(fd);
         return res;
     }
-
-    // file not in cache, checking in main dir
-    // find latest archive with this file
-    struct zip* latest_archive = find_latest_archive(path, NULL, 0);
-    struct zip_file* file = zip_fopen(latest_archive, path + 1, 0);
-    if (!latest_archive || !file) {
-        printf("%s not found\n", path);
-        return -1;
-    }
-
-    // read file
-    struct stat stbuf;
-    zipfs_getattr(path, &stbuf);
-    unsigned int maxSize = stbuf.st_size;
-    char tempBuf[maxSize + size + offset];
-    memset(tempBuf, 0, maxSize + size + offset);
-    int numRead = zip_fread(file, tempBuf, maxSize);
-    if (numRead == -1 ) {
-        printf("error reading %s\n", path);
-    }
-    memcpy(buf, tempBuf + offset, size);
-    zip_fclose(file);
-    zip_close(latest_archive);
-    return size;
-
+    return -ENOENT;
 }
+
+
 
 /**
  * opens the file, checks if the file exists
@@ -985,7 +970,10 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IXUSR);
+    struct stat st;
+    memset(&st, 0, sizeof(struct stat));
+    zipfs_getattr(path, &st);
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, st.st_mode);
     if (pwrite(shadow_file, buf, size, offset) == -1)
         printf("error writing to shadow file\n");
     if (close(shadow_file))
@@ -1041,7 +1029,12 @@ static
 int
 zipfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
-
+    // create path to file
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    unlink(shadow_file_path);
     record_index(path, 1);
     return 0;
 }
@@ -1122,7 +1115,10 @@ zipfs_truncate(const char* path, off_t size) {
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IXUSR);
+    struct stat st;
+    memset(&st, 0, sizeof(struct stat));
+    zipfs_getattr(path, &st);
+    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, st.st_mode);
     if (ftruncate(shadow_file, size)  == -1)
         printf("error writing to shadow file\n");
     if (close(shadow_file))
@@ -1146,58 +1142,32 @@ zipfs_access(const char* path, int mode) {
     (void)mode;
     if (strcmp(path, "/") == 0)
         return 0;
-    char idx_path[strlen(shadow_path) + PATH_MAX];
-    sprintf(idx_path, "%s/index.idx", shadow_path);
-    char temp_buf[PATH_MAX + PATH_MAX];
-    int res = get_latest_entry(idx_path, 1, path, temp_buf);
-    int in_main = 0;
-    if (res == -1) {
-        // check main archive
-        char name_buf[FILENAME_MAX];
-        struct zip* archive = find_latest_archive(path, name_buf, FILENAME_MAX);
-        if (archive != NULL) {
-            zip_close(archive);
-            char cwd[PATH_MAX];
-            memset(cwd, 0, strlen(cwd) * sizeof(char));
-            getcwd(cwd, sizeof(cwd));
-            name_buf[strlen(name_buf) - 4] = '\0';
+    load_to_cache(path);
+    // add new file to cache
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
 
-            memset(idx_path, 0, strlen(idx_path) * sizeof(char));
-            sprintf(idx_path, "%s/%s/%s.idx", cwd, zip_dir_name, name_buf);
-            memset(temp_buf, 0, strlen(temp_buf) * sizeof(char));
+    return access(shadow_file_path, mode);
+}
+static
+int
+zipfs_chmod(const char* path, mode_t  mode) {
+    load_to_cache(path);
+    // add new file to cache
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
 
-            in_main = get_latest_entry(idx_path, 0, path, temp_buf);
-
-
-        }
-    }
-    if (res == 0 || in_main == 0) {
-        // entry is in temp_buf to interpret
-        char modifiers[5] = {0};
-        sscanf(temp_buf, "%*s [%s] %*f %*d", modifiers);
-        int mod_mode = 0;
-        if (mode & F_OK) {
-            return 0;
-        }
-        if (mode & R_OK && strstr(modifiers, "R"))
-            mod_mode = mod_mode |  R_OK;
-        if (mode & W_OK && strstr(modifiers, "W"))
-            mod_mode = mod_mode | W_OK;
-        if (mode & X_OK && strstr(modifiers, "X"))
-            mod_mode = mod_mode | X_OK;
-        printf("mode == %d my mode == %d\n", mode, mod_mode);
-        if (mod_mode == mode)
-            return 0;
-
-    }
-    return -1;
+    int res = chmod(shadow_file_path, mode);
+    record_index(path, 0);
+    return res;
 }
 
 /**
- * get time stamp
- * @param path is the path of object
- * @param ts is the timestamp
- * @param fi is not used
+ * stub
  */
 static
 int
@@ -1206,7 +1176,6 @@ zipfs_utimens(const char* path,  const struct timespec ts[2]) {
     (void)ts;
     return 0;
 }
-
 /**
  * closes the working zip archive
  */
@@ -1237,6 +1206,7 @@ static struct fuse_operations zipfs_operations = {
     .access = zipfs_access, // does file exist?
     .open = zipfs_open, // same as access
     .rmdir = zipfs_rmdir,
+    .chmod = zipfs_chmod,
     .utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
 };
@@ -1338,3 +1308,4 @@ main(int argc, char *argv[]) {
     return fuse_main(argc, newarg, &zipfs_operations, NULL);
 
 }
+
