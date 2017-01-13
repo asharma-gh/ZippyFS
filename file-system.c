@@ -41,8 +41,6 @@ static struct zip* find_latest_archive(const char* path, char* name, int size);
 /** returns a crc64 checksum based on content */
 static uint64_t crc64(const char* content);
 
-/** determines if the given file has been deleted while in cache */
-static int is_deleted_in_cache(const char* path);
 
 /** puts the latest entry of path in the index index into buf */
 static int get_latest_entry(const char* index, int in_cache, const char* path, char* buf);
@@ -129,9 +127,6 @@ struct zip*
 find_latest_archive(const char* path, char* name, int size) {
     printf("FINDING LATEST ARCHIVE CONTAINING: %s\n", path);
 
-    if (is_deleted_in_cache(path))
-        return NULL;
-
     /** Finds latest archive based on index files **/
     DIR* dir = opendir(zip_dir_name);
     struct dirent* entry; 
@@ -149,7 +144,6 @@ find_latest_archive(const char* path, char* name, int size) {
 
             continue;
         }
-        printf("ENTRY NAME %s\n", entry_name);
 
         // make path to index file
         char path_to_indx[strlen(entry_name) + strlen(zip_dir_name) + 1];
@@ -160,7 +154,6 @@ find_latest_archive(const char* path, char* name, int size) {
         char last_occurence[PATH_MAX + FILENAME_MAX];
         int res = get_latest_entry(path_to_indx, 0, path, last_occurence);
         if (res == -1) {
-            printf("CANNOT FIND LATEST ENTRY!!!!\n");
             continue;
         }
 
@@ -197,37 +190,6 @@ find_latest_archive(const char* path, char* name, int size) {
         return latest_archive;
     }
 
-}
-/**
- * determines if the file specified in path
- * was recently deleted, but the cache
- * hasn't been flushed yet.
- *  - the index file is not in the main dir, so the file
- *  may seem to still exist.
- * @return 1 if the file was recently deleted, 0 otherwise.
- */
-static
-int
-is_deleted_in_cache(const char* path) {
-    // make path to index file
-    char path_to_indx[strlen(shadow_path) + 12];
-    memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
-    sprintf(path_to_indx, "%sindex.idx", shadow_path);
-
-    if (access(path_to_indx, F_OK) == -1) {
-        return 0;
-    }
-
-    char last_occurence[PATH_MAX + FILENAME_MAX];
-    int res = get_latest_entry(path_to_indx, 1, path, last_occurence);
-    if (res == -1)
-        return 0;
-    // so we have a file's information from the index file now
-    // now we need to interpret the entry
-    // entry  is in the format: PATH [permissions] time-created deleted?
-    int deleted = 0;
-    sscanf(last_occurence, "%*s %*s %*f %d", &deleted);
-    return deleted;
 }
 
 /** 
@@ -549,12 +511,11 @@ load_to_cache(const char* path) {
         memset(cwd, 0, strlen(cwd) * sizeof(char));
         if (getcwd(cwd, sizeof(cwd)) == NULL)
             printf("error getting current working directory\n");
-        printf("CWD: %s\n", cwd);
         char path_to_archive[strlen(cwd) + 2 + strlen(zip_dir_name) + strlen(archive_name)];
 
         sprintf(path_to_archive, "%s/%s/%s", cwd, zip_dir_name, archive_name);
-        char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + 20];
-        sprintf(unzip_command, "unzip -n %s -d %s", path_to_archive, shadow_path);
+        char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + (strlen(path)*2) + 20];
+        sprintf(unzip_command, "unzip -n %s %s %s/ -d %s", path_to_archive, path + 1, path + 1, shadow_path);
         printf("UNZIPPING!!!: %s\n", unzip_command);
         system(unzip_command);
         chdir(cwd);
@@ -762,7 +723,6 @@ garbage_collect() {
                 token = strtok(NULL, delim);
                 continue;
             } else {
-                printf("PATH!!: %s\n", token_path);
                 // add the path to the hash, with value 0
                 g_hash_table_insert(paths_in_index, strdup(token_path), 0);
             }
@@ -786,7 +746,6 @@ garbage_collect() {
             char* key_path = key;
             char latest_archive_name[FILENAME_MAX];
             find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
-            printf("CURRENT ARCHIVE NAME: %s   LATEST NAME: %s\n", archive_entry->d_name, latest_archive_name);
             // if every file has an entry in a later archive,
             // is_outdated will be 1 and this file is outdated
             if (strcmp(index_zip, latest_archive_name) == 0)
@@ -966,7 +925,6 @@ record_index(const char* path, int deleted) {
     char path_to_file[PATH_MAX + strlen(shadow_path) + 2];
     memset(path_to_file, 0, strlen(path_to_file) * sizeof(char));
     sprintf(path_to_file, "%s%s", shadow_path, path+1);
-    printf("Path to file %s\n", path_to_file);
     char input[PATH_MAX + 1024];
     char permissions[6] = {0};
 
