@@ -41,12 +41,16 @@ static struct zip* find_latest_archive(const char* path, char* name, int size);
 /** returns a crc64 checksum based on content */
 static uint64_t crc64(const char* content);
 
+/** determines if the contents is valid */
+static int verify_checksum(const char* contents);
+
 
 /** puts the latest entry of path in the index index into buf */
 static int get_latest_entry(const char* index, int in_cache, const char* path, char* buf);
 
 /** removes unneeded zip archives and logs in a machine specific rmlog */
 static int garbage_collect();
+
 /** loads either path or dirname of path to cache */
 static int load_to_cache(const char* path);
 
@@ -72,27 +76,15 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     long fsize = ftell(file);
     rewind(file);
     char contents[fsize + 1];
-    char* checksum;
     memset(contents, 0, strlen(contents) * sizeof(char));
     fread(contents, fsize, 1, file);
     contents[fsize] = '\0';
     fclose(file);
 
     if (!in_cache) {
-        if ((checksum = strstr(contents, "CHECKSUM")) == NULL) 
+        if (verify_checksum(contents) == -1)
             return -1;
 
-        char checksum_cpy[strlen(checksum)];
-        strcpy(checksum_cpy, checksum);
-        checksum[0] = '\0';
-        uint64_t checksum_val;
-        char* endptr;
-        checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
-        // make new checksum
-        uint64_t new_checksum = crc64(contents);
-
-        if (new_checksum != checksum_val) 
-            return -1;  
     }
 
     const char delim[2] = "\n";
@@ -191,6 +183,34 @@ find_latest_archive(const char* path, char* name, int size) {
     }
 
 }
+/**
+ * verifies the checksum specified in contents
+ * assumes that contents is in the form of an .idx file
+ * @return 0 if the checksum is valid, -1 otherwise
+ */
+static
+int
+verify_checksum(const char* contents) {
+
+    char* checksum;
+    if ((checksum = strstr(contents, "CHECKSUM")) == NULL) 
+        return -1;
+
+    char checksum_cpy[strlen(checksum)];
+    strcpy(checksum_cpy, checksum);
+    checksum[0] = '\0';
+    uint64_t checksum_val;
+    char* endptr;
+    checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
+    // make new checksum
+    uint64_t new_checksum = crc64(contents);
+
+    if (new_checksum != checksum_val) 
+        return -1;  
+
+    return 0;
+
+}
 
 /** 
  *  retrieves the attributes of a specific file / directory
@@ -277,29 +297,14 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         long fsize = ftell(file);
         rewind(file);
         char contents[fsize + 1];
-        char* checksum;
         memset(contents, 0, strlen(contents) * sizeof(char));
         fread(contents, fsize, 1, file);
         contents[fsize] = '\0';
         fclose(file);
-        if ((checksum = strstr(contents, "CHECKSUM")) == NULL) {
+
+        if (verify_checksum(contents) == -1)
             continue;
-        }
-        char checksum_cpy[strlen(checksum)];
-        strcpy(checksum_cpy, checksum);
-        checksum[0] = '\0';
-        // extract numeric value of checksum
-        // checksum_cpy + 8 = numeric value
-        uint64_t checksum_val;
-        char* endptr;
-        checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
 
-        // make new checksum
-        uint64_t new_checksum = crc64(contents);
-
-
-        if (new_checksum != checksum_val)
-            continue;
         // now we need to find all of the entries which are in the given path
         // and update our hash table 
         const char delim[2] = "\n";
@@ -705,9 +710,10 @@ garbage_collect() {
         char contents_cpy[strlen(contents)];
         strcpy(contents_cpy, contents);
         token = strtok(contents_cpy, delim);
-        /**
-         * TODO: abstract checksum verification and do it here
-         */
+
+        if (verify_checksum(contents) == -1)
+            continue;
+
         while (token != NULL) {
             // fetch path from token
             char token_path[PATH_MAX];
