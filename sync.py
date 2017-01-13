@@ -19,13 +19,12 @@ def init():
         except OSError:
             is_running = False
 
+        #close file
+        f.close()
+
         # if another process is running, then we don't need to
         if (is_running):
-            f.close()
             sys.exit()
-
-        # close file
-        f.close()
 
     # remake / make file to erase old contents
     f = open(path, "w+")
