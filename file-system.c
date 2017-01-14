@@ -25,6 +25,7 @@
 #include <glib.h>
 /** TODO: 
  * - Work out how flushing cache async
+ *   FIX THE HOT GARBAGE COLLECTOR
  */
 
 /** the path of the mounted directory of zip files */
@@ -326,7 +327,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-    garbage_collect();
+//    garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;
@@ -546,6 +547,7 @@ load_to_cache(const char* path) {
         char cpy[strlen(path) + 1];
         strcpy(cpy, path);
         char* path_dir = dirname(cpy);
+        memset(archive_name, 0, sizeof(archive_name) / sizeof(char));
         latest_archive = find_latest_archive(path_dir, archive_name, PATH_MAX);
         if (latest_archive == NULL) {
             printf("CANNOT FIND MAIN FILE OR DIRNAME!!\n");
@@ -874,7 +876,7 @@ record_index(const char* path, int deleted, int use_ftime) {
 
     sprintf(input, "%s %s %f %d\n", path, permissions, act_time, deleted);
     printf("====WRITING THE FOLLOWING TO INDEX====\n%s\n", input);
-    if (write(idxfd, input, strlen(input)) != strlen(input)) {
+    if (write(idxfd, input, strlen(input)) == -1) {
         printf("Error writing to idx file\n");
     }
 
@@ -894,8 +896,8 @@ record_index(const char* path, int deleted, int use_ftime) {
 static
 int
 zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-
-    printf("WRITE:%s to  %s\n", buf, path);
+    zipfs_fsync(NULL, 0, 0);
+   // printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
     load_to_cache(path);
     // write to new file source
