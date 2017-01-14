@@ -26,6 +26,7 @@
 /** TODO: 
  * - Work out how flushing cache async
  *   FIX THE HOT GARBAGE COLLECTOR
+ *   - seems like memory issues within the token loop!!
  */
 
 /** the path of the mounted directory of zip files */
@@ -130,6 +131,7 @@ find_latest_archive(const char* path, char* name, int size) {
     char latest_name[FILENAME_MAX];
     int is_deleted = 0;
     double latest_time = 0;
+    int exists = 0;
     while ((entry = readdir(dir)) != NULL) {
         entry_name = entry->d_name;
 
@@ -168,9 +170,12 @@ find_latest_archive(const char* path, char* name, int size) {
             memset(latest_name, 0, sizeof(latest_name) / sizeof(char));
             strcpy(latest_name, entry_name);
             is_deleted = deleted;
+            exists = 1;
         }
     }
     closedir(dir);
+    if (exists == 0)
+        return NULL;
     // open zip file and return i
     struct zip* latest_archive;
     // make relative path to the zip file
@@ -182,7 +187,7 @@ find_latest_archive(const char* path, char* name, int size) {
         sprintf(name, "%s.zip", latest_name);
     if (is_deleted)
         return NULL;
- //   printf("~~~~~~ SET NAME TO: %s\n", latest_name);
+    printf("~~~~~~ SET NAME TO: %s\n", latest_name);
     latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
     return latest_archive;
 
@@ -327,7 +332,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-//    garbage_collect();
+    garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;
@@ -348,6 +353,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     int res = kill(pid, SIGUSR1);
     if (res == -1)
         printf("Error signalling, ERRNO: %s\n", strerror(errno));
+    fclose(pid_sync);
 
     return 0;
 }
@@ -484,7 +490,6 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             printf("ADDED %s to FILLER\n", basename(key_path));
         }
     }
-
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
@@ -652,6 +657,7 @@ garbage_collect() {
     while ((archive_entry = readdir(zip_dir)) != NULL) {
         if (strstr(archive_entry->d_name, ".idx") == NULL)
             continue;
+        printf("****** GARBAGE COLLECTING: %s\n ******* \n", archive_entry->d_name);
 
         // make path to index file
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
@@ -665,42 +671,64 @@ garbage_collect() {
         long fsize = ftell(file);
         rewind(file);
         char contents[fsize + 1];
-        memset(contents, 0, sizeof(contents) / sizeof(char));
         fread(contents, fsize, 1, file);
         contents[fsize] = '\0';
         fclose(file);
+        if (verify_checksum(contents) == -1)
+            continue;
         const char delim[2] = "\n";
         char* token;
         char contents_cpy[strlen(contents)];
+        char* save_ptr;
+       
         strcpy(contents_cpy, contents);
-        token = strtok(contents_cpy, delim);
+        printf("****************************************\n");
+        printf("CONTENTS: %s\n", contents_cpy);
+        printf("****************************************\n");
 
-        if (verify_checksum(contents) == -1)
-            continue;
+        token = strtok_r(contents_cpy, delim, &save_ptr);
+
 
         int is_outdated = 1;
+        
         while (token != NULL) {
+            
+            printf("****************\n");
+            printf("Looking at %s\n**************\n", token);
+            
             // fetch path from token
             char token_path[PATH_MAX];
-            if (strstr(token, "CHECKSUM"))
+           if (strstr(token, "CHECKSUM"))
                 // basically done with the file at this point
                 break;
+           
             sscanf(token, "%s %*s %*f %*d", token_path);
-            char archive_name[FILENAME_MAX] = {0};
+            
+            char archive_name[FILENAME_MAX];
+
             struct zip* archive = find_latest_archive(token_path, archive_name, FILENAME_MAX);
+ printf("Looking at %s\n**************\n", token);
             if (archive)
                 zip_close(archive);
+            printf("Looking at %s\n**************\n", token); 
+            
+           
             char index_zip[strlen(archive_entry->d_name)];
             strcpy(index_zip, archive_entry->d_name);
             index_zip[strlen(index_zip) - 4] = '\0';
             strcat(index_zip, ".zip");
-  //          printf("==== COMPARING CURRENT IDX: %s WITH ARCHIVE %s\n", index_zip, archive_name);
+            printf("==== COMPARING CURRENT IDX: %s WITH ARCHIVE %s\n", index_zip, archive_name);
             if (strcmp(index_zip, archive_name) == 0) {
                 is_outdated = 0;
-                break;
+                printf("--- BREAKING ---\n");
+              //  break;
             }
-            token = strtok(NULL, delim);
+            
+            
+            token = strtok_r(NULL, delim, &save_ptr);
+            printf("Token %s\n", token);
         }
+        
 
         if (is_outdated) {
             printf("THIS ARCHIVE IS OUTDATED\n");
@@ -786,6 +814,7 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
         evict_from_cache(path);
         return res;
     }
+    close(fd);
     evict_from_cache(path);
     return -ENOENT;
 }
@@ -879,6 +908,7 @@ record_index(const char* path, int deleted, int use_ftime) {
     if (write(idxfd, input, strlen(input)) == -1) {
         printf("Error writing to idx file\n");
     }
+    close(idxfd);
 
     return 0;
 }
