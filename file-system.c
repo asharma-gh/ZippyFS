@@ -525,11 +525,19 @@ crc64(const char* message) {
 /**
  * loads the dir specified in path to cache
  * does not overwrite files already cached.
+ * - does nothing if the file is already in cache
  * @param path is the path of the dir
  */
 static
 int
 load_to_cache(const char* path) {
+    // construct file path in cache
+    char shadow_file_path[strlen(path) + strlen(shadow_path)];
+    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    strcat(shadow_file_path, shadow_path);
+    strcat(shadow_file_path, path+1);
+    if (access(shadow_file_path, F_OK) == 0)
+        return 0;
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
     struct zip* latest_archive = find_latest_archive(path, archive_name, PATH_MAX);
@@ -580,6 +588,8 @@ evict_from_cache(const char* path) {
     memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
+    if (access(shadow_file_path, F_OK) == -1)
+        return -1;
     return unlink(path);
 
 }
