@@ -80,7 +80,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     long fsize = ftell(file);
     rewind(file);
     char contents[fsize + 1];
-    memset(contents, 0, strlen(contents) * sizeof(char));
+    memset(contents, 0, sizeof(contents) / sizeof(char));
     fread(contents, fsize, 1, file);
     contents[fsize] = '\0';
     fclose(file);
@@ -102,7 +102,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
         sscanf(token, "%s %*s %*f %*d", token_path);
         if (strcmp(token_path, path) == 0) {
             in_index = 1;
-            memset(buf, 0, strlen(buf) * sizeof(char));
+            memset(buf, 0, sizeof(buf) / sizeof(char));
             strcpy(buf, token);
         }
         token = strtok(NULL, delim);
@@ -143,7 +143,7 @@ find_latest_archive(const char* path, char* name, int size) {
 
         // make path to index file
         char path_to_indx[strlen(entry_name) + strlen(zip_dir_name) + 1];
-        memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+        memset(path_to_indx, 0, sizeof(path_to_indx) / sizeof(char));
         sprintf(path_to_indx, "%s/%s", zip_dir_name, entry_name);
 
 
@@ -165,7 +165,7 @@ find_latest_archive(const char* path, char* name, int size) {
             // update latest file and time
       //      printf("------%lf----- WINS\n", file_time);
             latest_time = file_time;
-            memset(latest_name, 0, strlen(latest_name) * sizeof(char));
+            memset(latest_name, 0, sizeof(latest_name) / sizeof(char));
             strcpy(latest_name, entry_name);
             is_deleted = deleted;
         }
@@ -175,7 +175,7 @@ find_latest_archive(const char* path, char* name, int size) {
     struct zip* latest_archive;
     // make relative path to the zip file
     char fixed_path[strlen(latest_name) + strlen(zip_dir_name) + 1];
-    memset(fixed_path, 0, sizeof(fixed_path));
+    memset(fixed_path, 0, sizeof(fixed_path) / sizeof(char));
     latest_name[(strlen(latest_name) - 4)] = '\0';
     sprintf(fixed_path, "%s/%s.zip", zip_dir_name, latest_name);
     if (size > 0)
@@ -276,7 +276,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     long fsize = ftell(file);
     rewind(file);
     char* contents = alloca(fsize + 1);
-    memset(contents, 0, strlen(contents) * sizeof(char));
+    memset(contents, 0, sizeof(contents) / sizeof(char));
     fread(contents, fsize, 1, file);
     contents[fsize] = '\0';
     fclose(file);
@@ -312,15 +312,15 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
      * - renames the index to the zip archive name!
      */
     char cwd[PATH_MAX];
-    memset(cwd, 0, strlen(cwd) * sizeof(char));
+    memset(cwd, 0, sizeof(cwd) / sizeof(char));
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
 
     char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
-    memset(zip_dir_path, 0, strlen(zip_dir_path) * sizeof(char));
+    memset(zip_dir_path, 0, sizeof(zip_dir_path) / sizeof(char));
     sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
     char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
-    memset(command, 0, strlen(command) * sizeof(char));
+    memset(command, 0, sizeof(command) / sizeof(char));
     sprintf(command, "cd %s; zip -rm %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
             shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
 
@@ -380,7 +380,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
@@ -401,7 +401,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
         // make path to index file
         char path_to_indx[strlen(index_file_name) + strlen(zip_dir_name) + 1];
-        memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+        memset(path_to_indx, 0, sizeof(path_to_indx) / sizeof(char));
         sprintf(path_to_indx, "%s/%s", zip_dir_name, index_file_name);
 
         // read contents
@@ -411,7 +411,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         long fsize = ftell(file);
         rewind(file);
         char contents[fsize + 1];
-        memset(contents, 0, strlen(contents) * sizeof(char));
+        memset(contents, 0, sizeof(contents) / sizeof(char));
         fread(contents, fsize, 1, file);
         contents[fsize] = '\0';
         fclose(file);
@@ -534,7 +534,7 @@ int
 load_to_cache(const char* path) {
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     if (access(shadow_file_path, F_OK) == 0)
@@ -561,7 +561,7 @@ load_to_cache(const char* path) {
         // unzip to cache
         // first create path to zip file
         char cwd[PATH_MAX];
-        memset(cwd, 0, strlen(cwd) * sizeof(char));
+        memset(cwd, 0, sizeof(cwd) / sizeof(char));
         if (getcwd(cwd, sizeof(cwd)) == NULL)
             printf("error getting current working directory\n");
         char path_to_archive[strlen(cwd) + 2 + strlen(zip_dir_name) + strlen(archive_name)];
@@ -587,7 +587,7 @@ int
 evict_from_cache(const char* path) {
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     if (access(shadow_file_path, F_OK) == -1)
@@ -612,7 +612,7 @@ garbage_collect() {
     // tilde expansion
     wordexp_t path;
     wordexp(rmlog_path, &path, 0);
-    memset(rmlog_path, 0, strlen(rmlog_path) * sizeof(char));
+    memset(rmlog_path, 0, sizeof(rmlog_path) / sizeof(char));
     strcpy(rmlog_path, *path.we_wordv);
     wordfree(&path);
 
@@ -637,7 +637,7 @@ garbage_collect() {
      * allocation results in this array being cleared / free'd
      * while in the loop!?!?!?! */
     char* path_local_log = malloc(PATH_MAX + strlen(log_name));
-    memset(path_local_log, 0, strlen(path_local_log) * sizeof(char));
+    memset(path_local_log, 0, sizeof(path_local_log) / sizeof(char));
     sprintf(path_local_log, "%s/rmlog/%s", zip_dir_name, log_name);
 //    printf("LOCAL  LOG BEFORE LOOP %s\n", path_local_log);
     int log_fd = open(path_local_log, O_CREAT | O_APPEND, S_IRWXU);
@@ -655,7 +655,7 @@ garbage_collect() {
 
         // make path to index file
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
-        memset(path_to_indx, 0, strlen(path_to_indx) * sizeof(char));
+        memset(path_to_indx, 0, sizeof(path_to_indx) / sizeof(char));
         sprintf(path_to_indx, "%s/%s", zip_dir_name, archive_entry->d_name);
 
         // read contents
@@ -665,7 +665,7 @@ garbage_collect() {
         long fsize = ftell(file);
         rewind(file);
         char contents[fsize + 1];
-        memset(contents, 0, strlen(contents) * sizeof(char));
+        memset(contents, 0, sizeof(contents) / sizeof(char));
         fread(contents, fsize, 1, file);
         contents[fsize] = '\0';
         fclose(file);
@@ -769,7 +769,7 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
     load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int fd = open(shadow_file_path, O_RDONLY);
@@ -848,7 +848,7 @@ record_index(const char* path, int deleted, int use_ftime) {
 
     // make path to file in cache
     char path_to_file[PATH_MAX + strlen(shadow_path) + 2];
-    memset(path_to_file, 0, strlen(path_to_file) * sizeof(char));
+    memset(path_to_file, 0, sizeof(path_to_file) / sizeof(char));
     sprintf(path_to_file, "%s%s", shadow_path, path+1);
     char input[PATH_MAX + 1024];
     char permissions[6] = {0};
@@ -902,7 +902,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     load_to_cache(path);
     // write to new file source
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     struct stat st;
@@ -943,7 +943,7 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     load_to_cache(path);
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int shadow_file = mknod(shadow_file_path, mode, rdev);
@@ -971,7 +971,7 @@ zipfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     record_index(path, 1, 0);
@@ -989,7 +989,7 @@ zipfs_rmdir(const char* path) {
     printf("RMDIR: %s\n", path);;
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     record_index(path, 1, 0);
@@ -1010,7 +1010,7 @@ zipfs_mkdir(const char* path, mode_t mode) {
     load_to_cache(path);
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     int shadow_file = mkdir(shadow_file_path, mode);
@@ -1037,8 +1037,8 @@ zipfs_rename(const char* from, const char* to) {
     // add new file to cache
     char shadow_file_path_f[strlen(from) + strlen(shadow_path)];
     char shadow_file_path_t[strlen(to) + strlen(shadow_path)];
-    memset(shadow_file_path_f, 0, strlen(shadow_file_path_f) * sizeof(char));
-    memset(shadow_file_path_t, 0, strlen(shadow_file_path_t) * sizeof(char));
+    memset(shadow_file_path_f, 0, sizeof(shadow_file_path_f) / sizeof(char));
+    memset(shadow_file_path_t, 0, sizeof(shadow_file_path_t) / sizeof(char));
     strcat(shadow_file_path_f, shadow_path);
     strcat(shadow_file_path_t, shadow_path);
     strcat(shadow_file_path_f, from+1);
@@ -1063,7 +1063,7 @@ zipfs_truncate(const char* path, off_t size) {
 
     // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     struct stat st;
@@ -1103,7 +1103,7 @@ zipfs_access(const char* path, int mode) {
     load_to_cache(path);
     // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
@@ -1115,7 +1115,7 @@ zipfs_chmod(const char* path, mode_t  mode) {
     load_to_cache(path);
     // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, strlen(shadow_file_path) * sizeof(char));
+    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
@@ -1190,7 +1190,7 @@ main(int argc, char *argv[]) {
 
     // construct program directory path
     char* temp_path = alloca(PATH_MAX * sizeof(char));
-    memset(temp_path, 0, strlen(temp_path) * sizeof(char));
+    memset(temp_path, 0, sizeof(temp_path) / sizeof(char));
     strcat(temp_path, "~/.cache/zipfs/");
     printf("shadow dir path: %s\n", temp_path);
     wordexp_t path;
@@ -1214,14 +1214,14 @@ main(int argc, char *argv[]) {
     }
     // construct process-local rmlog path and dir
     char rmlog_path[strlen(zip_dir_name) + 10];
-    memset(rmlog_path, 0, strlen(rmlog_path) * sizeof(char));
+    memset(rmlog_path, 0, sizeof(rmlog_path) / sizeof(char));
     sprintf(rmlog_path, "%s/rmlog", zip_dir_name);
     if (mkdir(rmlog_path, S_IRWXU))
         printf("error making rmlog dir ERRNO:%s\n", strerror(errno));
 
     // construct machine-local rmlog path and dir
     char machine_rmlog_path[strlen(zip_dir_name) + PATH_MAX];
-    memset(machine_rmlog_path, 0, strlen(machine_rmlog_path) * sizeof(char));
+    memset(machine_rmlog_path, 0, sizeof(machine_rmlog_path) / sizeof(char));
     char tild_exp[PATH_MAX];
     sprintf(tild_exp, "~");
     wordexp(tild_exp, &path, 0);
@@ -1247,12 +1247,12 @@ main(int argc, char *argv[]) {
         }
         // make log file
         char log_name[strlen(hex_name) + 1];
-        memset(log_name, 0, strlen(log_name) * sizeof(char));
+        memset(log_name, 0, sizeof(log_name) / sizeof(char));
         sprintf(log_name, "%s", hex_name);
         printf("NAME OF FILE %s\n", log_name);
         // make path to log file
         char log_path[strlen(log_name) + PATH_MAX];
-        memset(log_path, 0, strlen(log_path) * sizeof(char));
+        memset(log_path, 0, sizeof(log_path) / sizeof(char));
         sprintf(log_path, "%s/.config/zipfs/%s", *path.we_wordv, log_name);
         // create file
         printf("file path: %s", log_path);
