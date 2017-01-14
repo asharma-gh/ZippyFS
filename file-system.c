@@ -25,8 +25,8 @@
 #include <glib.h>
 /** TODO: 
  * - Work out how flushing cache async
- *   FIX THE HOT GARBAGE COLLECTOR
- *   - seems like memory issues within the token loop!!
+ * - implement symlinks
+ *   - requires editing formal of index files!!
  */
 
 /** the path of the mounted directory of zip files */
@@ -372,7 +372,7 @@ static
 int
 zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         off_t offset, struct fuse_file_info* fi) {
-    zipfs_fsync(NULL, 0, 0);
+    //zipfs_fsync(NULL, 0, 0);
     printf("READDIR: %s\n", path);
     // unneeded
     (void) offset;
@@ -818,7 +818,7 @@ zipfs_fsyncdir(const char* path, int d, struct fuse_file_info* fi) {
 static
 int
 zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-    zipfs_fsync(NULL, 0, 0);
+    //zipfs_fsync(NULL, 0, 0);
     //unused
     (void) fi;
     (void) offset;
@@ -956,7 +956,7 @@ record_index(const char* path, int deleted, int use_ftime) {
 static
 int
 zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-    zipfs_fsync(NULL, 0, 0);
+  //  zipfs_fsync(NULL, 0, 0);
    // printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
     load_to_cache(path);
@@ -982,7 +982,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     // record to index file
     record_index(path, 0, 1);
 
-
+    zipfs_fsync(NULL, 0, 0);
     return size;
 }
 
@@ -1017,7 +1017,7 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     }
     // record to index file
     record_index(path, 0, 1);
-
+    zipfs_fsync(NULL, 0, 0);
     return 0;
 }
 /**
@@ -1080,6 +1080,7 @@ zipfs_mkdir(const char* path, mode_t mode) {
     }
     // record to index
     record_index(path, 0, 1);
+    zipfs_fsync(NULL, 0, 0);
     return 0;
 
 }
@@ -1106,6 +1107,7 @@ zipfs_rename(const char* from, const char* to) {
     record_index(from, 1, 0);
     int res = rename(shadow_file_path_f, shadow_file_path_t);
     record_index(to, 0, 0);
+    zipfs_fsync(NULL, 0, 0);
     return res;
 }
 /**
@@ -1144,7 +1146,7 @@ zipfs_truncate(const char* path, off_t size) {
 
     // record to index
     record_index(path, 0, 1);
-
+    zipfs_fsync(NULL, 0, 0);
     return 0;
 }
 /**
