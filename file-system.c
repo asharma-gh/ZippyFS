@@ -602,6 +602,14 @@ evict_from_cache(const char* path) {
 }
 
 
+/**** 
+ * HashTable for efficient garbage collection
+ * (Path, Time#)
+ * - iterate thru index file and add entry if time is later. If no entries can be added
+ *   then delete index file and zip archive
+ ****/
+static GHashTable* gc_table;
+
 /**
  * removes fully updated zip archives
  * log is located in
@@ -610,6 +618,7 @@ evict_from_cache(const char* path) {
 static
 int
 garbage_collect() {
+
 
     // make path to rmlog
     char rmlog_path[PATH_MAX];
@@ -701,9 +710,29 @@ garbage_collect() {
            if (strstr(token, "CHECKSUM"))
                 // basically done with the file at this point
                 break;
-           
-            sscanf(token, "%s %*s %*f %*d", token_path);
-            
+            double* time = g_malloc(sizeof(double));
+            sscanf(token, "%s %*s %lf %*d", token_path, time);
+            char* old_path;
+            double* old_time;
+            if (g_hash_table_lookup_extended(gc_table, token_path, 
+                        (void*)&old_path, (void*)&old_time)) {
+                    // entry is in the hash table, compare times
+                    if (*old_time <= *time) {
+                        // we have an updated entry
+                        is_outdated = 0;
+                        // add to hash table
+                        g_hash_table_insert(gc_table, g_strdup(token_path), time);
+                    } else {
+                        g_free(time);
+                    }
+            } else {
+                // make entry for this item
+                is_outdated = 0;
+                g_hash_table_insert(gc_table, g_strdup(token_path), time);
+
+            }
+
+            /*
             char archive_name[FILENAME_MAX];
 
             struct zip* archive = find_latest_archive(token_path, archive_name, FILENAME_MAX);
@@ -723,6 +752,7 @@ garbage_collect() {
                 printf("--- BREAKING ---\n");
               //  break;
             }
+            */
             
             
             token = strtok_r(NULL, delim, &save_ptr);
@@ -1172,6 +1202,8 @@ zipfs_destroy(void* private_data) {
     (void)private_data;
     // flush
     zipfs_fsync(NULL, 0, 0);
+    // clear gc_table
+    g_hash_table_destroy(gc_table);
     // delete process cache directory
     char removal_cmd[PATH_MAX + 12];
     sprintf(removal_cmd, "rm -rf %s", shadow_path);
@@ -1206,6 +1238,9 @@ static struct fuse_operations zipfs_operations = {
  */
 int
 main(int argc, char *argv[]) { 
+    /** initializes garbage collection table **/
+    gc_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+
     zip_dir_name = argv[--argc];
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
