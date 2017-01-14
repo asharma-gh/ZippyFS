@@ -1,7 +1,7 @@
 /**
  * Zipfs: A toy distributed file system using libfuze and libzip
  * @author Arvin Sharma
- * @version 2.0
+ * @version 2.5
  */
 #define FUSE_USE_VERSION 26
 #include <syscall.h>
@@ -161,11 +161,11 @@ find_latest_archive(const char* path, char* name, int size) {
         double file_time = 0;
         int deleted = 0;
         sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
-      //  printf("--- COMPARING TIMES ---: %lf %lf\n", file_time, latest_time);
+        //  printf("--- COMPARING TIMES ---: %lf %lf\n", file_time, latest_time);
         // check times
         if (file_time >= latest_time) { // things can be instantaneous
             // update latest file and time
-      //      printf("------%lf----- WINS\n", file_time);
+            //      printf("------%lf----- WINS\n", file_time);
             latest_time = file_time;
             memset(latest_name, 0, sizeof(latest_name) / sizeof(char));
             strcpy(latest_name, entry_name);
@@ -437,9 +437,9 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             char token_path[PATH_MAX];
             double token_time;
             int deleted;
- //           printf("TOKEN!! %s\n", token);
+            //           printf("TOKEN!! %s\n", token);
             sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
-  //          printf("PATH!!!! %s\n", token_path);
+            //          printf("PATH!!!! %s\n", token_path);
             char* temp = strdup(token_path);
             // find out of this entry is in the directory
             int in_path = strcmp(dirname(temp), path);
@@ -457,7 +457,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                         // add to hash table
                         char* new_name = g_strdup(token_path);
                         g_hash_table_insert(added_entries, new_name, new_entry);
-         //               printf("ADDED ENTRY FROM  %s\n", entry->d_name);
+                        //               printf("ADDED ENTRY FROM  %s\n", entry->d_name);
 
 
 
@@ -546,17 +546,20 @@ load_to_cache(const char* path) {
         return 0;
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
+    int is_dir = 0;
     struct zip* latest_archive = find_latest_archive(path, archive_name, PATH_MAX);
+    char cpy[strlen(path) + 1];
+    strcpy(cpy, path);
+    char* path_dir = dirname(cpy);
     if (latest_archive == NULL) {
         printf("error loading thing in path to cache\n TRYING DIR NAME!!\n");
-        char cpy[strlen(path) + 1];
-        strcpy(cpy, path);
-        char* path_dir = dirname(cpy);
         memset(archive_name, 0, sizeof(archive_name) / sizeof(char));
         latest_archive = find_latest_archive(path_dir, archive_name, PATH_MAX);
         if (latest_archive == NULL) {
             printf("CANNOT FIND MAIN FILE OR DIRNAME!!\n");
             return -1;
+        } else {
+            is_dir = 1;
         }
     }
 
@@ -570,11 +573,14 @@ load_to_cache(const char* path) {
         if (getcwd(cwd, sizeof(cwd)) == NULL)
             printf("error getting current working directory\n");
         char path_to_archive[strlen(cwd) + 2 + strlen(zip_dir_name) + strlen(archive_name)];
-
         sprintf(path_to_archive, "%s/%s/%s", cwd, zip_dir_name, archive_name);
+
         char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + (strlen(path)*2) + 20];
-        sprintf(unzip_command, "unzip -n %s %s %s/ -d %s", path_to_archive, path + 1, path + 1, shadow_path);
-    //    printf("UNZIPPING!!!: %s\n", unzip_command);
+        if (is_dir == 0)
+            sprintf(unzip_command, "unzip  %s %s %s/ -d %s", path_to_archive, path + 1, path + 1, shadow_path);
+        else
+            sprintf(unzip_command, "unzip %s %s %s/ -d %s", path_to_archive, path_dir + 1, path_dir + 1, shadow_path);
+        printf("UNZIPPING!!!: %s\n", unzip_command);
         system(unzip_command);
         chdir(cwd);
     }
@@ -607,6 +613,7 @@ evict_from_cache(const char* path) {
  * (Path, Time#)
  * - iterate thru index file and add entry if time is later. If no entries can be added
  *   then delete index file and zip archive
+ * Initialized in main
  ****/
 static GHashTable* gc_table;
 
@@ -645,7 +652,7 @@ garbage_collect() {
         }
     }
     closedir(log_dir);
-  //  printf("BoxID from gc: %s\n", log_name);
+    //  printf("BoxID from gc: %s\n", log_name);
     // make machine specific log file in zip directory if it doesn't exist
     /** OK. malloc needs to be used here because alloca / normal
      * allocation results in this array being cleared / free'd
@@ -653,7 +660,7 @@ garbage_collect() {
     char* path_local_log = malloc(PATH_MAX + strlen(log_name));
     memset(path_local_log, 0, sizeof(path_local_log) / sizeof(char));
     sprintf(path_local_log, "%s/rmlog/%s", zip_dir_name, log_name);
-//    printf("LOCAL  LOG BEFORE LOOP %s\n", path_local_log);
+    //    printf("LOCAL  LOG BEFORE LOOP %s\n", path_local_log);
     int log_fd = open(path_local_log, O_CREAT | O_APPEND, S_IRWXU);
     if (log_fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
@@ -689,7 +696,7 @@ garbage_collect() {
         char* token;
         char contents_cpy[strlen(contents)];
         char* save_ptr;
-       
+
         strcpy(contents_cpy, contents);
         printf("****************************************\n");
         printf("CONTENTS: %s\n", contents_cpy);
@@ -699,15 +706,15 @@ garbage_collect() {
 
 
         int is_outdated = 1;
-        
+
         while (token != NULL) {
-            
+
             printf("****************\n");
             printf("Looking at %s\n**************\n", token);
-            
+
             // fetch path from token
             char token_path[PATH_MAX];
-           if (strstr(token, "CHECKSUM"))
+            if (strstr(token, "CHECKSUM"))
                 // basically done with the file at this point
                 break;
             double* time = g_malloc(sizeof(double));
@@ -716,15 +723,15 @@ garbage_collect() {
             double* old_time;
             if (g_hash_table_lookup_extended(gc_table, token_path, 
                         (void*)&old_path, (void*)&old_time)) {
-                    // entry is in the hash table, compare times
-                    if (*old_time <= *time) {
-                        // we have an updated entry
-                        is_outdated = 0;
-                        // add to hash table
-                        g_hash_table_insert(gc_table, g_strdup(token_path), time);
-                    } else {
-                        g_free(time);
-                    }
+                // entry is in the hash table, compare times
+                if (*old_time <= *time) {
+                    // we have an updated entry
+                    is_outdated = 0;
+                    // add to hash table
+                    g_hash_table_insert(gc_table, g_strdup(token_path), time);
+                } else {
+                    g_free(time);
+                }
             } else {
                 // make entry for this item
                 is_outdated = 0;
@@ -733,32 +740,32 @@ garbage_collect() {
             }
 
             /*
-            char archive_name[FILENAME_MAX];
+               char archive_name[FILENAME_MAX];
 
-            struct zip* archive = find_latest_archive(token_path, archive_name, FILENAME_MAX);
- printf("Looking at %s\n**************\n", token);
-            if (archive)
-                zip_close(archive);
-            printf("Looking at %s\n**************\n", token); 
-            
-           
-            char index_zip[strlen(archive_entry->d_name)];
-            strcpy(index_zip, archive_entry->d_name);
-            index_zip[strlen(index_zip) - 4] = '\0';
-            strcat(index_zip, ".zip");
-            printf("==== COMPARING CURRENT IDX: %s WITH ARCHIVE %s\n", index_zip, archive_name);
-            if (strcmp(index_zip, archive_name) == 0) {
-                is_outdated = 0;
-                printf("--- BREAKING ---\n");
-              //  break;
+               struct zip* archive = find_latest_archive(token_path, archive_name, FILENAME_MAX);
+               printf("Looking at %s\n**************\n", token);
+               if (archive)
+               zip_close(archive);
+               printf("Looking at %s\n**************\n", token); 
+
+
+               char index_zip[strlen(archive_entry->d_name)];
+               strcpy(index_zip, archive_entry->d_name);
+               index_zip[strlen(index_zip) - 4] = '\0';
+               strcat(index_zip, ".zip");
+               printf("==== COMPARING CURRENT IDX: %s WITH ARCHIVE %s\n", index_zip, archive_name);
+               if (strcmp(index_zip, archive_name) == 0) {
+               is_outdated = 0;
+               printf("--- BREAKING ---\n");
+            //  break;
             }
             */
-            
-            
+
+
             token = strtok_r(NULL, delim, &save_ptr);
             printf("Token %s\n", token);
         }
-        
+
 
         if (is_outdated) {
             printf("THIS ARCHIVE IS OUTDATED\n");
@@ -956,8 +963,8 @@ record_index(const char* path, int deleted, int use_ftime) {
 static
 int
 zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-  //  zipfs_fsync(NULL, 0, 0);
-   // printf("WRITE:%s to  %s\n", buf, path);
+    //  zipfs_fsync(NULL, 0, 0);
+    printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
     load_to_cache(path);
     // write to new file source
