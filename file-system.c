@@ -671,7 +671,10 @@ garbage_collect() {
     DIR* zip_dir = opendir(zip_dir_name);
     struct dirent* archive_entry;
     while ((archive_entry = readdir(zip_dir)) != NULL) {
-        if (strstr(archive_entry->d_name, ".idx") == NULL)
+        if (strcmp(archive_entry->d_name, ".") == 0
+                || strcmp(archive_entry->d_name, "..") == 0
+                || strlen(archive_entry->d_name) < 4
+                || strcmp(archive_entry->d_name + (strlen(archive_entry->d_name) - 4), ".idx") != 0) 
             continue;
         printf("****** GARBAGE COLLECTING: %s\n ******* \n", archive_entry->d_name);
 
@@ -738,30 +741,6 @@ garbage_collect() {
                 g_hash_table_insert(gc_table, g_strdup(token_path), time);
 
             }
-
-            /*
-               char archive_name[FILENAME_MAX];
-
-               struct zip* archive = find_latest_archive(token_path, archive_name, FILENAME_MAX);
-               printf("Looking at %s\n**************\n", token);
-               if (archive)
-               zip_close(archive);
-               printf("Looking at %s\n**************\n", token); 
-
-
-               char index_zip[strlen(archive_entry->d_name)];
-               strcpy(index_zip, archive_entry->d_name);
-               index_zip[strlen(index_zip) - 4] = '\0';
-               strcat(index_zip, ".zip");
-               printf("==== COMPARING CURRENT IDX: %s WITH ARCHIVE %s\n", index_zip, archive_name);
-               if (strcmp(index_zip, archive_name) == 0) {
-               is_outdated = 0;
-               printf("--- BREAKING ---\n");
-            //  break;
-            }
-            */
-
-
             token = strtok_r(NULL, delim, &save_ptr);
             printf("Token %s\n", token);
         }
