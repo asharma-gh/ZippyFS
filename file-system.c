@@ -117,7 +117,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
 static
 struct zip* 
 find_latest_archive(const char* path, char* name, int size) {
-    printf("FINDING LATEST ARCHIVE CONTAINING: %s\n", path);
+    printf("FINDING LATEST ARCHIVE CONTAINING: %s %s %d\n", path, name, size);
 
     /** Finds latest archive based on index files **/
     DIR* dir = opendir(zip_dir_name);
@@ -178,7 +178,7 @@ find_latest_archive(const char* path, char* name, int size) {
         sprintf(name, "%s.zip", latest_name);
     if (is_deleted)
         return NULL;
-
+    printf("~~~~~~ SET NAME TO: %s\n", latest_name);
     latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
     return latest_archive;
 
@@ -321,7 +321,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-    // garbage_collect();
+    garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;
@@ -519,6 +519,7 @@ crc64(const char* message) {
 }
 /**
  * loads the dir specified in path to cache
+ * does not overwrite files already cached.
  * @param path is the path of the dir
  */
 static
@@ -617,9 +618,6 @@ garbage_collect() {
     while ((archive_entry = readdir(zip_dir)) != NULL) {
         if (strstr(archive_entry->d_name, ".idx") == NULL)
             continue;
-        /** hash set for paths in index, since there can be duplicates
-         * value will just be 0 for each entry */
-        GHashTable* paths_in_index = g_hash_table_new(g_str_hash, g_str_equal);
 
         // make path to index file
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
@@ -646,6 +644,7 @@ garbage_collect() {
         if (verify_checksum(contents) == -1)
             continue;
 
+        int is_outdated = 1;
         while (token != NULL) {
             // fetch path from token
             char token_path[PATH_MAX];
@@ -653,47 +652,22 @@ garbage_collect() {
                 // basically done with the file at this point
                 break;
             sscanf(token, "%s %*s %*f %*d", token_path);
-            // check if path is in table already, then we don't to add this entry
-            char* old_name;
-            if (g_hash_table_lookup_extended(paths_in_index, token_path, (void*)&old_name, NULL)) {
-                // go to next entry / path
-                token = strtok(NULL, delim);
-                continue;
-            } else {
-                // add the path to the hash, with value 0
-                g_hash_table_insert(paths_in_index, strdup(token_path), 0);
-            }
-            // grab next entry
-            token = strtok(NULL, delim);
-        }
-
-        // check if this index file is outdated. If it is, mark it as such.
-        // iterate thru the hash table
-        GHashTableIter  iter;
-        void* key;
-        void* value;
-        int is_outdated = 1;
-        g_hash_table_iter_init(&iter, paths_in_index);
-        while (g_hash_table_iter_next(&iter, &key, &value)) {
-            // make the zip file name given this index file
+            char archive_name[FILENAME_MAX] = {0};
+            struct zip* archive = find_latest_archive(token_path, archive_name, FILENAME_MAX);
+            if (archive)
+                zip_close(archive);
             char index_zip[strlen(archive_entry->d_name)];
             strcpy(index_zip, archive_entry->d_name);
             index_zip[strlen(index_zip) - 4] = '\0';
             strcat(index_zip, ".zip");
-            char* key_path = key;
-            char latest_archive_name[FILENAME_MAX];
-            struct zip* archive = find_latest_archive(key_path, latest_archive_name, strlen(latest_archive_name));
-            // if every file has an entry in a later archive,
-            // is_outdated will be 1 and this file is outdated
-            if (strcmp(index_zip, latest_archive_name) == 0)
+            printf("==== COMPARING CURRENT IDX: %s WITH ARCHIVE %s\n", index_zip, archive_name);
+            if (strcmp(index_zip, archive_name) == 0) {
                 is_outdated = 0;
-            else
-                is_outdated = 1;
-            if (archive)
-                zip_close(archive);
-            free(key_path);
-
+                break;
+            }
+            token = strtok(NULL, delim);
         }
+
         if (is_outdated) {
             printf("THIS ARCHIVE IS OUTDATED\n");
             // write to machine log file
@@ -717,10 +691,6 @@ garbage_collect() {
             system(command);
 
         }
-        g_hash_table_destroy(paths_in_index);
-
-
-
     }
     free(path_local_log);
     closedir(zip_dir);
