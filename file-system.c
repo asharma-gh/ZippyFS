@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <dirent.h>
 #include <wordexp.h>
+#include <sys/time.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <linux/random.h>
@@ -59,6 +60,8 @@ static int load_to_cache(const char* path);
 
 /** evicts the given item from cache */
 static int evict_from_cache(const char* path);
+
+static unsigned long long get_time();
 
 /**
  * gets the latest entry of path in the index file index
@@ -354,7 +357,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     if (res == -1)
         printf("Error signalling, ERRNO: %s\n", strerror(errno));
     fclose(pid_sync);
-    sleep(1);
+
     return 0;
 }
 /**
@@ -527,6 +530,16 @@ crc64(const char* message) {
         }
     }
     return crc;
+}
+static
+unsigned long long
+get_time() {
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+
+    return (unsigned long long)(tv.tv_sec) * 1000 +
+        (unsigned long long)(tv.tv_usec) / 1000;
 }
 /**
  * loads the dir specified in path to cache
@@ -915,7 +928,7 @@ record_index(const char* path, int deleted, int use_ftime) {
     if (stat(path_to_file, &buf) == -1)
         printf("error retrieving file information for %s\n ERRNO: %s\n", 
                 path, strerror(errno));
-    double act_time = difftime(time(0), 0);
+    unsigned long long act_time = get_time();
     /*
        if (deleted || !use_ftime)
        act_time = difftime(time(0), 0);
@@ -924,7 +937,7 @@ record_index(const char* path, int deleted, int use_ftime) {
        */
 
 
-    sprintf(input, "%s %s %f %d\n", path, permissions, act_time, deleted);
+    sprintf(input, "%s %s %llu %d\n", path, permissions, act_time, deleted);
     printf("====WRITING THE FOLLOWING TO INDEX====\n%s\n", input);
     if (write(idxfd, input, strlen(input)) == -1) {
         printf("Error writing to idx file\n");
