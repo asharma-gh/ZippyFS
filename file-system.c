@@ -237,7 +237,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
 
     printf("getattr: %s\n", path);
     //mkdir("/home/arvin/justfuckmeup", S_IRWXU);
-    
+
     memset(stbuf, 0, sizeof(struct stat));
     if (strlen(path) == 1) {
         stbuf->st_mode = S_IFDIR | 0755;
@@ -1138,7 +1138,7 @@ zipfs_access(const char* path, int mode) {
     printf("ACCESS: %s %d\n", path, mode);
     (void)mode;
     if (strcmp(path, "/") == 0)
-       return 0;
+        return 0;
 
     load_to_cache(path);
     // add new file to cache
@@ -1146,7 +1146,7 @@ zipfs_access(const char* path, int mode) {
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    
+
 
     return access(shadow_file_path, mode);
 }
@@ -1193,7 +1193,6 @@ zipfs_destroy(void* private_data) {
 }
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
-    
     .getattr = zipfs_getattr,
     .readdir = zipfs_readdir,
     .read = zipfs_read,
@@ -1211,11 +1210,8 @@ static struct fuse_operations zipfs_operations = {
     .chmod = zipfs_chmod,
     .utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
-    
+
 };
-void
-setup() {
-}
 /**
  * The main method of this program
  * calls fuse_main to initialize the filesystem
@@ -1248,7 +1244,7 @@ main(int argc, char *argv[]) {
     shadow_path = strdup(*(path.we_wordv));
     wordfree(&path);
     printf("expanded dir path: %s\n", shadow_path);
-    
+
     // make program directory if it doesn't exist yet
     if (mkdir(shadow_path, S_IRWXU)) {
         printf("error making zipfs directory ERRNO: %s\n", strerror(errno));
