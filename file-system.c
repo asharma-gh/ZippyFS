@@ -28,7 +28,6 @@
  * - Work out how flushing cache async
  * - implement symlinks
  *   - requires editing format of index files!!
- * - work on making all functions reentrant
  */
 
 /** the path of the mounted directory of zip files */
@@ -230,8 +229,6 @@ verify_checksum(const char* contents) {
 static
 int 
 zipfs_getattr(const char* path, struct stat* stbuf) {
-    freopen("/home/arvin/log.txt", "a", stdout);
-    freopen("/home/arvin/log.txt", "a", stderr);
 
     printf("getattr: %s\n", path);
     //mkdir("/home/arvin/justfuckmeup", S_IRWXU);
@@ -322,13 +319,10 @@ flush_dir()
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         printf("error getting current working directory\n");
 
-    char zip_dir_path[PATH_MAX + strlen(zip_dir_name) + 1];
-    memset(zip_dir_path, 0, sizeof(zip_dir_path) / sizeof(char));
-    sprintf(zip_dir_path, "%s/%s", cwd, zip_dir_name);
-    char command[strlen(shadow_path) + (strlen(zip_dir_path)*2) + (strlen(hex_name)*4) + PATH_MAX];
+    char command[strlen(shadow_path) + (strlen(zip_dir_name)*2) + (strlen(hex_name)*4) + PATH_MAX];
     memset(command, 0, sizeof(command) / sizeof(char));
     sprintf(command, "cd %s; zip -rm %s * -x \"*.idx\"; mv %s.zip %s; mv index.idx %s.idx; mv %s.idx %s", 
-            shadow_path, hex_name, hex_name, zip_dir_path, hex_name, hex_name, zip_dir_path);
+            shadow_path, hex_name, hex_name, zip_dir_name, hex_name, hex_name, zip_dir_name);
 
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
@@ -599,8 +593,8 @@ load_to_cache(const char* path) {
         memset(cwd, 0, sizeof(cwd) / sizeof(char));
         if (getcwd(cwd, sizeof(cwd)) == NULL)
             printf("error getting current working directory\n");
-        char path_to_archive[strlen(cwd) + 2 + strlen(zip_dir_name) + strlen(archive_name)];
-        sprintf(path_to_archive, "%s/%s/%s", cwd, zip_dir_name, archive_name);
+        char path_to_archive[1 + strlen(zip_dir_name) + strlen(archive_name)];
+        sprintf(path_to_archive, "%s/%s",  zip_dir_name, archive_name);
 
         char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + (strlen(path)*2) + 20];
         if (is_dir == 0)
@@ -1301,12 +1295,8 @@ main(int argc, char *argv[]) {
         close(fd);
 
     }
-    int meme = open("/home/arvin/log.txt", O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
-    close(meme);
     wordfree(&path);
-    printf("MOFO PID***%d\n", getpid());
-    printf("????? %d\n", fuse_main(argc, newarg, &zipfs_operations, NULL));
-    return 0;
+    return fuse_main(argc, newarg, &zipfs_operations, NULL);
 
 }
 
