@@ -27,6 +27,7 @@
  * - Work out how flushing cache async
  * - implement symlinks
  *   - requires editing formal of index files!!
+ * - modify how read /writes occur between cache
  */
 
 /** the path of the mounted directory of zip files */
@@ -163,7 +164,7 @@ find_latest_archive(const char* path, char* name, int size) {
         sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
         //  printf("--- COMPARING TIMES ---: %lf %lf\n", file_time, latest_time);
         // check times
-        if (file_time >= latest_time) { // things can be instantaneous
+        if (file_time > latest_time) { // things can be instantaneous
             // update latest file and time
             //      printf("------%lf----- WINS\n", file_time);
             latest_time = file_time;
@@ -187,7 +188,7 @@ find_latest_archive(const char* path, char* name, int size) {
         sprintf(name, "%s.zip", latest_name);
     if (is_deleted)
         return NULL;
-    printf("~~~~~~ SET NAME TO: %s\n", latest_name);
+    // printf("~~~~~~ SET NAME TO: %s\n", latest_name);
     latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
     return latest_archive;
 
@@ -251,7 +252,6 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
         memset(stbuf, 0, sizeof(struct stat));
         return -ENOENT;
     }
-    evict_from_cache(path);
     return 0; 
 }
 
@@ -354,7 +354,7 @@ zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
     if (res == -1)
         printf("Error signalling, ERRNO: %s\n", strerror(errno));
     fclose(pid_sync);
-
+    sleep(1);
     return 0;
 }
 /**
@@ -484,10 +484,10 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     while (g_hash_table_iter_next(&iter, &key, &value)) {
         char* key_path = key;
         index_entry* val = value;
-        printf("*****KEY %s DELETED %d\n", key_path, val->deleted);
+        //      printf("*****KEY %s DELETED %d\n", key_path, val->deleted);
         if (!val->deleted) {
             filler(buf, basename(key_path), NULL, 0);
-            printf("ADDED %s to FILLER\n", basename(key_path));
+            //         printf("ADDED %s to FILLER\n", basename(key_path));
         }
     }
     filler(buf, ".", NULL, 0);
@@ -542,8 +542,10 @@ load_to_cache(const char* path) {
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    if (access(shadow_file_path, F_OK) == 0)
-        return 0;
+    /*
+       if (access(shadow_file_path, F_OK) == 0)
+       return 0;
+       */
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
     int is_dir = 0;
@@ -577,9 +579,9 @@ load_to_cache(const char* path) {
 
         char unzip_command[strlen(path_to_archive) + strlen(shadow_path) + (strlen(path)*2) + 20];
         if (is_dir == 0)
-            sprintf(unzip_command, "unzip  %s %s %s/ -d %s", path_to_archive, path + 1, path + 1, shadow_path);
+            sprintf(unzip_command, "unzip  -o %s %s %s/ -d %s", path_to_archive, path + 1, path + 1, shadow_path);
         else
-            sprintf(unzip_command, "unzip %s %s %s/ -d %s", path_to_archive, path_dir + 1, path_dir + 1, shadow_path);
+            sprintf(unzip_command, "unzip -o %s %s %s/ -d %s", path_to_archive, path_dir + 1, path_dir + 1, shadow_path);
         printf("UNZIPPING!!!: %s\n", unzip_command);
         system(unzip_command);
         chdir(cwd);
@@ -676,7 +678,7 @@ garbage_collect() {
                 || strlen(archive_entry->d_name) < 4
                 || strcmp(archive_entry->d_name + (strlen(archive_entry->d_name) - 4), ".idx") != 0) 
             continue;
-        printf("****** GARBAGE COLLECTING: %s\n ******* \n", archive_entry->d_name);
+        //   printf("****** GARBAGE COLLECTING: %s\n ******* \n", archive_entry->d_name);
 
         // make path to index file
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
@@ -701,9 +703,9 @@ garbage_collect() {
         char* save_ptr;
 
         strcpy(contents_cpy, contents);
-        printf("****************************************\n");
-        printf("CONTENTS: %s\n", contents_cpy);
-        printf("****************************************\n");
+        //      printf("****************************************\n");
+        //    printf("CONTENTS: %s\n", contents_cpy);
+        //  printf("****************************************\n");
 
         token = strtok_r(contents_cpy, delim, &save_ptr);
 
@@ -712,8 +714,8 @@ garbage_collect() {
 
         while (token != NULL) {
 
-            printf("****************\n");
-            printf("Looking at %s\n**************\n", token);
+            //    printf("****************\n");
+            //  printf("Looking at %s\n**************\n", token);
 
             // fetch path from token
             char token_path[PATH_MAX];
@@ -742,12 +744,12 @@ garbage_collect() {
 
             }
             token = strtok_r(NULL, delim, &save_ptr);
-            printf("Token %s\n", token);
+            //       printf("Token %s\n", token);
         }
 
 
         if (is_outdated) {
-            printf("THIS ARCHIVE IS OUTDATED\n");
+            //     printf("THIS ARCHIVE IS OUTDATED\n");
             // write to machine log file
             FILE* log_file = fopen(path_local_log, "a");
             int res =  fprintf(log_file, "%s\n", archive_entry->d_name);
@@ -816,6 +818,7 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
+
     int fd = open(shadow_file_path, O_RDONLY);
     if (fd == -1) {
         printf("File is not in cache\n");
@@ -912,11 +915,13 @@ record_index(const char* path, int deleted, int use_ftime) {
     if (stat(path_to_file, &buf) == -1)
         printf("error retrieving file information for %s\n ERRNO: %s\n", 
                 path, strerror(errno));
-    double act_time;
-    if (deleted || !use_ftime)
-        act_time = difftime(time(0), 0);
-    else
-        act_time = difftime((time_t)buf.st_mtime, 0);
+    double act_time = difftime(time(0), 0);
+    /*
+       if (deleted || !use_ftime)
+       act_time = difftime(time(0), 0);
+       else
+       act_time = difftime((time_t)buf.st_mtime, 0);
+       */
 
 
     sprintf(input, "%s %s %f %d\n", path, permissions, act_time, deleted);
