@@ -28,7 +28,6 @@
  * - Work out how flushing cache async
  * - implement symlinks
  *   - requires editing formal of index files!!
- * - modify how read /writes occur between cache
  */
 
 /** the path of the mounted directory of zip files */
@@ -162,11 +161,8 @@ find_latest_archive(const char* path, char* name, int size) {
         double file_time = 0;
         int deleted = 0;
         sscanf(last_occurence, "%*s %*s %lf %d", &file_time, &deleted);
-        //  printf("--- COMPARING TIMES ---: %lf %lf\n", file_time, latest_time);
-        // check times
-        if (file_time > latest_time) { // things can be instantaneous
-            // update latest file and time
-            //      printf("------%lf----- WINS\n", file_time);
+
+        if (file_time > latest_time) { 
             latest_time = file_time;
             memset(latest_name, 0, sizeof(latest_name) / sizeof(char));
             strcpy(latest_name, entry_name);
@@ -188,7 +184,6 @@ find_latest_archive(const char* path, char* name, int size) {
         sprintf(name, "%s.zip", latest_name);
     if (is_deleted)
         return NULL;
-    // printf("~~~~~~ SET NAME TO: %s\n", latest_name);
     latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
     return latest_archive;
 
@@ -692,9 +687,6 @@ garbage_collect() {
         char* save_ptr;
 
         strcpy(contents_cpy, contents);
-        //      printf("****************************************\n");
-        //    printf("CONTENTS: %s\n", contents_cpy);
-        //  printf("****************************************\n");
 
         token = strtok_r(contents_cpy, delim, &save_ptr);
 
@@ -703,8 +695,6 @@ garbage_collect() {
 
         while (token != NULL) {
 
-            //    printf("****************\n");
-            //  printf("Looking at %s\n**************\n", token);
 
             // fetch path from token
             char token_path[PATH_MAX];
@@ -733,12 +723,10 @@ garbage_collect() {
 
             }
             token = strtok_r(NULL, delim, &save_ptr);
-            //       printf("Token %s\n", token);
         }
 
 
         if (is_outdated) {
-            //     printf("THIS ARCHIVE IS OUTDATED\n");
             // write to machine log file
             FILE* log_file = fopen(path_local_log, "a");
             int res =  fprintf(log_file, "%s\n", archive_entry->d_name);
@@ -756,7 +744,7 @@ garbage_collect() {
             // create command to remove both index and zip file
             char command[(strlen(indx_name_no_type) * 2) + (strlen(zip_dir_name) * 2) + 10];
             sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, indx_name_no_type, zip_dir_name, indx_name_no_type);
-            printf("--- REMOVAL COMMAND ---\n %s\n", command);
+            // printf("--- REMOVAL COMMAND ---\n %s\n", command);
             system(command);
 
         }
@@ -817,13 +805,12 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
         if (res == -1) {
             printf("ERROR reading file in cache\n");
         }
-        printf("read %s\n", buf);
+        ///  printf("read %s\n", buf);
         close(fd);
-        evict_from_cache(path);
+
         return res;
     }
     close(fd);
-    evict_from_cache(path);
     return -ENOENT;
 }
 
