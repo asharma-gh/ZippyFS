@@ -99,7 +99,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     char contents_cpy[strlen(contents)];
     strcpy(contents_cpy, contents);
     char* saveptr;
-    token = strtok(contents_cpy, delim, &saveptr);
+    token = strtok_r(contents_cpy, delim, &saveptr);
     while (token != NULL) {
         char token_path[PATH_MAX];
         sscanf(token, "%s %*s %*f %*d", token_path);
@@ -108,7 +108,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
             memset(buf, 0, sizeof(buf) / sizeof(char));
             strcpy(buf, token);
         }
-        token = strtok(NULL, delim, &saveptr);
+        token = strtok_r(NULL, delim, &saveptr);
     }
     if (!in_index)
         return -1;
@@ -379,7 +379,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     (void) offset;
     (void) fi;  
 
-    /** helper struct for storing entries in hash table */
+    // helper struct for storing entries in hash table 
     typedef struct index_entry {
         double added_time;
         int deleted;
@@ -392,11 +392,19 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     strcat(shadow_file_path, path+1);
 
     GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    
 
     DIR* zip_dir = opendir(zip_dir_name);
+    if (zip_dir == NULL) {
+        printf("error? ERRNO: %s\n", strerror(errno));
+        return -1;
+    }
+        
     struct dirent* entry;
+       
     // find the paths to things in the given path
     while((entry = readdir(zip_dir)) != NULL) {
+        
         const char* index_file_name = entry->d_name;
         if (strcmp(index_file_name, ".") == 0
                 || strcmp(index_file_name, "..") == 0
@@ -405,6 +413,10 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
             continue;
         }
+        
+    
+
+    
 
         // make path to index file
         char path_to_indx[strlen(index_file_name) + strlen(zip_dir_name) + 1];
@@ -433,7 +445,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         char contents_cpy[strlen(contents)];
         strcpy(contents_cpy, contents);
         char* saveptr;
-        token = strtok(contents_cpy, delim, &saveptr);
+        token = strtok_r(contents_cpy, delim, &saveptr);
         while (token != NULL) {
             // get path out of token
             char token_path[PATH_MAX];
@@ -474,7 +486,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 }
             }
 
-            token = strtok(NULL, delim, &saveptr);
+            token = strtok_r(NULL, delim, &saveptr);
         }
     }
 
@@ -492,6 +504,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             //         printf("ADDED %s to FILLER\n", basename(key_path));
         }
     }
+    
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
@@ -1108,12 +1121,11 @@ zipfs_truncate(const char* path, off_t size) {
  * @param path is the path to the file
  * @param mask is for permissions, unus ed
  * @return 0 for success, non-zero otherwise
- */
+*/
 static
 int
 zipfs_access(const char* path, int mode) {
     printf("ACCESS: %s %d\n", path, mode);
-    return 0;
     (void)mode;
     if (strcmp(path, "/") == 0)
         return 0;
@@ -1129,6 +1141,7 @@ zipfs_access(const char* path, int mode) {
     return access(shadow_file_path, mode);
     
 }
+
 static
 int
 zipfs_chmod(const char* path, mode_t  mode) {
@@ -1172,8 +1185,11 @@ zipfs_destroy(void* private_data) {
 }
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
+    
     .getattr = zipfs_getattr,
+    
     .readdir = zipfs_readdir,
+
     .read = zipfs_read,
     .mknod = zipfs_mknod, // create file
     .unlink = zipfs_unlink, // delete file
@@ -1181,24 +1197,26 @@ static struct fuse_operations zipfs_operations = {
     .rename = zipfs_rename, // rename a file/directory
     .write = zipfs_write, // write to a file
     .truncate = zipfs_truncate, // truncates file to given size
+ 
     .access = zipfs_access, // does file exist?
+    
     .open = zipfs_open, // same as access
     .rmdir = zipfs_rmdir,
     .chmod = zipfs_chmod,
     .utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
+    
 
 };
 /**
  * The main method of this program
  * calls fuse_main to initialize the filesystem
- * ./file-system <options> <mount point>  <dir>
+ * ./file-system <options> <mount point>  <ABSOLUTE PATH TO dir>
  */
 int
 main(int argc, char *argv[]) { 
     /** initializes garbage collection table **/
     gc_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-
     zip_dir_name = argv[--argc];
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
