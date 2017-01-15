@@ -28,11 +28,7 @@
  * - Work out how flushing cache async
  * - implement symlinks
  *   - requires editing format of index files!!
- */
-/***
- * current progress on figuring out -f
- * - getattr and access are called before some error occurs
- *   either segfault or similar
+ * - work on making all functions reentrant
  */
 
 /** the path of the mounted directory of zip files */
@@ -102,7 +98,8 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     int in_index = 0;
     char contents_cpy[strlen(contents)];
     strcpy(contents_cpy, contents);
-    token = strtok(contents_cpy, delim);
+    char* saveptr;
+    token = strtok(contents_cpy, delim, &saveptr);
     while (token != NULL) {
         char token_path[PATH_MAX];
         sscanf(token, "%s %*s %*f %*d", token_path);
@@ -111,7 +108,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
             memset(buf, 0, sizeof(buf) / sizeof(char));
             strcpy(buf, token);
         }
-        token = strtok(NULL, delim);
+        token = strtok(NULL, delim, &saveptr);
     }
     if (!in_index)
         return -1;
@@ -234,6 +231,7 @@ static
 int 
 zipfs_getattr(const char* path, struct stat* stbuf) {
     freopen("/home/arvin/log.txt", "a", stdout);
+    freopen("/home/arvin/log.txt", "a", stderr);
 
     printf("getattr: %s\n", path);
     //mkdir("/home/arvin/justfuckmeup", S_IRWXU);
@@ -257,19 +255,18 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
         return -ENOENT;
     }
     return 0; 
+    
 }
 
 /** flushes cached changes / writes to directory
- * - flushes the entire cache when called
- * @param path is the path of the file
- * @param isdatasync is not used
- * @param fi is not used
+ * - flushes the entire cache when calledi
  * @return 0 on success, nonzero if cache is empty or other error occured.
  */
 static
 int
-zipfs_fsync(const char* path, int isdatasync, struct fuse_file_info* fi) {
-    printf("FSYNC!!\n");
+flush_dir()
+{
+    printf("Flushing \n");
 
     // add checksum to index file
     // read contents of index file
@@ -376,7 +373,7 @@ static
 int
 zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         off_t offset, struct fuse_file_info* fi) {
-    //zipfs_fsync(NULL, 0, 0);
+    //flush_dir(NULL, 0, 0);
     printf("READDIR: %s\n", path);
     // unneeded
     (void) offset;
@@ -435,7 +432,8 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         char* token;
         char contents_cpy[strlen(contents)];
         strcpy(contents_cpy, contents);
-        token = strtok(contents_cpy, delim);
+        char* saveptr;
+        token = strtok(contents_cpy, delim, &saveptr);
         while (token != NULL) {
             // get path out of token
             char token_path[PATH_MAX];
@@ -476,7 +474,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 }
             }
 
-            token = strtok(NULL, delim);
+            token = strtok(NULL, delim, &saveptr);
         }
     }
 
@@ -556,10 +554,10 @@ load_to_cache(const char* path) {
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    /*
+    
        if (access(shadow_file_path, F_OK) == 0)
-       return 0;
-       */
+        return 0;
+       
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
     int is_dir = 0;
@@ -763,22 +761,6 @@ garbage_collect() {
     closedir(zip_dir);
     return 0;
 }
-/**
- * like fsync but for directories
- * @param path is the path of a file
- * @param d is unused
- * @param fi is unused
- * @return 0 on success, non-zero otherwise
- */
-static
-int
-zipfs_fsyncdir(const char* path, int d, struct fuse_file_info* fi) {
-    (void)d;
-    (void)fi;
-    zipfs_fsync(NULL, 0, 0);
-    return 0;
-}
-
 
 /**
  * Reads bytes from the given file into the buffer, starting from an
@@ -793,7 +775,7 @@ zipfs_fsyncdir(const char* path, int d, struct fuse_file_info* fi) {
 static
 int
 zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-    //zipfs_fsync(NULL, 0, 0);
+    //flush_dir(NULL, 0, 0);
     //unused
     (void) fi;
     (void) offset;
@@ -836,6 +818,7 @@ static
 int
 zipfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
+    return 0;
     (void)fi;
     char idx_path[strlen(shadow_path) + 15];
     sprintf(idx_path, "%s/index.idx", shadow_path);
@@ -902,12 +885,6 @@ record_index(const char* path, int deleted, int use_ftime) {
         printf("error retrieving file information for %s\n ERRNO: %s\n", 
                 path, strerror(errno));
     unsigned long long act_time = get_time();
-    /*
-       if (deleted || !use_ftime)
-       act_time = difftime(time(0), 0);
-       else
-       act_time = difftime((time_t)buf.st_mtime, 0);
-       */
 
 
     sprintf(input, "%s %s %llu %d\n", path, permissions, act_time, deleted);
@@ -933,7 +910,7 @@ record_index(const char* path, int deleted, int use_ftime) {
 static
 int
 zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-    //  zipfs_fsync(NULL, 0, 0);
+    //  flush_dir(NULL, 0, 0);
     printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
     load_to_cache(path);
@@ -959,7 +936,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
     // record to index file
     record_index(path, 0, 1);
 
-    zipfs_fsync(NULL, 0, 0);
+    flush_dir();
     return size;
 }
 
@@ -994,7 +971,7 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     }
     // record to index file
     record_index(path, 0, 1);
-    zipfs_fsync(NULL, 0, 0);
+    flush_dir();
     return 0;
 }
 /**
@@ -1012,7 +989,7 @@ zipfs_unlink(const char* path) {
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
     record_index(path, 1, 0);
-    zipfs_fsync(NULL, 0, 0);
+    flush_dir();
     return 0;
 }
 /**
@@ -1031,7 +1008,7 @@ zipfs_rmdir(const char* path) {
     strcat(shadow_file_path, path+1);
     record_index(path, 1, 0);
     rmdir(shadow_file_path);
-    zipfs_fsync(NULL, 0, 0);
+    flush_dir();
     return 0;
 }
 /**
@@ -1057,7 +1034,7 @@ zipfs_mkdir(const char* path, mode_t mode) {
     }
     // record to index
     record_index(path, 0, 1);
-    zipfs_fsync(NULL, 0, 0);
+    flush_dir();
     return 0;
 
 }
@@ -1084,7 +1061,7 @@ zipfs_rename(const char* from, const char* to) {
     record_index(from, 1, 0);
     int res = rename(shadow_file_path_f, shadow_file_path_t);
     record_index(to, 0, 0);
-    zipfs_fsync(NULL, 0, 0);
+    flush_dir();
     return res;
 }
 /**
@@ -1123,7 +1100,7 @@ zipfs_truncate(const char* path, off_t size) {
 
     // record to index
     record_index(path, 0, 1);
-    zipfs_fsync(NULL, 0, 0);
+    flush_dir();
     return 0;
 }
 /**
@@ -1136,6 +1113,7 @@ static
 int
 zipfs_access(const char* path, int mode) {
     printf("ACCESS: %s %d\n", path, mode);
+    return 0;
     (void)mode;
     if (strcmp(path, "/") == 0)
         return 0;
@@ -1149,6 +1127,7 @@ zipfs_access(const char* path, int mode) {
 
 
     return access(shadow_file_path, mode);
+    
 }
 static
 int
@@ -1182,7 +1161,7 @@ void
 zipfs_destroy(void* private_data) {
     (void)private_data;
     // flush
-    zipfs_fsync(NULL, 0, 0);
+    flush_dir();
     // clear gc_table
     g_hash_table_destroy(gc_table);
     // delete process cache directory
@@ -1196,8 +1175,6 @@ static struct fuse_operations zipfs_operations = {
     .getattr = zipfs_getattr,
     .readdir = zipfs_readdir,
     .read = zipfs_read,
-    .fsync = zipfs_fsync,
-    .fsyncdir = zipfs_fsyncdir,
     .mknod = zipfs_mknod, // create file
     .unlink = zipfs_unlink, // delete file
     .mkdir = zipfs_mkdir, // create directory
