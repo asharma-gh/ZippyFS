@@ -58,9 +58,6 @@ static int garbage_collect();
 /** loads either path or dirname of path to cache */
 static int load_to_cache(const char* path);
 
-/** evicts the given item from cache */
-static int evict_from_cache(const char* path);
-
 static unsigned long long get_time();
 
 /**
@@ -251,7 +248,6 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
     strcat(shadow_file_path, path+1);
 
     if (stat(shadow_file_path, stbuf) == -1) {
-        evict_from_cache(path);
         memset(stbuf, 0, sizeof(struct stat));
         return -ENOENT;
     }
@@ -602,26 +598,6 @@ load_to_cache(const char* path) {
 
     return 0;
 }
-/**
- * evicts the file specified in path
- *  - more specifically, it removes a link to that file.
- *  @param path is the path to the file
- *  @return 0 on success, -1 otherwise
- */
-static
-int
-evict_from_cache(const char* path) {
-    // create path to file
-    char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
-    strcat(shadow_file_path, shadow_path);
-    strcat(shadow_file_path, path+1);
-    if (access(shadow_file_path, F_OK) == -1)
-        return -1;
-    return unlink(path);
-
-}
-
 
 /**** 
  * HashTable for efficient garbage collection
