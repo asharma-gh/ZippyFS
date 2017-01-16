@@ -260,9 +260,8 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
  * @return 0 on success, nonzero if cache is empty or other error occured.
  */
 static
-    int
-flush_dir()
-{
+int
+flush_dir() {
     printf("Flushing \n");
 
     // add checksum to index file
