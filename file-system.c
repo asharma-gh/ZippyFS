@@ -57,6 +57,7 @@ static int garbage_collect();
 /** loads either path or dirname of path to cache */
 static int load_to_cache(const char* path);
 
+/** gets current time in milliseconds **/
 static unsigned long long get_time();
 
 /**
@@ -231,7 +232,6 @@ int
 zipfs_getattr(const char* path, struct stat* stbuf) {
 
     printf("getattr: %s\n", path);
-    //mkdir("/home/arvin/justfuckmeup", S_IRWXU);
 
     memset(stbuf, 0, sizeof(struct stat));
     if (strlen(path) == 1) {
@@ -367,7 +367,7 @@ static
 int
 zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         off_t offset, struct fuse_file_info* fi) {
-    //flush_dir(NULL, 0, 0);
+
     printf("READDIR: %s\n", path);
     // unneeded
     (void) offset;
@@ -389,8 +389,9 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     
 
     DIR* zip_dir = opendir(zip_dir_name);
+
     if (zip_dir == NULL) {
-        printf("error? ERRNO: %s\n", strerror(errno));
+        printf("error opening zip dir ERRNO: %s\n", strerror(errno));
         return -1;
     }
         
@@ -492,11 +493,10 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     while (g_hash_table_iter_next(&iter, &key, &value)) {
         char* key_path = key;
         index_entry* val = value;
-        //      printf("*****KEY %s DELETED %d\n", key_path, val->deleted);
-        if (!val->deleted) {
+
+        if (!val->deleted) 
             filler(buf, basename(key_path), NULL, 0);
-            //         printf("ADDED %s to FILLER\n", basename(key_path));
-        }
+        
     }
     
     filler(buf, ".", NULL, 0);
@@ -537,6 +537,10 @@ crc64(const char* message) {
     }
     return crc;
 }
+/**
+ * retrieves the current time with millisecond precision.
+ * @return the current time
+ */
 static
 unsigned long long
 get_time() {
@@ -759,7 +763,6 @@ garbage_collect() {
             // create command to remove both index and zip file
             char command[(strlen(indx_name_no_type) * 2) + (strlen(zip_dir_name) * 2) + 10];
             sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, indx_name_no_type, zip_dir_name, indx_name_no_type);
-            // printf("--- REMOVAL COMMAND ---\n %s\n", command);
             system(command);
 
         }
@@ -1060,11 +1063,13 @@ zipfs_rename(const char* from, const char* to) {
     char shadow_file_path_f[strlen(from) + strlen(shadow_path)];
     char shadow_file_path_t[strlen(to) + strlen(shadow_path)];
     memset(shadow_file_path_f, 0, sizeof(shadow_file_path_f) / sizeof(char));
-    memset(shadow_file_path_t, 0, sizeof(shadow_file_path_t) / sizeof(char));
     strcat(shadow_file_path_f, shadow_path);
-    strcat(shadow_file_path_t, shadow_path);
     strcat(shadow_file_path_f, from+1);
+
+    memset(shadow_file_path_t, 0, sizeof(shadow_file_path_t) / sizeof(char));
+    strcat(shadow_file_path_t, shadow_path);
     strcat(shadow_file_path_t, to+1);
+
     record_index(from, 1, 0);
     int res = rename(shadow_file_path_f, shadow_file_path_t);
     record_index(to, 0, 0);
