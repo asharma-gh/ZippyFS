@@ -54,11 +54,15 @@ static int get_latest_entry(const char* index, int in_cache, const char* path, c
 /** removes unneeded zip archives and logs in a machine specific rmlog */
 static int garbage_collect();
 
+/** records the given file in path to an index file in shadow directory */
+static int record_index(const char* path, int isdeleted);
+
 /** loads either path or dirname of path to cache */
 static int load_to_cache(const char* path);
 
 /** gets current time in milliseconds **/
 static unsigned long long get_time();
+
 
 /**
  * gets the latest entry of path in the index file index
@@ -838,12 +842,11 @@ zipfs_open(const char* path, struct fuse_file_info* fi) {
  * in cache
  * @param path is the path of a file in cache
  * @param deleted is whether this file should be considered deleted
- * @param use_ftime is whether to use the specific files' time or current time
  * @return 0 on success, non-zero otherwise
  */
 static
 int
-record_index(const char* path, int deleted, int use_ftime) {
+record_index(const char* path, int deleted) {
     printf("NOW MAKING INDEX FILE FOR %s\n", path);
     /**
      * each write will now create/modify an index file
@@ -936,7 +939,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
         printf("error closing shadow file\n"); 
 
     // record to index file
-    record_index(path, 0, 1);
+    record_index(path, 0);
 
     flush_dir();
     return size;
@@ -972,7 +975,7 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
         printf("ERRNO: %s\n", strerror(errno));
     }
     // record to index file
-    record_index(path, 0, 1);
+    record_index(path, 0);
     flush_dir();
     return 0;
 }
@@ -990,7 +993,7 @@ zipfs_unlink(const char* path) {
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    record_index(path, 1, 0);
+    record_index(path, 1);
     flush_dir();
     return 0;
 }
@@ -1008,7 +1011,7 @@ zipfs_rmdir(const char* path) {
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    record_index(path, 1, 0);
+    record_index(path, 1);
     rmdir(shadow_file_path);
     flush_dir();
     return 0;
@@ -1035,7 +1038,7 @@ zipfs_mkdir(const char* path, mode_t mode) {
         printf("ERRNO: %s\n", strerror(errno));
     }
     // record to index
-    record_index(path, 0, 1);
+    record_index(path, 0);
     flush_dir();
     return 0;
 
@@ -1062,9 +1065,9 @@ zipfs_rename(const char* from, const char* to) {
     strcat(shadow_file_path_t, shadow_path);
     strcat(shadow_file_path_t, to+1);
 
-    record_index(from, 1, 0);
+    record_index(from, 1);
     int res = rename(shadow_file_path_f, shadow_file_path_t);
-    record_index(to, 0, 0);
+    record_index(to, 0);
     flush_dir();
     return res;
 }
@@ -1103,7 +1106,7 @@ zipfs_truncate(const char* path, off_t size) {
         printf("error closing shadow file\n");
 
     // record to index
-    record_index(path, 0, 1);
+    record_index(path, 0);
     flush_dir();
     return 0;
 }
@@ -1144,7 +1147,7 @@ zipfs_chmod(const char* path, mode_t  mode) {
     strcat(shadow_file_path, path+1);
 
     int res = chmod(shadow_file_path, mode);
-    record_index(path, 0, 1);
+    record_index(path, 0);
     return res;
 }
 
