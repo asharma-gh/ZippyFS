@@ -1,12 +1,12 @@
 # zippyfs
----------
+
 distributed file system using libzip and fuse  
 
-How to install:  
+How to install  
 -----------------
 requires libfuse, libzip, and glib
 
-How to use:
+How to use  
 -----------------
 ./file-system [-f -s] [relative path to mount point] [absolute path to directory of zip archives]  
 
