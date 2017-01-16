@@ -377,7 +377,6 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
     GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
-
     DIR* zip_dir = opendir(zip_dir_name);
 
     if (zip_dir == NULL) {
@@ -450,7 +449,6 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                         // add to hash table
                         char* new_name = g_strdup(token_path);
                         g_hash_table_insert(added_entries, new_name, new_entry);
-
                     }
                 } else {
                     // it is not in the hash table so we need to add it
@@ -634,15 +632,10 @@ garbage_collect() {
         }
     }
     closedir(log_dir);
-    //  printf("BoxID from gc: %s\n", log_name);
     // make machine specific log file in zip directory if it doesn't exist
-    /** OK. malloc needs to be used here because alloca / normal
-     * allocation results in this array being cleared / free'd
-     * while in the loop!?!?!?! */
     char* path_local_log = malloc(PATH_MAX + strlen(log_name));
     memset(path_local_log, 0, sizeof(path_local_log) / sizeof(char));
     sprintf(path_local_log, "%s/rmlog/%s", zip_dir_name, log_name);
-    //    printf("LOCAL  LOG BEFORE LOOP %s\n", path_local_log);
     int log_fd = open(path_local_log, O_CREAT | O_APPEND, S_IRWXU);
     if (log_fd == -1)
         printf("Error making zip dir rm log ERRNO: %s\n", strerror(errno));
@@ -663,7 +656,6 @@ garbage_collect() {
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
         memset(path_to_indx, 0, sizeof(path_to_indx) / sizeof(char));
         sprintf(path_to_indx, "%s/%s", zip_dir_name, archive_entry->d_name);
-
         // read contents
         FILE* file  = fopen(path_to_indx, "r");
         // get file size
@@ -733,7 +725,6 @@ garbage_collect() {
             char command[(strlen(indx_name_no_type) * 2) + (strlen(zip_dir_name) * 2) + 10];
             sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, indx_name_no_type, zip_dir_name, indx_name_no_type);
             system(command);
-
         }
     }
     free(path_local_log);
@@ -821,8 +812,7 @@ record_index(const char* path, int deleted) {
      * each write will now create/modify an index file
      * this will contain information about the newly created file
      * upon flushing, this will not be in the zip archive. It
-     * will eventually have the name <archive name>.idx upon zipping
-     * in fsync
+     * will eventually have the name <archive name>.idx upon flushing
      */
     // create path to index file
     char idx_path[strlen(shadow_path) + 15];
@@ -830,7 +820,8 @@ record_index(const char* path, int deleted) {
 
     // open index file
     int idxfd = open(idx_path, O_CREAT | O_WRONLY | O_APPEND, S_IRWXU);
-    /** format for index file entry
+    /** 
+     * format for index file entry
      * PATH [PERMISSIONS] MODIFY-TIME DELETED?\n
      * e.g.: 
      * /foo/bar [RWX] 1024 0\n
@@ -883,7 +874,6 @@ record_index(const char* path, int deleted) {
 static
 int
 zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-    //  flush_dir(NULL, 0, 0);
     printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
     load_to_cache(path);
