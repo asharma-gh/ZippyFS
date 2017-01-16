@@ -445,9 +445,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             char token_path[PATH_MAX];
             double token_time;
             int deleted;
-            //           printf("TOKEN!! %s\n", token);
             sscanf(token, "%s %*s %lf %d", token_path, &token_time, &deleted);
-            //          printf("PATH!!!! %s\n", token_path);
             char* temp = strdup(token_path);
             // find out of this entry is in the directory
             int in_path = strcmp(dirname(temp), path);
@@ -465,9 +463,6 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                         // add to hash table
                         char* new_name = g_strdup(token_path);
                         g_hash_table_insert(added_entries, new_name, new_entry);
-                        //               printf("ADDED ENTRY FROM  %s\n", entry->d_name);
-
-
 
                     }
                 } else {
@@ -680,7 +675,6 @@ garbage_collect() {
                 || strlen(archive_entry->d_name) < 4
                 || strcmp(archive_entry->d_name + (strlen(archive_entry->d_name) - 4), ".idx") != 0) 
             continue;
-        //   printf("****** GARBAGE COLLECTING: %s\n ******* \n", archive_entry->d_name);
 
         // make path to index file
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
@@ -806,7 +800,6 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
         if (res == -1) {
             printf("ERROR reading file in cache\n");
         }
-        ///  printf("read %s\n", buf);
         close(fd);
 
         return res;
