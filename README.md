@@ -7,5 +7,5 @@ How to use:
 
 e.g. ./file-system -f mount /home/test/dir  
 -f to run in foreground  
--s for single threaded mode (multithreaded mode code still be buggy)  
+-s for single threaded mode (multithreaded mode is probably still buggy)  
 
