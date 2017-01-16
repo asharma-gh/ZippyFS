@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <linux/random.h>
-/** using glib over switching languages */
+/** using glib for hash table */
 #include <glib.h>
 /** TODO: 
  * - Work out how flushing cache async
@@ -252,7 +252,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
         return -ENOENT;
     }
     return 0; 
-    
+
 }
 
 /** flushes cached changes / writes to directory
@@ -260,7 +260,7 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
  * @return 0 on success, nonzero if cache is empty or other error occured.
  */
 static
-int
+    int
 flush_dir()
 {
     printf("Flushing \n");
@@ -386,7 +386,7 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     strcat(shadow_file_path, path+1);
 
     GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-    
+
 
     DIR* zip_dir = opendir(zip_dir_name);
 
@@ -394,12 +394,12 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         printf("error opening zip dir ERRNO: %s\n", strerror(errno));
         return -1;
     }
-        
+
     struct dirent* entry;
-       
+
     // find the paths to things in the given path
     while((entry = readdir(zip_dir)) != NULL) {
-        
+
         const char* index_file_name = entry->d_name;
         if (strcmp(index_file_name, ".") == 0
                 || strcmp(index_file_name, "..") == 0
@@ -408,10 +408,10 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
             continue;
         }
-        
-    
 
-    
+
+
+
 
         // make path to index file
         char path_to_indx[strlen(index_file_name) + strlen(zip_dir_name) + 1];
@@ -496,9 +496,9 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
         if (!val->deleted) 
             filler(buf, basename(key_path), NULL, 0);
-        
+
     }
-    
+
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
@@ -565,10 +565,10 @@ load_to_cache(const char* path) {
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-    
-       if (access(shadow_file_path, F_OK) == 0)
+
+    if (access(shadow_file_path, F_OK) == 0)
         return 0;
-       
+
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
     int is_dir = 0;
@@ -1120,7 +1120,7 @@ zipfs_truncate(const char* path, off_t size) {
  * @param path is the path to the file
  * @param mask is for permissions, unus ed
  * @return 0 for success, non-zero otherwise
-*/
+ */
 static
 int
 zipfs_access(const char* path, int mode) {
@@ -1138,7 +1138,7 @@ zipfs_access(const char* path, int mode) {
 
 
     return access(shadow_file_path, mode);
-    
+
 }
 
 static
@@ -1184,9 +1184,9 @@ zipfs_destroy(void* private_data) {
 }
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
-    
+
     .getattr = zipfs_getattr,
-    
+
     .readdir = zipfs_readdir,
 
     .read = zipfs_read,
@@ -1196,15 +1196,15 @@ static struct fuse_operations zipfs_operations = {
     .rename = zipfs_rename, // rename a file/directory
     .write = zipfs_write, // write to a file
     .truncate = zipfs_truncate, // truncates file to given size
- 
+
     .access = zipfs_access, // does file exist?
-    
+
     .open = zipfs_open, // same as access
     .rmdir = zipfs_rmdir,
     .chmod = zipfs_chmod,
     .utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
-    
+
 
 };
 /**
