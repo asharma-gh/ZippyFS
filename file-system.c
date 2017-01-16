@@ -36,7 +36,6 @@ static char* zip_dir_name;
 /** cache path */
 static char* shadow_path;
 
-
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
 static struct zip* find_latest_archive(const char* path, char* name, int size);
@@ -46,7 +45,6 @@ static uint64_t crc64(const char* content);
 
 /** determines if the contents is valid */
 static int verify_checksum(const char* contents);
-
 
 /** puts the latest entry of path in the index index into buf */
 static int get_latest_entry(const char* index, int in_cache, const char* path, char* buf);
@@ -62,7 +60,6 @@ static int load_to_cache(const char* path);
 
 /** gets current time in milliseconds **/
 static unsigned long long get_time();
-
 
 /**
  * gets the latest entry of path in the index file index
@@ -130,7 +127,6 @@ static
 struct zip* 
 find_latest_archive(const char* path, char* name, int size) {
     printf("FINDING LATEST ARCHIVE CONTAINING: %s %s %d\n", path, name, size);
-
     /** Finds latest archive based on index files **/
     DIR* dir = opendir(zip_dir_name);
     struct dirent* entry; 
@@ -192,8 +188,6 @@ find_latest_archive(const char* path, char* name, int size) {
         return NULL;
     latest_archive = zip_open(fixed_path, ZIP_RDONLY, 0);
     return latest_archive;
-
-
 }
 
 /**
@@ -204,7 +198,6 @@ find_latest_archive(const char* path, char* name, int size) {
 static
 int
 verify_checksum(const char* contents) {
-
     char* checksum;
     if ((checksum = strstr(contents, "CHECKSUM")) == NULL) 
         return -1;
@@ -222,7 +215,6 @@ verify_checksum(const char* contents) {
         return -1;  
 
     return 0;
-
 }
 
 /** 
@@ -235,9 +227,7 @@ verify_checksum(const char* contents) {
 static
 int 
 zipfs_getattr(const char* path, struct stat* stbuf) {
-
     printf("getattr: %s\n", path);
-
     memset(stbuf, 0, sizeof(struct stat));
     if (strlen(path) == 1) {
         stbuf->st_mode = S_IFDIR | 0755;
@@ -257,7 +247,6 @@ zipfs_getattr(const char* path, struct stat* stbuf) {
         return -ENOENT;
     }
     return 0; 
-
 }
 
 /** flushes cached changes / writes to directory
@@ -268,7 +257,6 @@ static
 int
 flush_dir() {
     printf("Flushing \n");
-
     // add checksum to index file
     // read contents of index file
     char path_to_indx[PATH_MAX + strlen(shadow_path)];
@@ -294,7 +282,6 @@ flush_dir() {
     fprintf(file_ap, "CHECKSUM");
     fprintf(file_ap, "%"PRIu64, checksum);
     fclose(file_ap);
-
 
     // create archive name
     char num[16] = {'\0'};
@@ -478,7 +465,6 @@ zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             token = strtok_r(NULL, delim, &saveptr);
         }
     }
-
     // iterate thru it and add them to filler unless its a deletion
     GHashTableIter  iter;
     void* key;
@@ -1068,7 +1054,6 @@ zipfs_truncate(const char* path, off_t size) {
 
     load_to_cache(path);
 
-    // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
@@ -1164,6 +1149,7 @@ zipfs_destroy(void* private_data) {
     system(removal_cmd);
     rmdir(shadow_path);
 }
+
 /** represents available functionality */
 static struct fuse_operations zipfs_operations = {
     .getattr = zipfs_getattr,
@@ -1181,8 +1167,6 @@ static struct fuse_operations zipfs_operations = {
     .chmod = zipfs_chmod,
     .utimens = zipfs_utimens,
     .destroy = zipfs_destroy,
-
-
 };
 
 /**
