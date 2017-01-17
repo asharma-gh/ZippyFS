@@ -1,5 +1,5 @@
-# zippyfs
-distributed file system using libzip and fuse  
+# nozipfs?
+distributed file system in fuse
 
 How to install:
 How to use:  
