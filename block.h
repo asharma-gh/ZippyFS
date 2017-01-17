@@ -9,8 +9,8 @@
  */
 
 class Block {
-    /*
-    public:
+
+public:
 
     /**
      * constructs a block at default size
@@ -40,12 +40,12 @@ class Block {
     /**
      * set this block as dirty
      */
-    void set_dirty() noexcept;
+    void set_dirty();
 
     /**
      * @return is this block dirty?
      */
-    bool is_dirty() const noexcept;
+    bool is_dirty();
 
 private:
     static const int64_t SIZE_ = 4096;

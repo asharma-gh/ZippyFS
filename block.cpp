@@ -21,10 +21,10 @@ void Block::insert_data(string data) {
 
 }
 
-void Block::set_dirty() noexcept {
+void Block::set_dirty() {
     dirty_ = true;
 }
 
-bool Block::is_dirty() const noexcept {
+bool Block::is_dirty() {
     return dirty_;
 }
