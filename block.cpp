@@ -1,6 +1,5 @@
 #include "block.h"
 using namespace std;
-using namespace fs;
 
 Block::Block(string data) {
     insert_data(data);
@@ -15,8 +14,8 @@ int Block::insert(string data) {
 }
 
 void Block::insert_data(string data) {
-    for (int i = 0; i < strlen(data); i++) {
-        data_[i] = reinterpret_cast<uint8_t>(data[i]);
+    for (int i = 0; i < data.length(); i++) {
+        data_[i] = (uint8_t)data[i];
     }
     has_data = true;
 

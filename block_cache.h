@@ -1,8 +1,10 @@
-#define BLOCK_CACHE_H
 #ifndef BLOCK_CACHE_H
+#define BLOCK_CACHE_H
 
 #include <mutex>
 #include <map>
+#include <vector>
+#include <memory>
 #include <string>
 #include "block.h"
 /**
@@ -56,7 +58,7 @@ private:
     std::string path_to_shdw_;
 
     /** file cache **/
-    std::map<std::string, std::vector<std::shared_ptr<Block>> file_cache_;
+    std::map<std::string, std::vector<std::shared_ptr<Block>>> file_cache_;
 
     /** for multithreaded mode potentially */
     std::mutex mutex_;

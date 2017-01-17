@@ -1,14 +1,16 @@
-#define BLOCK_H
 #ifndef BLOCK_H
+#define BLOCK_H
 #include <string>
+#include <cstring>
 #include <array>
 /**
  * Represents a block of data for a file
  * @author Arvin Sharma
  */
-namespace fs {
+
 class Block {
-public:
+    /*
+    public:
 
     /**
      * constructs a block at default size
@@ -50,7 +52,8 @@ private:
     std::array<uint8_t, SIZE_> data_;
     bool dirty_;
     bool has_data = false;
-    void insert_data(string data);
+    void insert_data(std::string data);
+
 };
-}
+
 #endif
