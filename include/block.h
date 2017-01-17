@@ -44,7 +44,7 @@ public:
     boolean is_dirty() const noexcept;
 
 private:
-    static const int64_t SIZE_ = 4000;
+    static const int64_t SIZE_ = 4096;
     array<uint8_t, SIZE_> data_;
     bool dirty_;
 };
