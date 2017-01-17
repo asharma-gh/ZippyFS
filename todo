@@ -1,0 +1,4 @@
+- finish implementing blocks and the block cache
+- implement r/w into block cache
+- implement basic fuse ops given a shadow dir and block cache
+...
