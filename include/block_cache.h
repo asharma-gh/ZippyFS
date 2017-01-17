@@ -27,8 +27,7 @@ public:
      * reads from the given file in cache
      * @return the number of bytes read
      */
-    int read(std::string path,  const unint8_t* buf, uint64_t size, uint64_t offset);
-
+    int read(std::string path,  const uint8_t* buf, uint64_t size, uint64_t offset);
 
     /**
      * determines if the thing in path is in cache
@@ -36,6 +35,13 @@ public:
      */
     bool in_cache(std::string path);
 
+    /**
+     * flushes the contents of this block cache to
+     * the shadow directory.
+     * Also flushes cache_data_ to an index file in the directory
+     * @return 0 for success, nonzero otherwise
+     */
+    int flush_to_shdw();
 
     /**
      * destructor for BlockCache
@@ -54,5 +60,8 @@ private:
 
     /** for multithreaded mode potentially */
     std::mutex mutex_;
+
+    /** represents entries in an index file for files in cache */
+    std::string cache_data_;
 };
 #endif
