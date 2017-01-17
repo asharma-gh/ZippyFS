@@ -56,12 +56,12 @@ private:
     std::string path_to_shdw_;
 
     /** file cache **/
-    std::map<string, std::vector<std::shared_ptr<Block>> file_cache_;
+    std::map<std::string, std::vector<std::shared_ptr<Block>> file_cache_;
 
     /** for multithreaded mode potentially */
     std::mutex mutex_;
 
-    /** represents entries in an index file for files in cache */
-    std::string cache_data_;
+    /** represents entries (path, meta-data) in an index file for files in cache */
+    std::map<std::string, std::string> cache_data_;
 };
 #endif

@@ -1,10 +1,12 @@
 #define BLOCK_H
 #ifndef BLOCK_H
-
+#include <string>
+#include <array>
 /**
  * Represents a block of data for a file
  * @author Arvin Sharma
  */
+namespace fs {
 class Block {
 public:
 
@@ -18,7 +20,7 @@ public:
      * constructs a block with the given data
      * @param data is the data for this block
      */
-    Block(string data);
+    Block(std::string data);
 
     /**
      * adds the given data to this empty block
@@ -26,12 +28,12 @@ public:
      * @return 0 for success, nonzero otherwise.
      * @return -1 if this block is not empty
      */
-    int insert(string data);
+    int insert(std::string data);
 
     /**
      * @return the data of this block as a string
      */
-    string get_data();
+    std::string get_data();
 
     /**
      * set this block as dirty
@@ -41,12 +43,14 @@ public:
     /**
      * @return is this block dirty?
      */
-    boolean is_dirty() const noexcept;
+    bool is_dirty() const noexcept;
 
 private:
     static const int64_t SIZE_ = 4096;
-    array<uint8_t, SIZE_> data_;
+    std::array<uint8_t, SIZE_> data_;
     bool dirty_;
+    bool has_data = false;
+    void insert_data(string data);
 };
-
+}
 #endif
