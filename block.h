@@ -3,6 +3,7 @@
 #include <string>
 #include <cstring>
 #include <array>
+#include <stdexcept>
 #include <cstdint>
 #include <vector>
 /**
@@ -15,11 +16,14 @@ class Block {
 public:
 
     /**
-     * constructs a block at default size
-     * and no data
+     * constructs an empty block
      */
     Block();
 
+    /**
+     * constructs a block with size stuff
+     * @throw domain_error if size > logical size
+     */
     Block(const uint8_t* data, uint64_t size);
 
 
@@ -56,7 +60,7 @@ private:
     uint64_t actual_size_;
     std::array<uint8_t, SIZE_> data_;
     bool dirty_;
-    bool has_data = false;
+    bool has_data_ = false;
     void insert_data(const uint8_t* data, uint64_t size);
 
 

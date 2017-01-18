@@ -5,13 +5,15 @@ Block::Block() {
 
 }
 Block::Block(const uint8_t* data, uint64_t size) {
+    if (size > get_logical_size())
+        throw domain_error("goof");
     insert_data(data, size);
 }
 
 
 int
 Block::insert(const uint8_t* data, uint64_t size) {
-    if (has_data)
+    if (has_data_)
         return -1;
     else
         insert_data(data, size);
@@ -23,7 +25,7 @@ Block::insert_data(const uint8_t* data, uint64_t size) {
     for (unsigned int i = 0; i < size; i++) {
         data_[i] = data[i];
     }
-    has_data = true;
+    has_data_ = true;
     actual_size_ = size;
 
 }

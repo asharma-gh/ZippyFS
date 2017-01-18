@@ -14,7 +14,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     if (file_cache_.find(path) == file_cache_.end()) {
         // for each block, add to cache for file
         uint64_t cached_bytes = 0;
-        uint64_t block_size;
+        uint64_t block_size = 0;
         for (unsigned int block_count = 0; block_count < num_blocks; block_count++) {
 
             // first jump to latest byte
