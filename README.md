@@ -1,6 +1,8 @@
 # zippyfs
 
 distributed file system using libzip and fuse  
+(branch nozippyfs) -> exciting and more efficient version in development
+(branch zipfs) -> basic file system allowing users to mount a single zip file
 
 How to install  
 -----------------
