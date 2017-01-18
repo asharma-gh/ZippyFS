@@ -6,6 +6,8 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <utility>
+#include <cstdint>
 #include "block.h"
 /**
  * represents an in-memory Block Cache
@@ -45,8 +47,8 @@ public:
      */
     int flush_to_shdw();
 
-    int load_to_cache();
-    int evict_from_cache();
+    /** loads the thing to this cache */
+    int load_to_cache(std::string path);
 
     /**
      * destructor for BlockCache
@@ -61,7 +63,7 @@ private:
     std::string path_to_shdw_;
 
     /** file cache **/
-    std::map<std::string, std::map<uint8_t, std::shared_ptr<Block>>> file_cache_;
+    std::map<std::string, std::map<uint64_t, std::shared_ptr<Block>>> file_cache_;
 
     /** for multithreaded mode potentially */
     std::mutex mutex_;

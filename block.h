@@ -3,6 +3,8 @@
 #include <string>
 #include <cstring>
 #include <array>
+#include <cstdint>
+#include <vector>
 /**
  * Represents a block of data for a file
  * @author Arvin Sharma
@@ -18,11 +20,8 @@ public:
      */
     Block();
 
-    /**
-     * constructs a block with the given data
-     * @param data is the data for this block
-     */
-    Block(std::string data);
+    Block(const uint8_t* data, uint64_t size);
+
 
     /**
      * adds the given data to this empty block
@@ -30,12 +29,12 @@ public:
      * @return 0 for success, nonzero otherwise.
      * @return -1 if this block is not empty
      */
-    int insert(std::string data);
+    int insert(const uint8_t* data, uint64_t size);
 
     /**
      * @return the data of this block as a string
      */
-    std::string get_data();
+    std::vector<uint8_t> get_data();
 
     /**
      * set this block as dirty
@@ -47,12 +46,20 @@ public:
      */
     bool is_dirty();
 
+    static uint64_t get_logical_size() {
+        return SIZE_;
+    }
+    uint64_t get_actual_size();
+
 private:
-    static const int64_t SIZE_ = 4096;
+    static const uint64_t SIZE_ = 4096;
+    uint64_t actual_size_;
     std::array<uint8_t, SIZE_> data_;
     bool dirty_;
     bool has_data = false;
-    void insert_data(std::string data);
+    void insert_data(const uint8_t* data, uint64_t size);
+
+
 
 };
 

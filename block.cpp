@@ -1,30 +1,49 @@
 #include "block.h"
 using namespace std;
 
-Block::Block(string data) {
-    insert_data(data);
+Block::Block() {
+
+}
+Block::Block(const uint8_t* data, uint64_t size) {
+    insert_data(data, size);
 }
 
-int Block::insert(string data) {
+
+int
+Block::insert(const uint8_t* data, uint64_t size) {
     if (has_data)
         return -1;
     else
-        insert_data(data);
+        insert_data(data, size);
     return 0;
 }
 
-void Block::insert_data(string data) {
-    for (int i = 0; i < data.length(); i++) {
-        data_[i] = (uint8_t)data[i];
+void
+Block::insert_data(const uint8_t* data, uint64_t size) {
+    for (unsigned int i = 0; i < size; i++) {
+        data_[i] = data[i];
     }
     has_data = true;
+    actual_size_ = size;
 
 }
 
-void Block::set_dirty() {
+void
+Block::set_dirty() {
     dirty_ = true;
 }
 
-bool Block::is_dirty() {
+bool
+Block::is_dirty() {
     return dirty_;
+}
+
+uint64_t
+Block::get_actual_size() {
+    return actual_size_;
+}
+
+vector<uint8_t>
+Block::get_data() {
+    return vector<uint8_t>(data_.begin(), data_.end());
 }
