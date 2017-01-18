@@ -1,7 +1,7 @@
 # zipfs
 toy file system using libzip and fuse  
 Allows users to mount a zip archive and read/write stuff  
-(branch distfs) -> networked and distributed file system using zip files
+(branch distfs) -> networked and distributed file system using zip files  
 (branch nozippyfs) -> faster and more efficient version of distfs in development
 
 
