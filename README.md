@@ -1,5 +1,8 @@
 # zipfs
 toy file system using libzip and fuse  
+Allows users to mount a zip archive and read/write stuff  
+ - for networked + distributed version goto branch: distfs  
+ - for unstable but exciting and faster distributed version goto branch: nozippyfs
 
 How to use:  
 ./file-system -f -s empty-folder-name zip-file  
