@@ -30,8 +30,6 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         if (in_cache) {
             // invalidate old block
             file_cache_[path][offset + cached_bytes]->set_dirty();
-            // release ownership
-            file_cache_[path][offset + cached_bytes].reset();
         }
 
         // finally create block with that much space at the current byte
@@ -42,26 +40,31 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     }
 
 
-
-    // file_cache_.insert( buf to block))
-    // if it doesnt then just add it and blocks
-    // else
-    // check if blocks exist in map
-    // mark existed blocks as dirty
-    // overwrite, them
-
-
     // write meta data to cache_data
     return 0;
 
 }
 
 int
-BlockCache::read(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
+BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
     (void)path;
     (void)buf;
     (void)size;
     (void)offset;
+    uint64_t read_bytes = 0;
+    auto data = file_cache_.find(path)->second;
+    for (unsigned int ii = offset; ii < offset + size; ii += read_bytes) {
+        if (data.find(ii) == data.end())
+            printf("COULD NOT LOCATE BLOCK\n");
+        auto block = (data.find(ii))->second;
+        auto block_data = block->get_data();
+        for (auto byte : block_data) {
+            buf[read_bytes++] = byte;
+        }
+
+    }
+    assert(read_bytes == size);
+
     // check if it exists
     // find file in file cache
     // get blocks starting from offset

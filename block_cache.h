@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include <cstdint>
+#include <cassert>
 #include "block.h"
 /**
  * represents an in-memory Block Cache
@@ -31,7 +32,7 @@ public:
      * reads from the given file in cache
      * @return the number of bytes read
      */
-    int read(std::string path,  const uint8_t* buf, uint64_t size, uint64_t offset);
+    int read(std::string path,  uint8_t* buf, uint64_t size, uint64_t offset);
 
     /**
      * determines if the thing in path is in cache
