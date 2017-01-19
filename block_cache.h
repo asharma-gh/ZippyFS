@@ -50,11 +50,6 @@ public:
     /** loads the thing to this cache */
     int load_to_cache(std::string path);
 
-    /**
-     * destructor for BlockCache
-     */
-    ~BlockCache();
-
 
 
 private:
@@ -70,5 +65,6 @@ private:
 
     /** represents entries (path, meta-data) in an index file for files in cache */
     std::map<std::string, std::string> cache_data_;
+
 };
 #endif
