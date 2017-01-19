@@ -1,8 +1,17 @@
 # zippyfs
 
-distributed file system using libzip and fuse  
-(branch nozippyfs) -> exciting and more efficient version in development  
-(branch master) -> the original, basic file system allowing users to mount amd edit a single zip file
+Distributed file system using libzip and fuse  
+Features: 
+- file synchronization via ssh  
+- interprocess / intermachine synchronized file i/o  
+- Log of previous files (similar to to that of log file system)    
+- full file i/o per Unix API   
+- garbage collection on both server / client  
+- (soon) encrypted files on server  
+
+other branches:  
+(branch nozippyfs) -> exciting and more efficient version in development in C++  
+(branch master) -> the original, basic file system that allows users to mount amd edit a single zip file
 
 How to install  
 -----------------
