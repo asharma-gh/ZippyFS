@@ -1,7 +1,10 @@
 #include "block_cache.h"
 #include "util.h"
 using namespace std;
-
+/**
+ * TODO:
+ * make all this actually work
+ */
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {
 
@@ -9,35 +12,31 @@ BlockCache::BlockCache(string path_to_shdw)
 
 int
 BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
-    // create blocks for buf. Number of blocks = ceil(size / block_size)
+    // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size, Block::get_logical_size());
     bool in_cache = file_cache_.find(path) == file_cache_.end();
     // check if path has blocks at those indexes
     // for each block, add to cache for file
-    uint64_t cached_bytes = 0;
+    uint64_t curr_idx = 0;
     uint64_t block_size = 0;
-    for (unsigned int block_idx = offset / Block::get_logical_size(); block_idx < num_blocks; block_idx++) {
-
-        // first jump to latest byte
-        cached_bytes += block_size;
-
-        // then determine how much space we have to add
-        if (cached_bytes + Block::get_logical_size() > size)
-            block_size = size - cached_bytes;
+    for (unsigned int block_idx = offset / Block::get_logical_size(), j = 0; j < num_blocks; block_idx++, j++) {
+        curr_idx += block_size;
+        if (size < curr_idx + Block::get_logical_size())
+            block_size = size - curr_idx;
         else
             block_size = Block::get_logical_size();
         if (in_cache) {
-            // invalidate old block
-            auto block_mp = file_cache_.find(path)->second;
-            if(block_mp.find(block_idx) != block_mp.end())
-                file_cache_[path][block_idx]->set_dirty();
+            // invalidate old block if it exists
+            auto block_map = file_cache_.find(path)->second;
+            if (block_map.find(block_idx) != block_map.end())
+                block_map[block_idx]->set_dirty();
         }
-
         // finally create block with that much space at the current byte
-        shared_ptr<Block> ptr(new Block(buf + cached_bytes, block_size));
+        shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
 
         // add newly formed block to file cache
         file_cache_[path][block_idx] = ptr;
+        curr_idx++;
     }
 
 
