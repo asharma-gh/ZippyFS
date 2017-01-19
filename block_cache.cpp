@@ -36,7 +36,6 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
 
         // add newly formed block to file cache
         file_cache_[path][block_idx] = ptr;
-        curr_idx++;
     }
 
 
