@@ -4,6 +4,7 @@ Distributed file system using libzip and fuse
 Features: 
 - file synchronization via ssh  
 - interprocess / intermachine synchronized file i/o  
+- shadowed file i/o independent of processes and machines  
 - Log of previous files (similar to to that of log file system), compressed as zip-archives      
 - full file i/o per Unix API   
 - garbage collection on both server / client  
