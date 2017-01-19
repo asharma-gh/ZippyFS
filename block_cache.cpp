@@ -40,6 +40,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
 
 
     // write meta data to cache_data
+    cache_data_[path] = (path + "[RW]" +to_string(Util::get_time()) +  "0");
     return 0;
 
 }

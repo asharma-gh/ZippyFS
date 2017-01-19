@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <cstdint>
+#include <sys/time.h>
 
 class Util {
 public:
@@ -13,6 +14,15 @@ public:
             return a / b;
         else
             return (a / b) + 1;
+    }
+
+    static
+    unsigned long long
+    get_time() {
+        struct timeval tv;
+        gettimeofday(&tv, nullptr);
+        return (unsigned long long)(tv.tv_sec) * 1000
+               + (unsigned long long)(tv.tv_usec) / 1000;
     }
 };
 #endif
