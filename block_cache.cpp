@@ -26,17 +26,19 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
             block_size = size - cached_bytes;
         else
             block_size = Block::get_logical_size();
-
+        auto offset_amt = offset % Block::get_logical_size();
         if (in_cache) {
             // invalidate old block
-            file_cache_[path][offset + cached_bytes]->set_dirty();
+            auto block_mp = file_cache_.find(path)->second;
+            if(block_mp.find(block_count) != block_mp.end())
+                file_cache_[path][block_count + offset_amt]->set_dirty();
         }
 
         // finally create block with that much space at the current byte
         shared_ptr<Block> ptr(new Block(buf + cached_bytes, block_size));
 
         // add newly formed block to file cache
-        file_cache_[path][block_count] = ptr;
+        file_cache_[path][block_count + offset_amt] = ptr;
     }
 
 
