@@ -47,10 +47,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
 
 int
 BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
-    (void)path;
-    (void)buf;
-    (void)size;
-    (void)offset;
+    // get blocks
     uint64_t read_bytes = 0;
     auto data = file_cache_.find(path)->second;
     for (unsigned int ii = offset; ii < offset + size; ii += read_bytes) {
@@ -58,18 +55,13 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
             printf("COULD NOT LOCATE BLOCK\n");
         auto block = (data.find(ii))->second;
         auto block_data = block->get_data();
+        // add data in blocks to buf
         for (auto byte : block_data) {
             buf[read_bytes++] = byte;
         }
 
     }
     assert(read_bytes == size);
-
-    // check if it exists
-    // find file in file cache
-    // get blocks starting from offset
-    // transfer those to buf
-    // return buf
     return 0;
 }
 
