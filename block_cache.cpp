@@ -16,7 +16,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     // for each block, add to cache for file
     uint64_t cached_bytes = 0;
     uint64_t block_size = 0;
-    for (unsigned int block_count = 0; block_count < num_blocks; block_count++) {
+    for (unsigned int block_idx = offset / Block::get_logical_size(); block_idx < num_blocks; block_idx++) {
 
         // first jump to latest byte
         cached_bytes += block_size;
@@ -26,19 +26,18 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
             block_size = size - cached_bytes;
         else
             block_size = Block::get_logical_size();
-        auto offset_amt = offset % Block::get_logical_size();
         if (in_cache) {
             // invalidate old block
             auto block_mp = file_cache_.find(path)->second;
-            if(block_mp.find(block_count) != block_mp.end())
-                file_cache_[path][block_count + offset_amt]->set_dirty();
+            if(block_mp.find(block_idx) != block_mp.end())
+                file_cache_[path][block_idx]->set_dirty();
         }
 
         // finally create block with that much space at the current byte
         shared_ptr<Block> ptr(new Block(buf + cached_bytes, block_size));
 
         // add newly formed block to file cache
-        file_cache_[path][block_count + offset_amt] = ptr;
+        file_cache_[path][block_idx] = ptr;
     }
 
 
@@ -51,17 +50,20 @@ int
 BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
     // get blocks
     uint64_t read_bytes = 0;
+    bool offsetted = false;
     auto data = file_cache_.find(path)->second;
     auto num_blocks = data.size();
-    for (unsigned int ii = 0; ii < num_blocks; ii++) {
-        // check if we have a block that we could read
-        if ((ii + 1) * Block::get_logical_size() < offset)
-            continue;
+    for (unsigned int block_idx = offset / Block::get_logical_size(); block_idx < num_blocks; block_idx++) {
         // we can read this block, find the data
-        auto block = data.find(ii)->second;
+        auto block = data.find(block_idx)->second;
         auto block_data = block->get_data();
         // offset into the data and add all to buf
-        auto offset_amt = offset < Block::get_logical_size()  ? offset : offset % Block::get_logical_size();
+        // should only offset once
+        auto offset_amt = 0;
+        if (offsetted == false) {
+            offset_amt = offset < Block::get_logical_size() ? offset : offset % Block::get_logical_size();
+            offsetted = true;
+        }
         for (auto byte = block_data.begin() + offset_amt;
                 byte != block_data.end() || read_bytes < size; byte++) {
             buf[read_bytes++] = *byte;
