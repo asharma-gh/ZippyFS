@@ -23,15 +23,15 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
             // then determine how much space we have to add
             if (cached_bytes + Block::get_logical_size() > size)
                 block_size = size - cached_bytes;
-            else {
+            else
                 block_size = Block::get_logical_size();
-            }
+
 
             // finally create block with that much space at the current byte
             shared_ptr<Block> ptr(new Block(buf + cached_bytes, block_size));
 
             // add newly formed block to file cache
-            file_cache_[path][offset + block_count] = ptr;
+            file_cache_[path][offset + cached_bytes] = ptr;
         }
 
 
