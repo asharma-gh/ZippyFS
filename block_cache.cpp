@@ -59,7 +59,7 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
         // should only offset once
         auto offset_amt = 0;
         if (offsetted == false) {
-            offset_amt = offset < Block::get_logical_size() ? offset : offset % Block::get_logical_size();
+            offset_amt = offset < Block::get_logical_size() ? offset : (offset % Block::get_logical_size());
             offsetted = true;
         }
         for (auto byte = block_data.begin() + offset_amt;
