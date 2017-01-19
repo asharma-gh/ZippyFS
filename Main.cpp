@@ -2,9 +2,41 @@
 #include <stdint.h>
 #include "block_cache.h"
 #include "block.h"
-
+#include "util.h"
+#include <istream>
+#include <fstream>
+#include <unistd.h>
+using namespace std;
 
 int
 main() {
-    cout << "hello world" << endl;
+    freopen("/home/arvin/log.txt", "w", stdout);
+    // create some data
+    ifstream is("/home/arvin/Makefile", ifstream::binary);
+    uint8_t* buf;
+    if (is) {
+        is.seekg(0, is.end);
+        int len = is.tellg();
+        is.seekg(0, is.beg);
+        buf = new uint8_t[len];
+
+        cout << "Reading" << len << "things " << endl;
+        is.read((char*)buf, len);
+        if (is)
+            cout << "read success" << endl;
+        else
+            cout << "read fail" << endl;
+        is.close();
+
+        cout << "Contents \n" << buf << endl;
+    }
+    // create a block
+    Block b(buf, 4096);
+    cout << "Data ";
+    for (auto t : b.get_data()) {
+        cout << t;
+    }
+    BlockCache bc("/foo/bar");
+    bc.read("/foo/thing", buf, 4096, 0);
+    cout << "\n";
 }

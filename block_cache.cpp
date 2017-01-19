@@ -1,5 +1,6 @@
 #include "block_cache.h"
 #include "util.h"
+#include <iostream>
 using namespace std;
 /**
  * TODO:
@@ -38,11 +39,9 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         file_cache_[path][block_idx] = ptr;
     }
 
-
-    // write meta data to cache_data
+    // record meta data to cache_data
     cache_data_[path] = (path + "[RW]" +to_string(Util::get_time()) +  "0");
     return 0;
-
 }
 
 int
@@ -68,6 +67,12 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
             buf[read_bytes++] = *byte;
         }
     }
+    cout << "got this shit from buf" << endl;
+    for (unsigned int i = 0; i < size; i++) {
+        cout << *(buf + i);
+    }
+    cout << "\n";
+
     assert(read_bytes == size);
     return 0;
 }
@@ -75,7 +80,7 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
 bool
 BlockCache::in_cache(string path) {
     (void)path;
-    return true;
+    return file_cache_.find(path) != file_cache_.end();
 }
 
 
