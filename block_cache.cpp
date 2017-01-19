@@ -36,7 +36,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         shared_ptr<Block> ptr(new Block(buf + cached_bytes, block_size));
 
         // add newly formed block to file cache
-        file_cache_[path][offset + cached_bytes] = ptr;
+        file_cache_[path][block_count] = ptr;
     }
 
 
@@ -50,16 +50,20 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
     // get blocks
     uint64_t read_bytes = 0;
     auto data = file_cache_.find(path)->second;
-    for (unsigned int ii = offset; ii < offset + size; ii += read_bytes) {
-        if (data.find(ii) == data.end())
-            printf("COULD NOT LOCATE BLOCK\n");
-        auto block = (data.find(ii))->second;
+    auto num_blocks = data.size();
+    for (unsigned int ii = 0; ii < num_blocks; ii++) {
+        // check if we have a block that we could read
+        if ((ii + 1) * Block::get_logical_size() < offset)
+            continue;
+        // we can read this block, find the data
+        auto block = data.find(ii)->second;
         auto block_data = block->get_data();
-        // add data in blocks to buf
-        for (auto byte : block_data) {
-            buf[read_bytes++] = byte;
+        // offset into the data and add all to buf
+        auto offset_amt = offset < Block::get_logical_size()  ? offset : offset % Block::get_logical_size();
+        for (auto byte = block_data.begin() + offset_amt;
+                byte != block_data.end() || read_bytes < size; byte++) {
+            buf[read_bytes++] = *byte;
         }
-
     }
     assert(read_bytes == size);
     return 0;
