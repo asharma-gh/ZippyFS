@@ -7,6 +7,7 @@ Features:
 - Log of previous files (similar to to that of log file system)    
 - full file i/o per Unix API   
 - garbage collection on both server / client  
+- runs in-memory, concurrently to the machine's actual file system  
 - (soon) encrypted files on server  
 
 other branches:  
