@@ -31,16 +31,20 @@ main() {
         cout << "Contents \n" << buf << endl;
     }
     // create a block
-    Block b(buf, 4096);
+    /*
+    Block b(buf, 8194);
     cout << "Data ";
     for (auto t : b.get_data()) {
-        //      cout << t;
+        cout << t;
     }
+    */
     cout <<"\n -------------NOW WRITING----------------" << endl;
     BlockCache bc("/foo/bar");
-    bc.write("/foo/thing", buf, 4096, 0);
+    bc.write("/foo/thing", buf, 5000, 10);
+    /*
+        uint8_t* bufr = new uint8_t[4096];
+        bc.read("/foo/thing", bufr, 4086, 10);
+        cout << "\n";
+        */
 
-    uint8_t* bufr = new uint8_t[4096];
-    bc.read("/foo/thing", bufr, 4086, 10);
-    cout << "\n";
 }

@@ -15,7 +15,7 @@ int
 BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size, Block::get_logical_size());
-    bool in_cache = file_cache_.find(path) == file_cache_.end();
+    bool in_cache = file_cache_.find(path) != file_cache_.end();
     // check if path has blocks at those indexes
     // for each block, add to cache for file
     uint64_t curr_idx = 0;
@@ -35,16 +35,11 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         }
         // finally create block with that much space at the current byte
         shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
-        //   cout << "WRITING THE FOLLOWING:" <<endl;
-        for (auto i : ptr->get_data()) {
-            //         cout << i;
-            charcount++;
-        }
-        cout << "\n";
-        //  cout << "NUMBER OF BYTES WRITTEN " << charcount << endl;
+        cout << "block_size: " << block_size << endl;
         // add newly formed block to file cache
         file_cache_[path][block_idx] = ptr;
     }
+    assert(curr_idx + block_size == size);
 
     // record meta data to cache_data
     cache_data_[path] = (path + "[RW]" +to_string(Util::get_time()) +  "0");
