@@ -35,7 +35,6 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         }
         // finally create block with that much space at the current byte
         shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
-        cout << "block_size: " << block_size << endl;
         // add newly formed block to file cache
         file_cache_[path][block_idx] = ptr;
     }
@@ -53,7 +52,6 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
     bool offsetted = false;
     auto data = file_cache_.find(path)->second;
     auto num_blocks = data.size();
-    cout << "NUMBER OF BLOCKS: " << num_blocks << endl;
     for (unsigned int block_idx = offset / Block::get_logical_size(); block_idx < num_blocks; block_idx++) {
         // we can read this block, find the data
         auto block = data.find(block_idx)->second;
@@ -64,21 +62,12 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
         if (offsetted == false) {
             offset_amt = offset < Block::get_logical_size() ? offset : (offset % Block::get_logical_size());
             offsetted = true;
-            cout << "OK" << endl;
         }
-        cout << "SIZE OF BLOCK: " << block_data.size() << " OFFSET " << offset_amt << endl;
         for (auto byte = block_data.begin() + offset_amt;
                 byte != block_data.end() || read_bytes < size; byte++) {
-            cout << "SEG FAULT? " << endl;
             buf[read_bytes++] = *byte;
         }
     }
-    cout << "got this shit from buf" << endl;
-    for (unsigned int i = 0; i < size; i++) {
-        cout << *(buf + i);
-    }
-    cout << "\n";
-    cout << "NUMBER OF BYTES READ!! "<<read_bytes << " SIZE " << size << endl;
     assert(read_bytes == size);
     return 0;
 }
