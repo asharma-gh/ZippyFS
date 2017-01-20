@@ -17,7 +17,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     uint64_t num_blocks = Util::ulong_ceil(size, Block::get_logical_size());
     bool loaded_in = in_cache(path);
     // check if path has blocks at those indexes
-    // for each block, add to cache for file
+    // for this file, make a block and add it to cache
     uint64_t curr_idx = 0;
     uint64_t block_size = 0;
     for (unsigned int block_idx = offset / Block::get_logical_size();  block_idx < num_blocks; block_idx++) {
@@ -40,7 +40,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     assert(curr_idx + block_size == size);
 
     // record meta data to cache_data
-    cache_data_[path] = (path + "[RW]" +to_string(Util::get_time()) +  "0");
+    cache_data_[path] = (path + " [RW] " + to_string(Util::get_time()) +  " 0");
     return 0;
 }
 
