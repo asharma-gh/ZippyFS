@@ -20,7 +20,7 @@ main() {
         is.seekg(0, is.beg);
         buf = new uint8_t[len];
 
-        cout << "Reading" << len << "things " << endl;
+        // cout << "Reading" << len << "things " << endl;
         is.read((char*)buf, len);
         if (is)
             cout << "read success" << endl;
@@ -34,9 +34,13 @@ main() {
     Block b(buf, 4096);
     cout << "Data ";
     for (auto t : b.get_data()) {
-        cout << t;
+        //      cout << t;
     }
+    cout <<"\n -------------NOW WRITING----------------" << endl;
     BlockCache bc("/foo/bar");
-    bc.read("/foo/thing", buf, 4096, 0);
+    bc.write("/foo/thing", buf, 4096, 0);
+
+    uint8_t* bufr = new uint8_t[4096];
+    bc.read("/foo/thing", bufr, 4086, 10);
     cout << "\n";
 }
