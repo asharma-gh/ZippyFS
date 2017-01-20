@@ -84,7 +84,7 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
     }
     cout << "\n";
     cout << "NUMBER OF BYTES READ!! "<<read_bytes << " SIZE " << size << endl;
-    // assert(read_bytes == size);
+    assert(read_bytes == size);
     return 0;
 }
 
