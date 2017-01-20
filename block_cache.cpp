@@ -15,19 +15,18 @@ int
 BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size, Block::get_logical_size());
-    bool in_cache = file_cache_.find(path) != file_cache_.end();
+    bool loaded_in = in_cache(path);
     // check if path has blocks at those indexes
     // for each block, add to cache for file
     uint64_t curr_idx = 0;
     uint64_t block_size = 0;
-    uint64_t charcount = 0;
     for (unsigned int block_idx = offset / Block::get_logical_size();  block_idx < num_blocks; block_idx++) {
         curr_idx += block_size;
         if (size < curr_idx + Block::get_logical_size())
             block_size = size - curr_idx;
         else
             block_size = Block::get_logical_size();
-        if (in_cache) {
+        if (loaded_in) {
             // invalidate old block if it exists
             auto block_map = file_cache_.find(path)->second;
             if (block_map.find(block_idx) != block_map.end())
