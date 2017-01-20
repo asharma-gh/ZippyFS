@@ -16,7 +16,6 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size, Block::get_logical_size());
     bool loaded_in = in_cache(path);
-    // check if path has blocks at those indexes
     // for this file, make a block and add it to cache
     uint64_t curr_idx = 0;
     uint64_t block_size = 0;
@@ -26,8 +25,9 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
             block_size = size - curr_idx;
         else
             block_size = Block::get_logical_size();
+
+        // invalidate old block if it exists
         if (loaded_in) {
-            // invalidate old block if it exists
             auto block_map = file_cache_.find(path)->second;
             if (block_map.find(block_idx) != block_map.end())
                 block_map[block_idx]->set_dirty();
