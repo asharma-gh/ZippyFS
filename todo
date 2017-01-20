@@ -4,4 +4,6 @@
     - things need to be loaded and evicted some how
     - stuff is flushed / evicted to a shadow directory
 - implement basic fuse ops given a shadow dir and block cache
+
+- better unit testing lul
 ...
