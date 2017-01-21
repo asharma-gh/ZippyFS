@@ -133,5 +133,6 @@ BlockCache::flush_to_shdw() {
         ::write(idx_fd, record, strlen(record));
 
     }
+    close(idx_fd);
     return 0;
 }
