@@ -1,7 +1,7 @@
 #include "block_cache.h"
 #include "util.h"
 #include "inode.h"
-//#include "fuse_ops.h"
+#include "fuse_ops.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <iostream>
