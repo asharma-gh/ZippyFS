@@ -22,12 +22,11 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <linux/random.h>
+#include "fuse_ops.h"
 /** using glib for hash table */
 #include <glib.h>
 /** TODO:
- * - Work out how flushing cache async
- * - implement symlinks
- *   - requires editing format of index files!!
+ * - reintegrate this into C++
  */
 
 /** the path of the mounted directory of zip files */
@@ -226,7 +225,7 @@ verify_checksum(const char* contents) {
  */
 static
 int
-zipfs_getattr(const char* path, struct stat* stbuf) {
+zippyfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
     if (strlen(path) == 1) {
@@ -325,7 +324,7 @@ flush_dir() {
     char path_to_sync[PATH_MAX];
     sprintf(tild_exp, "~");
     wordexp(tild_exp, &we, 0);
-    sprintf(path_to_sync, "%s/.cache/zipfs/sync.pid", *we.we_wordv);
+    sprintf(path_to_sync, "%s/.cache/zippyfs/sync.pid", *we.we_wordv);
     wordfree(&we);
     if (access(path_to_sync, F_OK) == -1)
         printf("Error finding sync pid file\n");
@@ -356,8 +355,8 @@ flush_dir() {
  */
 static
 int
-zipfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
-              off_t offset, struct fuse_file_info* fi) {
+zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
+                off_t offset, struct fuse_file_info* fi) {
     printf("READDIR: %s\n", path);
     // unneeded
     (void) offset;
@@ -609,7 +608,7 @@ int
 garbage_collect() {
     // make path to rmlog
     char rmlog_path[PATH_MAX];
-    sprintf(rmlog_path, "~/.config/zipfs/");
+    sprintf(rmlog_path, "~/.config/zippyfs/");
     // tilde expansion
     wordexp_t path;
     wordexp(rmlog_path, &path, 0);
@@ -744,7 +743,7 @@ garbage_collect() {
  */
 static
 int
-zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
+zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
@@ -781,7 +780,7 @@ zipfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_f
  */
 static
 int
-zipfs_open(const char* path, struct fuse_file_info* fi) {
+zippyfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
     return 0;
     (void)fi;
@@ -871,7 +870,7 @@ record_index(const char* path, int deleted) {
  */
 static
 int
-zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
+zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
     load_to_cache(path);
@@ -910,7 +909,7 @@ zipfs_write(const char* path, const char* buf, size_t size, off_t offset, struct
  */
 static
 int
-zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
+zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
     (void)mode;
     (void)rdev;
@@ -942,7 +941,7 @@ zipfs_mknod(const char* path, mode_t mode, dev_t rdev) {
  */
 static
 int
-zipfs_unlink(const char* path) {
+zippyfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -961,7 +960,7 @@ zipfs_unlink(const char* path) {
  */
 static
 int
-zipfs_rmdir(const char* path) {
+zippyfs_rmdir(const char* path) {
     printf("RMDIR: %s\n", path);;
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -981,7 +980,7 @@ zipfs_rmdir(const char* path) {
  */
 static
 int
-zipfs_mkdir(const char* path, mode_t mode) {
+zippyfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
     load_to_cache(path);
     // create path to file
@@ -1008,7 +1007,7 @@ zipfs_mkdir(const char* path, mode_t mode) {
  */
 static
 int
-zipfs_rename(const char* from, const char* to) {
+zippyfs_rename(const char* from, const char* to) {
     load_to_cache(from);
     load_to_cache(to);
     // add new file to cache
@@ -1037,7 +1036,7 @@ zipfs_rename(const char* from, const char* to) {
  */
 static
 int
-zipfs_truncate(const char* path, off_t size) {
+zippyfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
 
     load_to_cache(path);
@@ -1076,7 +1075,7 @@ zipfs_truncate(const char* path, off_t size) {
  */
 static
 int
-zipfs_access(const char* path, int mode) {
+zippyfs_access(const char* path, int mode) {
     printf("ACCESS: %s %d\n", path, mode);
     (void)mode;
     if (strcmp(path, "/") == 0)
@@ -1098,7 +1097,7 @@ zipfs_access(const char* path, int mode) {
  */
 static
 int
-zipfs_chmod(const char* path, mode_t  mode) {
+zippyfs_chmod(const char* path, mode_t  mode) {
     load_to_cache(path);
     // add new file to cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -1116,7 +1115,7 @@ zipfs_chmod(const char* path, mode_t  mode) {
  */
 static
 int
-zipfs_utimens(const char* path,  const struct timespec ts[2]) {
+zippyfs_utimens(const char* path,  const struct timespec ts[2]) {
     (void)path;
     (void)ts;
     return 0;
@@ -1125,7 +1124,7 @@ zipfs_utimens(const char* path,  const struct timespec ts[2]) {
  * closes the working zip archive
  */
 void
-zipfs_destroy(void* private_data) {
+zippyfs_destroy(void* private_data) {
     (void)private_data;
     // flush
     flush_dir();
@@ -1139,22 +1138,22 @@ zipfs_destroy(void* private_data) {
 }
 
 /** represents available functionality */
-static struct fuse_operations zipfs_operations = {
-    .getattr = zipfs_getattr,
-    .readdir = zipfs_readdir,
-    .read = zipfs_read,
-    .mknod = zipfs_mknod,
-    .unlink = zipfs_unlink,
-    .mkdir = zipfs_mkdir,
-    .rename = zipfs_rename,
-    .write = zipfs_write,
-    .truncate = zipfs_truncate,
-    .access = zipfs_access,
-    .open = zipfs_open,
-    .rmdir = zipfs_rmdir,
-    .chmod = zipfs_chmod,
-    .utimens = zipfs_utimens,
-    .destroy = zipfs_destroy,
+static struct fuse_operations zippyfs_operations = {
+    .getattr = zippyfs_getattr,
+    .readdir = zippyfs_readdir,
+    .read = zippyfs_read,
+    .mknod = zippyfs_mknod,
+    .unlink = zippyfs_unlink,
+    .mkdir = zippyfs_mkdir,
+    .rename = zippyfs_rename,
+    .write = zippyfs_write,
+    .truncate = zippyfs_truncate,
+    .access = zippyfs_access,
+    .open = zippyfs_open,
+    .rmdir = zippyfs_rmdir,
+    .chmod = zippyfs_chmod,
+    .utimens = zippyfs_utimens,
+    .destroy = zippyfs_destroy,
 };
 
 /**
@@ -1181,7 +1180,7 @@ main(int argc, char *argv[]) {
     // construct program directory path
     char temp_path[PATH_MAX];
     memset(temp_path, 0, sizeof(temp_path) / sizeof(char));
-    strcat(temp_path, "~/.cache/zipfs/");
+    strcat(temp_path, "~/.cache/zippyfs/");
     printf("shadow dir path: %s\n", temp_path);
     wordexp_t path;
     wordexp(temp_path, &path, 0);
@@ -1191,7 +1190,7 @@ main(int argc, char *argv[]) {
 
     // make program directory if it doesn't exist yet
     if (mkdir(shadow_path, S_IRWXU)) {
-        printf("error making zipfs directory ERRNO: %s\n", strerror(errno));
+        printf("error making zippyfs directory ERRNO: %s\n", strerror(errno));
     }
     // construct shadow directory path
     strcat(shadow_path, shadow_name);
@@ -1216,7 +1215,7 @@ main(int argc, char *argv[]) {
     sprintf(tild_exp, "~");
     wordexp(tild_exp, &path, 0);
 
-    sprintf(machine_rmlog_path, "%s/.config/zipfs/", *path.we_wordv);
+    sprintf(machine_rmlog_path, "%s/.config/zippyfs/", *path.we_wordv);
 
     printf("machine path %s\n", machine_rmlog_path);
     int made_dir = 1;
@@ -1243,7 +1242,7 @@ main(int argc, char *argv[]) {
         // make path to log file
         char log_path[strlen(log_name) + PATH_MAX];
         memset(log_path, 0, sizeof(log_path) / sizeof(char));
-        sprintf(log_path, "%s/.config/zipfs/%s", *path.we_wordv, log_name);
+        sprintf(log_path, "%s/.config/zippyfs/%s", *path.we_wordv, log_name);
         // create file
         printf("file path: %s", log_path);
         int fd = open(log_path, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR | S_IXUSR);
@@ -1251,5 +1250,5 @@ main(int argc, char *argv[]) {
 
     }
     wordfree(&path);
-    return fuse_main(argc, newarg, &zipfs_operations, NULL);
+    return fuse_main(argc, newarg, &zippyfs_operations, NULL);
 }

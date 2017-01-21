@@ -1,9 +1,4 @@
-- finish implementing blocks and the block cache
-- implement r/w into block cache
+- reimplement all of file-system.c into c++
 - fuse immediately reads and writes to and from block cache
     - things need to be loaded and evicted some how
     - stuff is flushed / evicted to a shadow directory
-- implement basic fuse ops given a shadow dir and block cache
-
-- better unit testing lul
-...

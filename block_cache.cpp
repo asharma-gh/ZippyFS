@@ -122,7 +122,7 @@ BlockCache::flush_to_shdw() {
                 buf[ii] = byte;
                 ii++;
             }
-            // do a write to file, offsetted by block idx
+            // do a write to file, offsetted based on block idx
             if (pwrite(file_fd, buf, block_size, block_idx * Block::get_logical_size()) == -1)
                 perror("Error flushing block to file\n");
 

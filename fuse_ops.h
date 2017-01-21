@@ -13,9 +13,6 @@ extern "C" {
 #include <limits.h>
 #include <sys/time.h>
 
-    /** initializes this file system */
-    int zippyfs_init();
-
     /** retrieves the attributes for thing in path into st */
     int zippyfs_getattr(const char *path, struct stat *st);
 
