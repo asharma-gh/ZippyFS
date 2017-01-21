@@ -1,6 +1,12 @@
 #include "block_cache.h"
 #include "util.h"
+#include "inode.h"
+//#include "fuse_ops.h"
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <iostream>
+#include <cstdio>
+#include <unistd.h>
 using namespace std;
 /**
  * TODO:
@@ -79,6 +85,53 @@ BlockCache::in_cache(string path) {
 
 
 int
-flush_to_shdw() {
+BlockCache::flush_to_shdw() {
+    // make index file for cache
+    string idx_path = path_to_shdw_ + "/index.idx";
+    int idx_fd = open(idx_path.c_str(), O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+    if (idx_fd == -1)
+        perror("Open failed");
+
+    // create files for each item in cache
+    for (auto const& entry : file_cache_) {
+        // load previous version to shadow director
+
+        // create path to file in shadow dir
+        string shdw_file_path = path_to_shdw_ + (entry.first).substr(1);
+        // get permissions of prev version
+        struct stat st;
+        mode_t mode = 0;
+        int res = stat(shdw_file_path.c_str(), &st);
+        if (res == -1)
+            mode = S_IRUSR | S_IWUSR;
+        else
+            mode = st.st_mode;
+        // open previous version / make new one
+        int file_fd = open(shdw_file_path.c_str(), O_CREAT | O_WRONLY, mode);
+        // write blocks to it
+        for (auto const& data : entry.second) {
+            // extract information for current block
+            uint64_t block_idx = data.first;
+            shared_ptr<Block> block = data.second;
+            vector<uint8_t> block_data = block->get_data();
+            uint64_t block_size = block->get_actual_size();
+            // create a literal buffer for writes to file
+            char buf[block_size];
+            int ii = 0;
+            for (auto byte : block_data) {
+                buf[ii] = byte;
+                ii++;
+            }
+            // do a write to file, offsetted by block idx
+            if (pwrite(file_fd, buf, block_size, block_idx * Block::get_logical_size()) == -1)
+                perror("Error flushing block to file\n");
+
+        }
+        close(file_fd);
+        // record to index file
+        const char* record = cache_data_[entry.first].c_str();
+        ::write(idx_fd, record, strlen(record));
+
+    }
     return 0;
 }
