@@ -20,6 +20,8 @@ extern "C" {
 #include <stdlib.h>
 #include <sys/time.h>
 
+    /***** fuse functions *******/
+
     void zippyfs_init(const char* shdw, const char* zip_dir);
 
     /** retrieves the attributes for thing in path into st */

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <alloca.h>
 #include <limits.h>
+#include <signal.h>
 #include <dirent.h>
 #include <wordexp.h>
 #include <sys/time.h>
@@ -31,12 +32,6 @@ using namespace std;
 /** TODO:
  * - reintegrate this into C++
  */
-
-/** the path of the mounted directory of zip files */
-static char* zip_dir_name;
-
-/** cache path */
-static char* shadow_path;
 
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
@@ -59,6 +54,11 @@ static int record_index(const char* path, int isdeleted);
 
 /** loads either path or dirname of path to cache */
 static int load_to_cache(const char* path);
+/** the path of the mounted directory of zip files */
+static char* zip_dir_name;
+
+/** cache path */
+static char* shadow_path;
 
 /** gets current time in milliseconds **/
 static unsigned long long get_time();
@@ -208,7 +208,9 @@ static
 int
 verify_checksum(const char* contents) {
     char* checksum;
-    if ((checksum = strstr(contents, "CHECKSUM")) == NULL)
+    char delim[10];
+    strcpy(delim, "CHECKSUM");
+    if ((checksum = strstr(contents, delim)) == NULL)
         return -1;
 
     char checksum_cpy[strlen(checksum)];
@@ -289,7 +291,7 @@ flush_dir() {
     // append to file
     FILE* file_ap = fopen(path_to_indx, "a");
     fprintf(file_ap, "CHECKSUM");
-    fprintf(file_ap, "%"PRIu64, checksum);
+    fprintf(file_ap, "%" PRIu64, checksum);
     fclose(file_ap);
 
     // create archive name

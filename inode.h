@@ -14,7 +14,7 @@
  */
 class Inode {
 
-public:
+  public:
     Inode(std::string path);
 
     void set_mode(uint32_t mode);
@@ -23,7 +23,7 @@ public:
     void set_blocks(std::shared_ptr<std::vector<std::shared_ptr<Block>>> blocks);
 
 
-private:
+  private:
     std::string path_;
     uint32_t mode_;
     uint32_t nlink_;

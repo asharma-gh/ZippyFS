@@ -25,6 +25,7 @@
 #include "fuse_ops.h"
 /** using glib for hash table */
 #include <glib.h>
+using namespace std;
 /** TODO:
  * - reintegrate this into C++
  */

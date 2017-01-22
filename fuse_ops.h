@@ -1,5 +1,8 @@
 #define FUSE_OPS_H
 #ifndef FUSE_OPS_H
+#include <map>
+#include <string>
+#include <vector>
 extern "C" {
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
