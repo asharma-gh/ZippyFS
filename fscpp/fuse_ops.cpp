@@ -30,6 +30,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <mutex>
 using namespace std;
 /** TODO:
  * - reintegrate this into C++
@@ -626,7 +627,9 @@ load_to_cache(const char* path) {
  *   then delete index file and zip archive
  * Initialized in main
  ****/
-static GHashTable* gc_table;
+static map<string, unsigned long long> gc_table;
+
+
 
 /**
  * removes fully updated zip archives
@@ -712,25 +715,28 @@ garbage_collect() {
             if (strstr(token, "CHECKSUM"))
                 // basically done with the file at this point
                 break;
-            unsigned long long* time = g_malloc(sizeof(unsigned long long));
-            sscanf(token, "%s %*s %llu %*d", token_path, time);
-            char* old_path;
-            unsigned long long* old_time;
-            if (g_hash_table_lookup_extended(gc_table, token_path,
-                                             (void*)&old_path, (void*)&old_time)) {
+            // unsigned long long* time = g_malloc(sizeof(unsigned long long));
+            unsigned long long file_time;
+            sscanf(token, "%s %*s %llu %*d", token_path, &file_time);
+            //char* old_path;
+            //unsigned long long* old_time;
+            if (gc_table.find(token_path) != gc_table.end()) {
+                // if (g_hash_table_lookup_extended(gc_table, token_path,
+                // (void*)&old_path, (void*)&old_time)) {
                 // entry is in the hash table, compare times
-                if (*old_time <= *time) {
+                if (gc_table.find(token_path)->second <= file_time) {
+                    //if (*old_time <= *time) {
                     // we have an updated entry
                     is_outdated = 0;
                     // add to hash table
-                    g_hash_table_insert(gc_table, g_strdup(token_path), time);
-                } else {
-                    g_free(time);
+                    //g_hash_table_insert(gc_table, g_strdup(token_path), time);
+                    gc_table[token_path] = file_time;
                 }
             } else {
                 // make entry for this item
                 is_outdated = 0;
-                g_hash_table_insert(gc_table, g_strdup(token_path), time);
+                // g_hash_table_insert(gc_table, g_strdup(token_path), time);
+                gc_table[token_path] = file_time;
             }
             token = strtok_r(NULL, delim, &save_ptr);
         }
@@ -1161,7 +1167,7 @@ zippyfs_destroy(void* private_data) {
     // flush
     flush_dir();
     // clear gc_table
-    g_hash_table_destroy(gc_table);
+    //g_hash_table_destroy(gc_table);
     // delete process cache directory
     char removal_cmd[PATH_MAX + 12];
     sprintf(removal_cmd, "rm -rf %s", shadow_path);
