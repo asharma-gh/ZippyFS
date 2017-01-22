@@ -1,7 +1,7 @@
 /**
  * Zipfs: A toy distributed file system using libfuze and libzip
  * @author Arvin Sharma
- * @version 2.5
+ * @version 3.0
  */
 #define FUSE_USE_VERSION 30
 #include <syscall.h>
@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <cstring>
 #include <unistd.h>
 #include <libgen.h>
 #include <stdlib.h>
@@ -28,6 +29,7 @@
 //#include <glib.h>
 #include <vector>
 #include <string>
+#include <map>
 using namespace std;
 /** TODO:
  * - reintegrate this into C++
@@ -207,20 +209,23 @@ find_latest_archive(const char* path, char* name, int size) {
 static
 int
 verify_checksum(const char* contents) {
-    char* checksum;
+    char contents_cpy[sizeof(contents)];
+    strcpy(contents_cpy, contents);
     char delim[10];
     strcpy(delim, "CHECKSUM");
-    if ((checksum = strstr(contents, delim)) == NULL)
+    char* checksum;
+
+    if ((checksum = ::strstr(contents_cpy, delim)) == NULL)
         return -1;
 
+    checksum[0] = '\0';
     char checksum_cpy[strlen(checksum)];
     strcpy(checksum_cpy, checksum);
-    checksum[0] = '\0';
     uint64_t checksum_val;
     char* endptr;
     checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
     // make new checksum
-    uint64_t new_checksum = crc64(contents);
+    uint64_t new_checksum = crc64(contents_cpy);
 
     if (new_checksum != checksum_val)
         return -1;
@@ -281,7 +286,7 @@ flush_dir() {
     fseek(file, 0, SEEK_END);
     long fsize = ftell(file);
     rewind(file);
-    char* contents = alloca(fsize + 1);
+    char* contents = (char*)alloca(fsize + 1);
     memset(contents, 0, sizeof(contents) / sizeof(char));
     fread(contents, fsize, 1, file);
     contents[fsize] = '\0';
@@ -387,7 +392,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     strcat(shadow_file_path, path+1);
 
     GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-
+    map<string, string> names;
     DIR* zip_dir = opendir(zip_dir_name);
 
     if (zip_dir == NULL) {
