@@ -391,8 +391,8 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
-    GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-    map<string, string> names;
+    //  GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+
     DIR* zip_dir = opendir(zip_dir_name);
 
     if (zip_dir == NULL) {
@@ -401,7 +401,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     }
 
     struct dirent* entry;
-
+    map<string, index_entry> added_names;
     // find the paths to things in the given path
     while((entry = readdir(zip_dir)) != NULL) {
 
@@ -453,26 +453,29 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             int in_path = strcmp(dirname(temp), path);
             free(temp);
             if (in_path == 0) {
-                index_entry* val;
-                char* old_name;
-                if (g_hash_table_lookup_extended(added_entries, token_path, (void*)&old_name, (void*)&val)) {
+                index_entry val;
+                string old_name;
+                if (added_names.find(token_path) != added_names.end()) {
+                    auto entry = added_names.find(token_path);
+                    val = entry->second;
+                    //  if (g_hash_table_lookup_extended(added_entries, token_path, (void*)&old_name, (void*)&val)) {
                     // entry is in the hash table, compare times
-                    if (val->added_time <= token_time) {
+                    if (val.added_time <= token_time) {
                         // this token is a later version. Create new hash-table entry
-                        index_entry* new_entry = g_malloc(sizeof(index_entry));
-                        new_entry->added_time = token_time;
-                        new_entry->deleted = deleted;
+                        index_entry new_entry;
+                        new_entry.added_time = token_time;
+                        new_entry.deleted = deleted;
                         // add to hash table
-                        char* new_name = g_strdup(token_path);
-                        g_hash_table_insert(added_entries, new_name, new_entry);
+                        // g_hash_table_insert(added_entries, new_name, new_entry);
+                        added_names[token_path] = new_entry;
                     }
                 } else {
                     // it is not in the hash table so we need to add it
-                    index_entry* new_entry = g_malloc(sizeof(index_entry));
-                    new_entry->added_time = token_time;
-                    new_entry->deleted = deleted;
-                    char* new_name = g_strdup(token_path);
-                    g_hash_table_insert(added_entries, new_name, new_entry);
+                    index_entry new_entry;
+                    new_entry.added_time = token_time;
+                    new_entry.deleted = deleted;
+                    //g_hash_table_insert(added_entries, new_name, new_entry);
+                    added_names[token_path] = new_entry;
                 }
             }
 
@@ -480,6 +483,15 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         }
     }
     // iterate thru it and add them to filler unless its a deletion
+    for (auto entry : added_names) {
+        if (!((entry.second).deleted)) {
+            char* base_name = strdup(entry.first.c_str());
+
+            filler(buf, basename(base_name), NULL, 0);
+            free(base_name);
+        }
+    }
+    /*
     GHashTableIter  iter;
     void* key;
     void* value;
@@ -492,11 +504,12 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             filler(buf, basename(key_path), NULL, 0);
 
     }
+    */
 
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
-    g_hash_table_destroy(added_entries);
+    // g_hash_table_destroy(added_entries);
 
     if (!closedir(zip_dir))
         printf("successfully closed dir\n");
@@ -649,7 +662,7 @@ garbage_collect() {
     }
     closedir(log_dir);
     // make machine specific log file in zip directory if it doesn't exist
-    char* path_local_log = malloc(PATH_MAX + strlen(log_name));
+    char* path_local_log = (char*)malloc(PATH_MAX + strlen(log_name));
     memset(path_local_log, 0, sizeof(path_local_log) / sizeof(char));
     sprintf(path_local_log, "%s/rmlog/%s", zip_dir_name, log_name);
     int log_fd = open(path_local_log, O_CREAT | O_APPEND, S_IRWXU);
