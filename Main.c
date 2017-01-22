@@ -64,7 +64,7 @@ main(int argc, char *argv[]) {
     // construct program directory path
     char temp_path[PATH_MAX];
     memset(temp_path, 0, sizeof(temp_path) / sizeof(char));
-    strcat(temp_path, "~/.cache/zipfs/");
+    strcat(temp_path, "~/.cache/zippyfs/");
     printf("shadow dir path: %s\n", temp_path);
     wordexp_t path;
     wordexp(temp_path, &path, 0);
@@ -101,7 +101,7 @@ main(int argc, char *argv[]) {
     sprintf(tild_exp, "~");
     wordexp(tild_exp, &path, 0);
 
-    sprintf(machine_rmlog_path, "%s/.config/zipfs/", *path.we_wordv);
+    sprintf(machine_rmlog_path, "%s/.config/zippyfs/", *path.we_wordv);
 
     printf("machine path %s\n", machine_rmlog_path);
     int made_dir = 1;
@@ -128,7 +128,7 @@ main(int argc, char *argv[]) {
         // make path to log file
         char log_path[strlen(log_name) + PATH_MAX];
         memset(log_path, 0, sizeof(log_path) / sizeof(char));
-        sprintf(log_path, "%s/.config/zipfs/%s", *path.we_wordv, log_name);
+        sprintf(log_path, "%s/.config/zippyfs/%s", *path.we_wordv, log_name);
         // create file
         printf("file path: %s", log_path);
         int fd = open(log_path, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR | S_IXUSR);

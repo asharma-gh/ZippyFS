@@ -6,7 +6,7 @@ import sys
 
 def init():
     # open sync file
-    path = os.path.expanduser("~/.cache/zipfs/sync.pid")
+    path = os.path.expanduser("~/.cache/zippyfs/sync.pid")
 
     if os.path.exists(path) and os.stat(path).st_size > 0:
         f = open(path, "r+")

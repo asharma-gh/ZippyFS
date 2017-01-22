@@ -24,11 +24,13 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <linux/random.h>
-
 #include <vector>
 #include <string>
 #include <map>
 #include <mutex>
+#include "util.h"
+#include "block_cache.h"
+#include "block.h"
 using namespace std;
 /** TODO:
  * - integrate block cache
@@ -37,12 +39,6 @@ using namespace std;
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
 static struct zip* find_latest_archive(const char* path, char* name, int size);
-
-/** returns a crc64 checksum based on content */
-static uint64_t crc64(const char* content);
-
-/** determines if the contents is valid */
-static int verify_checksum(const char* contents);
 
 /** puts the latest entry of path in the index index into buf */
 static int get_latest_entry(const char* index, int in_cache, const char* path, char* buf);
@@ -61,9 +57,6 @@ static char* zip_dir_name;
 /** cache path */
 static char* shadow_path;
 
-/** gets current time in milliseconds **/
-static unsigned long long get_time();
-vector<string> thing;
 
 void
 zippyfs_init(const char* shdw, const char* zip_dir) {
@@ -99,7 +92,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     fclose(file);
 
     if (!in_cache) {
-        if (verify_checksum(contents) == -1)
+        if (Util::verify_checksum(contents) == -1)
             return -1;
 
     }
@@ -201,37 +194,6 @@ find_latest_archive(const char* path, char* name, int size) {
 }
 
 /**
- * verifies the checksum specified in contents
- * assumes that contents is in the form of an .idx file
- * @return 0 if the checksum is valid, -1 otherwise
- */
-static
-int
-verify_checksum(const char* contents) {
-    char contents_cpy[strlen(contents)];
-    strcpy(contents_cpy, contents);
-    char delim[10];
-    strcpy(delim, "CHECKSUM");
-    char* checksum;
-
-    if ((checksum = ::strstr(contents_cpy, delim)) == NULL)
-        return -1;
-
-    char checksum_cpy[strlen(checksum)];
-    strcpy(checksum_cpy, checksum);
-    checksum[0] = '\0';
-    uint64_t checksum_val;
-    char* endptr;
-    checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
-    // make new checksum
-    uint64_t new_checksum = crc64(contents_cpy);
-    if (new_checksum != checksum_val)
-        return -1;
-
-    return 0;
-}
-
-/**
  *  retrieves the attributes of a specific file / directory
  *  - returns the attributes of the LATEST file / directory
  *  @param path is the path of the file
@@ -289,7 +251,7 @@ flush_dir() {
     contents[fsize] = '\0';
     fclose(file);
     // generate checksum
-    uint64_t checksum = crc64(contents);
+    uint64_t checksum = Util::crc64(contents);
     // append to file
     FILE* file_ap = fopen(path_to_indx, "a");
     fprintf(file_ap, "CHECKSUM");
@@ -425,7 +387,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         contents[fsize] = '\0';
         fclose(file);
 
-        if (verify_checksum(contents) == -1)
+        if (Util::verify_checksum(contents) == -1)
             continue;
 
         // now we need to find all of the entries which are in the given path
@@ -494,46 +456,6 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     return 0;
 }
 
-/**
- * lazy implementation of crc64 without a table
- * - iterates thru each bit and applies a mask
- * @param msg is the contents of the index file
- * @return the encoded message
- */
-static
-uint64_t
-crc64(const char* message) {
-    uint64_t crc = 0xFFFFFFFFFFFFFFFF;
-    uint64_t special_bits = 0xDEADBEEFABCD1234;
-    uint64_t mask = 0;
-
-    for(int i = 0; message[i]; i++) {
-        crc ^= (uint8_t)message[i];
-        for (int j = 0; j < 7; j++) {
-            // I found that if I don't change the mask in respect to the last bit in crc
-            // there are inputs such as "abc123" and "123abc" which will have the same hash
-            mask = -(crc&1) ^ special_bits; // mask = 0xbits0 or 0xbits1 depending on crc
-            crc = crc ^ mask;
-            crc = crc >> 1;
-        }
-    }
-    return crc;
-}
-
-/**
- * retrieves the current time with millisecond precision.
- * @return the current time
- */
-static
-unsigned long long
-get_time() {
-    struct timeval tv;
-
-    gettimeofday(&tv, NULL);
-
-    return (unsigned long long)(tv.tv_sec) * 1000 +
-           (unsigned long long)(tv.tv_usec) / 1000;
-}
 
 /**
  * loads the dir specified in path to cache
@@ -676,7 +598,7 @@ garbage_collect() {
         fread(contents, fsize, 1, file);
         contents[fsize] = '\0';
         fclose(file);
-        if (verify_checksum(contents) == -1)
+        if (Util::verify_checksum(contents) == -1)
             continue;
         const char delim[2] = "\n";
         char* token;
@@ -852,7 +774,7 @@ record_index(const char* path, int deleted) {
         printf("error retrieving file information for %s\n ERRNO: %s\n",
                path, strerror(errno));
 
-    unsigned long long act_time = get_time();
+    unsigned long long act_time = Util::get_time();
     sprintf(input, "%s %s %llu %d\n", path, permissions, act_time, deleted);
     printf("====WRITING THE FOLLOWING TO INDEX====\n%s\n", input);
     if (write(idxfd, input, strlen(input)) == -1) {
