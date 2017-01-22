@@ -629,8 +629,7 @@ load_to_cache(const char* path) {
  ****/
 static map<string, unsigned long long> gc_table;
 
-
-
+mutex gc_mtx;
 /**
  * removes fully updated zip archives
  * log is located in
@@ -639,6 +638,7 @@ static map<string, unsigned long long> gc_table;
 static
 int
 garbage_collect() {
+    lock_guard<mutex> lock(gc_mtx);
     // make path to rmlog
     char rmlog_path[PATH_MAX];
     sprintf(rmlog_path, "~/.config/zippyfs/");
