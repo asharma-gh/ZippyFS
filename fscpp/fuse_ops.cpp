@@ -629,7 +629,9 @@ load_to_cache(const char* path) {
  ****/
 static map<string, unsigned long long> gc_table;
 
+/** lock for gc_table, for multithreaded mode */
 mutex gc_mtx;
+
 /**
  * removes fully updated zip archives
  * log is located in
