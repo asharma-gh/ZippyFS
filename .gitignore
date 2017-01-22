@@ -4,3 +4,4 @@ dir/
 test/
 fscpp/something
 /something
+.out
