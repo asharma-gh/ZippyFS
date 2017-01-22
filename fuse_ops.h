@@ -1,9 +1,8 @@
-#define FUSE_OPS_H
 #ifndef FUSE_OPS_H
-#include <map>
-#include <string>
-#include <vector>
+#define FUSE_OPS_H
+#ifdef __cplusplus
 extern "C" {
+#endif
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
 #include <stdio.h>
@@ -14,52 +13,69 @@ extern "C" {
 #include <dirent.h>
 #include <alloca.h>
 #include <limits.h>
+#include <wordexp.h>
+#include <inttypes.h>
+#include <linux/random.h>
+#include <limits.h>
+#include <zip.h>
+#include <syscall.h>
+#include <stdlib.h>
 #include <sys/time.h>
 
-    /** retrieves the attributes for thing in path into st */
-    int zippyfs_getattr(const char *path, struct stat *st);
+/***** fuse functions *******/
 
-    /** determines if the thing in path has permissions in mask */
-    int zippyfs_access(const char *path, int mask);
+void zippyfs_init(const char* shdw, const char* zip_dir);
 
-    /** reads the directory in path into buf using filler */
-    int zippyfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi);
+/** retrieves the attributes for thing in path into st */
+int zippyfs_getattr(const char *path, struct stat *st);
 
-    /** creates file in path with the given mode */
-    int zippyfs_mknod(const char *path, mode_t mode, dev_t rdev);
+/** determines if the thing in path has permissions in mask */
+int zippyfs_access(const char *path, int mask);
 
-    /** creates directory in path with given mode */
-    int zippyfs_mkdir(const char *path, mode_t mode);
+/** reads the directory in path into buf using filler */
+int zippyfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi);
 
-    /** removes a link form the given thing in path */
-    int zippyfs_unlink(const char *path);
+/** creates file in path with the given mode */
+int zippyfs_mknod(const char *path, mode_t mode, dev_t rdev);
 
-    /** removes the directory and its contents */
-    int zippyfs_rmdir(const char *path);
+/** creates directory in path with given mode */
+int zippyfs_mkdir(const char *path, mode_t mode);
 
-    /** renames the thing from to the thing in to */
-    int zippyfs_rename(const char *from, const char *to);
+/** removes a link form the given thing in path */
+int zippyfs_unlink(const char *path);
 
-    /** truncates the thing in path */
-    int zippyfs_truncate(const char *path, off_t size);
+/** removes the directory and its contents */
+int zippyfs_rmdir(const char *path);
 
-    /** determines if the thing in path can be opened */
-    int zippyfs_open(const char *path, struct fuse_file_info *fi);
+/** renames the thing from to the thing in to */
+int zippyfs_rename(const char *from, const char *to);
 
-    /** reads size bytes at offset in the file path into buf */
-    int zippyfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
+/** truncates the thing in path */
+int zippyfs_truncate(const char *path, off_t size);
 
-    /** writes size things  in buf at offset into path */
-    int zippyfs_write(const char *path, const char *buf, size_t size,
-                      off_t offset, struct fuse_file_info *fi);
+/** determines if the thing in path can be opened */
+int zippyfs_open(const char *path, struct fuse_file_info *fi);
 
-    /** does stuff? */
-    int zippyfs_fsync(const char *path, int isdatasync,
-                      struct fuse_file_info *_fi);
+/** reads size bytes at offset in the file path into buf */
+int zippyfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 
-    /** something about time */
-    int zippyfs_utimens(const char* path, const struct timespec tv[2]);
+/** writes size things  in buf at offset into path */
+int zippyfs_write(const char *path, const char *buf, size_t size,
+                  off_t offset, struct fuse_file_info *fi);
 
+/** does stuff? */
+int zippyfs_fsync(const char *path, int isdatasync,
+                  struct fuse_file_info *_fi);
 
+/** something about time */
+int zippyfs_utimens(const char* path, const struct timespec tv[2]);
+
+/** destroys fs on close */
+void zippyfs_destroy(void* private_data);
+
+/** change mode */
+int zippyfs_chmod(const char* path, mode_t mode);
+#ifdef __cplusplus
 }
+#endif
 #endif

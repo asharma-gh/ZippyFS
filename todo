@@ -1,4 +1,4 @@
-- reimplement all of file-system.c into c++
+- integrate buffer/block cache to main file system prog.
 - fuse immediately reads and writes to and from block cache
     - things need to be loaded and evicted some how
     - stuff is flushed / evicted to a shadow directory

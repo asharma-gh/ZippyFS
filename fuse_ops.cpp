@@ -1,9 +1,9 @@
 /**
  * Zipfs: A toy distributed file system using libfuze and libzip
  * @author Arvin Sharma
- * @version 2.5
+ * @version 3.0
  */
-#define FUSE_USE_VERSION 30
+#include "fuse_ops.h"
 #include <syscall.h>
 #include <zip.h>
 #include <fuse.h>
@@ -11,30 +11,28 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <cstring>
 #include <unistd.h>
 #include <libgen.h>
 #include <stdlib.h>
 #include <alloca.h>
 #include <limits.h>
+#include <signal.h>
 #include <dirent.h>
 #include <wordexp.h>
 #include <sys/time.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <linux/random.h>
-#include "fuse_ops.h"
-/** using glib for hash table */
-#include <glib.h>
+
+#include <vector>
+#include <string>
+#include <map>
+#include <mutex>
 using namespace std;
 /** TODO:
- * - reintegrate this into C++
+ * - integrate block cache
  */
-
-/** the path of the mounted directory of zip files */
-static char* zip_dir_name;
-
-/** cache path */
-static char* shadow_path;
 
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
@@ -57,10 +55,22 @@ static int record_index(const char* path, int isdeleted);
 
 /** loads either path or dirname of path to cache */
 static int load_to_cache(const char* path);
+/** the path of the mounted directory of zip files */
+static char* zip_dir_name;
+
+/** cache path */
+static char* shadow_path;
 
 /** gets current time in milliseconds **/
 static unsigned long long get_time();
+vector<string> thing;
 
+void
+zippyfs_init(const char* shdw, const char* zip_dir) {
+    shadow_path = strdup(shdw);
+    zip_dir_name = strdup(zip_dir);
+
+}
 /**
  * gets the latest entry of path in the index file index
  * @param index is the path to the index file
@@ -198,8 +208,13 @@ find_latest_archive(const char* path, char* name, int size) {
 static
 int
 verify_checksum(const char* contents) {
+    char contents_cpy[strlen(contents)];
+    strcpy(contents_cpy, contents);
+    char delim[10];
+    strcpy(delim, "CHECKSUM");
     char* checksum;
-    if ((checksum = strstr(contents, "CHECKSUM")) == NULL)
+
+    if ((checksum = ::strstr(contents_cpy, delim)) == NULL)
         return -1;
 
     char checksum_cpy[strlen(checksum)];
@@ -209,8 +224,7 @@ verify_checksum(const char* contents) {
     char* endptr;
     checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
     // make new checksum
-    uint64_t new_checksum = crc64(contents);
-
+    uint64_t new_checksum = crc64(contents_cpy);
     if (new_checksum != checksum_val)
         return -1;
 
@@ -224,7 +238,6 @@ verify_checksum(const char* contents) {
  *  @param stbuf is the stat structure to hold the attributes
  *  @return 0 for normal exit status, non-zero otherwise.
  */
-static
 int
 zippyfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
@@ -270,7 +283,7 @@ flush_dir() {
     fseek(file, 0, SEEK_END);
     long fsize = ftell(file);
     rewind(file);
-    char* contents = alloca(fsize + 1);
+    char* contents = (char*)alloca(fsize + 1);
     memset(contents, 0, sizeof(contents) / sizeof(char));
     fread(contents, fsize, 1, file);
     contents[fsize] = '\0';
@@ -280,7 +293,7 @@ flush_dir() {
     // append to file
     FILE* file_ap = fopen(path_to_indx, "a");
     fprintf(file_ap, "CHECKSUM");
-    fprintf(file_ap, "%"PRIu64, checksum);
+    fprintf(file_ap, "%" PRIu64, checksum);
     fclose(file_ap);
 
     // create archive name
@@ -354,7 +367,6 @@ flush_dir() {
  * @return 0 for normal exit status, non-zero otherwise.
  *
  */
-static
 int
 zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info* fi) {
@@ -375,8 +387,6 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
-    GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-
     DIR* zip_dir = opendir(zip_dir_name);
 
     if (zip_dir == NULL) {
@@ -385,7 +395,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     }
 
     struct dirent* entry;
-
+    map<string, index_entry> added_names;
     // find the paths to things in the given path
     while((entry = readdir(zip_dir)) != NULL) {
 
@@ -437,26 +447,29 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             int in_path = strcmp(dirname(temp), path);
             free(temp);
             if (in_path == 0) {
-                index_entry* val;
-                char* old_name;
-                if (g_hash_table_lookup_extended(added_entries, token_path, (void*)&old_name, (void*)&val)) {
+                index_entry val;
+                string old_name;
+                if (added_names.find(token_path) != added_names.end()) {
+                    auto entry = added_names.find(token_path);
+                    val = entry->second;
+                    //  if (g_hash_table_lookup_extended(added_entries, token_path, (void*)&old_name, (void*)&val)) {
                     // entry is in the hash table, compare times
-                    if (val->added_time <= token_time) {
+                    if (val.added_time <= token_time) {
                         // this token is a later version. Create new hash-table entry
-                        index_entry* new_entry = g_malloc(sizeof(index_entry));
-                        new_entry->added_time = token_time;
-                        new_entry->deleted = deleted;
+                        index_entry new_entry;
+                        new_entry.added_time = token_time;
+                        new_entry.deleted = deleted;
                         // add to hash table
-                        char* new_name = g_strdup(token_path);
-                        g_hash_table_insert(added_entries, new_name, new_entry);
+                        // g_hash_table_insert(added_entries, new_name, new_entry);
+                        added_names[token_path] = new_entry;
                     }
                 } else {
                     // it is not in the hash table so we need to add it
-                    index_entry* new_entry = g_malloc(sizeof(index_entry));
-                    new_entry->added_time = token_time;
-                    new_entry->deleted = deleted;
-                    char* new_name = g_strdup(token_path);
-                    g_hash_table_insert(added_entries, new_name, new_entry);
+                    index_entry new_entry;
+                    new_entry.added_time = token_time;
+                    new_entry.deleted = deleted;
+                    //g_hash_table_insert(added_entries, new_name, new_entry);
+                    added_names[token_path] = new_entry;
                 }
             }
 
@@ -464,23 +477,16 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         }
     }
     // iterate thru it and add them to filler unless its a deletion
-    GHashTableIter  iter;
-    void* key;
-    void* value;
-    g_hash_table_iter_init(&iter, added_entries);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-        char* key_path = key;
-        index_entry* val = value;
-
-        if (!val->deleted)
-            filler(buf, basename(key_path), NULL, 0);
-
+    for (auto entry : added_names) {
+        if (!entry.second.deleted) {
+            char* base_name = strdup(entry.first.c_str());
+            filler(buf, basename(base_name), NULL, 0);
+            free(base_name);
+        }
     }
 
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
-
-    g_hash_table_destroy(added_entries);
 
     if (!closedir(zip_dir))
         printf("successfully closed dir\n");
@@ -597,7 +603,10 @@ load_to_cache(const char* path) {
  *   then delete index file and zip archive
  * Initialized in main
  ****/
-static GHashTable* gc_table;
+static map<string, unsigned long long> gc_table;
+
+/** lock for gc_table, for multithreaded mode */
+mutex gc_mtx;
 
 /**
  * removes fully updated zip archives
@@ -607,6 +616,7 @@ static GHashTable* gc_table;
 static
 int
 garbage_collect() {
+    lock_guard<mutex> lock(gc_mtx);
     // make path to rmlog
     char rmlog_path[PATH_MAX];
     sprintf(rmlog_path, "~/.config/zippyfs/");
@@ -633,7 +643,7 @@ garbage_collect() {
     }
     closedir(log_dir);
     // make machine specific log file in zip directory if it doesn't exist
-    char* path_local_log = malloc(PATH_MAX + strlen(log_name));
+    char* path_local_log = (char*)malloc(PATH_MAX + strlen(log_name));
     memset(path_local_log, 0, sizeof(path_local_log) / sizeof(char));
     sprintf(path_local_log, "%s/rmlog/%s", zip_dir_name, log_name);
     int log_fd = open(path_local_log, O_CREAT | O_APPEND, S_IRWXU);
@@ -683,25 +693,20 @@ garbage_collect() {
             if (strstr(token, "CHECKSUM"))
                 // basically done with the file at this point
                 break;
-            unsigned long long* time = g_malloc(sizeof(unsigned long long));
-            sscanf(token, "%s %*s %llu %*d", token_path, time);
-            char* old_path;
-            unsigned long long* old_time;
-            if (g_hash_table_lookup_extended(gc_table, token_path,
-                                             (void*)&old_path, (void*)&old_time)) {
+            unsigned long long file_time;
+            sscanf(token, "%s %*s %llu %*d", token_path, &file_time);
+            if (gc_table.find(token_path) != gc_table.end()) {
                 // entry is in the hash table, compare times
-                if (*old_time <= *time) {
+                if (gc_table.find(token_path)->second <= file_time) {
                     // we have an updated entry
                     is_outdated = 0;
                     // add to hash table
-                    g_hash_table_insert(gc_table, g_strdup(token_path), time);
-                } else {
-                    g_free(time);
+                    gc_table[token_path] = file_time;
                 }
             } else {
                 // make entry for this item
                 is_outdated = 0;
-                g_hash_table_insert(gc_table, g_strdup(token_path), time);
+                gc_table[token_path] = file_time;
             }
             token = strtok_r(NULL, delim, &save_ptr);
         }
@@ -742,7 +747,6 @@ garbage_collect() {
  * @param fi has information about the file
  * @return 0 for normal exit status, non-zero otherwise
  */
-static
 int
 zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     (void) fi;
@@ -779,7 +783,6 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
  * @param fi is file info
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
@@ -869,7 +872,6 @@ record_index(const char* path, int deleted) {
  * @param file info is unused
  * @return the number of bytes written
  */
-static
 int
 zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE:%s to  %s\n", buf, path);
@@ -908,7 +910,6 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
  * @param rdev is another attribute of the file
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
@@ -940,7 +941,6 @@ zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
  * @param path is the path of the file to delete
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
@@ -959,7 +959,6 @@ zippyfs_unlink(const char* path) {
  * @param path is the path to the directory
  * assumes it is empty
  */
-static
 int
 zippyfs_rmdir(const char* path) {
     printf("RMDIR: %s\n", path);;
@@ -979,7 +978,6 @@ zippyfs_rmdir(const char* path) {
  * @param mode is the permissions
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
@@ -1006,7 +1004,6 @@ zippyfs_mkdir(const char* path, mode_t mode) {
  * @param to is the destination
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_rename(const char* from, const char* to) {
     load_to_cache(from);
@@ -1035,7 +1032,6 @@ zippyfs_rename(const char* from, const char* to) {
  * @param size is the size to truncate by
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
@@ -1074,7 +1070,6 @@ zippyfs_truncate(const char* path, off_t size) {
  * @param mask is for permissions, unus ed
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_access(const char* path, int mode) {
     printf("ACCESS: %s %d\n", path, mode);
@@ -1096,7 +1091,6 @@ zippyfs_access(const char* path, int mode) {
 /**
  * changes permissions of thing in path
  */
-static
 int
 zippyfs_chmod(const char* path, mode_t  mode) {
     load_to_cache(path);
@@ -1114,7 +1108,6 @@ zippyfs_chmod(const char* path, mode_t  mode) {
 /**
  * stub
  */
-static
 int
 zippyfs_utimens(const char* path,  const struct timespec ts[2]) {
     (void)path;
@@ -1127,129 +1120,13 @@ zippyfs_utimens(const char* path,  const struct timespec ts[2]) {
 void
 zippyfs_destroy(void* private_data) {
     (void)private_data;
+    free(shadow_path);
+    free(zip_dir_name);
     // flush
     flush_dir();
-    // clear gc_table
-    g_hash_table_destroy(gc_table);
     // delete process cache directory
     char removal_cmd[PATH_MAX + 12];
     sprintf(removal_cmd, "rm -rf %s", shadow_path);
     system(removal_cmd);
     rmdir(shadow_path);
-}
-
-/** represents available functionality */
-static struct fuse_operations zippyfs_operations = {
-    .getattr = zippyfs_getattr,
-    .readdir = zippyfs_readdir,
-    .read = zippyfs_read,
-    .mknod = zippyfs_mknod,
-    .unlink = zippyfs_unlink,
-    .mkdir = zippyfs_mkdir,
-    .rename = zippyfs_rename,
-    .write = zippyfs_write,
-    .truncate = zippyfs_truncate,
-    .access = zippyfs_access,
-    .open = zippyfs_open,
-    .rmdir = zippyfs_rmdir,
-    .chmod = zippyfs_chmod,
-    .utimens = zippyfs_utimens,
-    .destroy = zippyfs_destroy,
-};
-
-/**
- * The main method of this program
- * calls fuse_main to initialize the filesystem
- * ./file-system <options> <mount point>  <ABSOLUTE PATH TO dir>
- */
-int
-main(int argc, char *argv[]) {
-    /** initializes garbage collection table **/
-    gc_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-    zip_dir_name = argv[--argc];
-    char* newarg[argc];
-    for (int i = 0; i < argc; i++) {
-        newarg[i] = argv[i];
-        printf("%s\n", newarg[i]);
-    }
-
-    // construct shadow directory name
-    char shadow_name[10] = {0};
-    sprintf(shadow_name,"PID%d", getpid());
-    printf("shadow dir name: %s\n", shadow_name);
-
-    // construct program directory path
-    char temp_path[PATH_MAX];
-    memset(temp_path, 0, sizeof(temp_path) / sizeof(char));
-    strcat(temp_path, "~/.cache/zippyfs/");
-    printf("shadow dir path: %s\n", temp_path);
-    wordexp_t path;
-    wordexp(temp_path, &path, 0);
-    shadow_path = strdup(*(path.we_wordv));
-    wordfree(&path);
-    printf("expanded dir path: %s\n", shadow_path);
-
-    // make program directory if it doesn't exist yet
-    if (mkdir(shadow_path, S_IRWXU)) {
-        printf("error making zippyfs directory ERRNO: %s\n", strerror(errno));
-    }
-    // construct shadow directory path
-    strcat(shadow_path, shadow_name);
-    strcat(shadow_path, "/");
-
-    // make the directory
-    if (mkdir(shadow_path, S_IRWXU)) {
-        printf("error making shadow directory\n");
-        printf("ERRNO: %s\n", strerror(errno));
-    }
-    // construct process-local rmlog path and dir
-    char rmlog_path[strlen(zip_dir_name) + 10];
-    memset(rmlog_path, 0, sizeof(rmlog_path) / sizeof(char));
-    sprintf(rmlog_path, "%s/rmlog", zip_dir_name);
-    if (mkdir(rmlog_path, S_IRWXU))
-        printf("error making rmlog dir ERRNO:%s\n", strerror(errno));
-
-    // construct machine-local rmlog path and dir
-    char machine_rmlog_path[strlen(zip_dir_name) + PATH_MAX];
-    memset(machine_rmlog_path, 0, sizeof(machine_rmlog_path) / sizeof(char));
-    char tild_exp[PATH_MAX];
-    sprintf(tild_exp, "~");
-    wordexp(tild_exp, &path, 0);
-
-    sprintf(machine_rmlog_path, "%s/.config/zippyfs/", *path.we_wordv);
-
-    printf("machine path %s\n", machine_rmlog_path);
-    int made_dir = 1;
-    if (mkdir(machine_rmlog_path, S_IRWXU)) {
-        made_dir = 0;
-        printf("error making machine rmlog path ERRNO: %s\n", strerror(errno));
-    }
-
-    // only do this once per machine
-    if (made_dir) {
-        // create archive name
-        char num[16] = {'\0'};
-        char hex_name[33] = {'\0'};
-        syscall(SYS_getrandom, num, sizeof(num), GRND_NONBLOCK);
-
-        for (int i = 0; i < 16; i++) {
-            sprintf(hex_name + i*2,"%02X", num[i]);
-        }
-        // make log file
-        char log_name[strlen(hex_name) + 1];
-        memset(log_name, 0, sizeof(log_name) / sizeof(char));
-        sprintf(log_name, "%s", hex_name);
-        printf("NAME OF FILE %s\n", log_name);
-        // make path to log file
-        char log_path[strlen(log_name) + PATH_MAX];
-        memset(log_path, 0, sizeof(log_path) / sizeof(char));
-        sprintf(log_path, "%s/.config/zippyfs/%s", *path.we_wordv, log_name);
-        // create file
-        printf("file path: %s", log_path);
-        int fd = open(log_path, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR | S_IXUSR);
-        close(fd);
-
-    }
-    wordfree(&path);
-    return fuse_main(argc, newarg, &zippyfs_operations, NULL);
 }
