@@ -17,23 +17,29 @@
 #include <syscall.h>
 #include <stdlib.h>
 #include <sys/time.h>
-static struct fuse_operations zippyfs_operations = {
-    .getattr = zippyfs_getattr,
-    .read = zippyfs_read,
-    .mknod = zippyfs_mknod,
-    .unlink = zippyfs_unlink,
-    .mkdir = zippyfs_mkdir,
-    .rename = zippyfs_rename,
-    .write = zippyfs_write,
-    .truncate = zippyfs_truncate,
-    .access = zippyfs_access,
-    .open = zippyfs_open,
-    .rmdir = zippyfs_rmdir,
-    .chmod = zippyfs_chmod,
-    .utimens = zippyfs_utimens,
-    .destroy = zippyfs_destroy,
-};
 
+/**
+ * okay i don't understand why initialzer lists dont work
+ * with extern c so I'm doing this
+ */
+static void init_fuse_operations(struct fuse_operations* fuse_op) {
+    fuse_op->getattr = zippyfs_getattr;
+    fuse_op->readdir = zippyfs_readdir;
+    fuse_op->read = zippyfs_read;
+    fuse_op->access = zippyfs_access;
+    fuse_op->mknod = zippyfs_mknod;
+    fuse_op->unlink = zippyfs_unlink;
+    fuse_op->mkdir = zippyfs_mkdir;
+    fuse_op->rename = zippyfs_rename;
+    fuse_op->write = zippyfs_write;
+    fuse_op->truncate = zippyfs_truncate;
+    fuse_op->open = zippyfs_open;
+    fuse_op->rmdir = zippyfs_rmdir;
+    fuse_op->chmod = zippyfs_chmod;
+    fuse_op->utimens = zippyfs_utimens;
+    fuse_op->destroy = zippyfs_destroy;
+
+}
 /**
  * The main method of this program
  * calls fuse_main to initialize the filesystem
@@ -41,6 +47,8 @@ static struct fuse_operations zippyfs_operations = {
  */
 int
 main(int argc, char *argv[]) {
+    static struct fuse_operations zippyfs_operations;
+    init_fuse_operations(&zippyfs_operations);
     const char* zip_dir = argv[--argc];
     char* newarg[argc];
     for (int i = 0; i < argc; i++) {
@@ -60,10 +68,9 @@ main(int argc, char *argv[]) {
     printf("shadow dir path: %s\n", temp_path);
     wordexp_t path;
     wordexp(temp_path, &path, 0);
-    shadow_path = strdup(*(path.we_wordv));
+    char* shadow_path = strdup(*(path.we_wordv));
     wordfree(&path);
     printf("expanded dir path: %s\n", shadow_path);
-    char shadow_path[PATH_MAX];
 
     // make program directory if it doesn't exist yet
     if (mkdir(shadow_path, S_IRWXU)) {
@@ -74,21 +81,21 @@ main(int argc, char *argv[]) {
     strcat(shadow_path, "/");
 
     // init ops
-    zippyfs_init(zip_dir, shadow_path);
+    zippyfs_init(shadow_path, zip_dir);
     // make the directory
     if (mkdir(shadow_path, S_IRWXU)) {
         printf("error making shadow directory\n");
         printf("ERRNO: %s\n", strerror(errno));
     }
     // construct process-local rmlog path and dir
-    char rmlog_path[strlen(zip_dir_name) + 10];
+    char rmlog_path[strlen(zip_dir) + 10];
     memset(rmlog_path, 0, sizeof(rmlog_path) / sizeof(char));
-    sprintf(rmlog_path, "%s/rmlog", zip_dir_name);
+    sprintf(rmlog_path, "%s/rmlog", zip_dir);
     if (mkdir(rmlog_path, S_IRWXU))
         printf("error making rmlog dir ERRNO:%s\n", strerror(errno));
 
     // construct machine-local rmlog path and dir
-    char machine_rmlog_path[strlen(zip_dir_name) + PATH_MAX];
+    char machine_rmlog_path[strlen(zip_dir) + PATH_MAX];
     memset(machine_rmlog_path, 0, sizeof(machine_rmlog_path) / sizeof(char));
     char tild_exp[PATH_MAX];
     sprintf(tild_exp, "~");
@@ -129,5 +136,5 @@ main(int argc, char *argv[]) {
 
     }
     wordfree(&path);
-    return fuse_main(argc, newarg, &zipfs_operations, NULL);
+    return fuse_main(argc, newarg, &zippyfs_operations, NULL);
 }

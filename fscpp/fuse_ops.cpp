@@ -3,7 +3,7 @@
  * @author Arvin Sharma
  * @version 3.0
  */
-#define FUSE_USE_VERSION 30
+#include "fuse_ops.h"
 #include <syscall.h>
 #include <zip.h>
 #include <fuse.h>
@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <linux/random.h>
-#include "fuse_ops.h"
+
 /** using glib for hash table */
 //#include <glib.h>
 #include <vector>
@@ -210,7 +210,7 @@ find_latest_archive(const char* path, char* name, int size) {
 static
 int
 verify_checksum(const char* contents) {
-    char contents_cpy[sizeof(contents)];
+    char contents_cpy[strlen(contents)];
     strcpy(contents_cpy, contents);
     char delim[10];
     strcpy(delim, "CHECKSUM");
@@ -219,15 +219,14 @@ verify_checksum(const char* contents) {
     if ((checksum = ::strstr(contents_cpy, delim)) == NULL)
         return -1;
 
-    checksum[0] = '\0';
     char checksum_cpy[strlen(checksum)];
     strcpy(checksum_cpy, checksum);
+    checksum[0] = '\0';
     uint64_t checksum_val;
     char* endptr;
     checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
     // make new checksum
     uint64_t new_checksum = crc64(contents_cpy);
-
     if (new_checksum != checksum_val)
         return -1;
 
@@ -241,7 +240,6 @@ verify_checksum(const char* contents) {
  *  @param stbuf is the stat structure to hold the attributes
  *  @return 0 for normal exit status, non-zero otherwise.
  */
-static
 int
 zippyfs_getattr(const char* path, struct stat* stbuf) {
     printf("getattr: %s\n", path);
@@ -371,7 +369,6 @@ flush_dir() {
  * @return 0 for normal exit status, non-zero otherwise.
  *
  */
-static
 int
 zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info* fi) {
@@ -391,8 +388,6 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
-
-    //  GHashTable* added_entries = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
     DIR* zip_dir = opendir(zip_dir_name);
 
@@ -485,32 +480,15 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     }
     // iterate thru it and add them to filler unless its a deletion
     for (auto entry : added_names) {
-        if (!((entry.second).deleted)) {
+        if (!entry.second.deleted) {
             char* base_name = strdup(entry.first.c_str());
-
             filler(buf, basename(base_name), NULL, 0);
             free(base_name);
         }
     }
-    /*
-    GHashTableIter  iter;
-    void* key;
-    void* value;
-    g_hash_table_iter_init(&iter, added_entries);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-        char* key_path = key;
-        index_entry* val = value;
-
-        if (!val->deleted)
-            filler(buf, basename(key_path), NULL, 0);
-
-    }
-    */
 
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
-
-    // g_hash_table_destroy(added_entries);
 
     if (!closedir(zip_dir))
         printf("successfully closed dir\n");
@@ -779,7 +757,6 @@ garbage_collect() {
  * @param fi has information about the file
  * @return 0 for normal exit status, non-zero otherwise
  */
-static
 int
 zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     (void) fi;
@@ -816,7 +793,6 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
  * @param fi is file info
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
@@ -906,7 +882,6 @@ record_index(const char* path, int deleted) {
  * @param file info is unused
  * @return the number of bytes written
  */
-static
 int
 zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE:%s to  %s\n", buf, path);
@@ -945,7 +920,6 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
  * @param rdev is another attribute of the file
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
@@ -977,7 +951,6 @@ zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
  * @param path is the path of the file to delete
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
@@ -996,7 +969,6 @@ zippyfs_unlink(const char* path) {
  * @param path is the path to the directory
  * assumes it is empty
  */
-static
 int
 zippyfs_rmdir(const char* path) {
     printf("RMDIR: %s\n", path);;
@@ -1016,7 +988,6 @@ zippyfs_rmdir(const char* path) {
  * @param mode is the permissions
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
@@ -1043,7 +1014,6 @@ zippyfs_mkdir(const char* path, mode_t mode) {
  * @param to is the destination
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_rename(const char* from, const char* to) {
     load_to_cache(from);
@@ -1072,7 +1042,6 @@ zippyfs_rename(const char* from, const char* to) {
  * @param size is the size to truncate by
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
@@ -1111,7 +1080,6 @@ zippyfs_truncate(const char* path, off_t size) {
  * @param mask is for permissions, unus ed
  * @return 0 for success, non-zero otherwise
  */
-static
 int
 zippyfs_access(const char* path, int mode) {
     printf("ACCESS: %s %d\n", path, mode);
@@ -1133,7 +1101,6 @@ zippyfs_access(const char* path, int mode) {
 /**
  * changes permissions of thing in path
  */
-static
 int
 zippyfs_chmod(const char* path, mode_t  mode) {
     load_to_cache(path);
@@ -1151,7 +1118,6 @@ zippyfs_chmod(const char* path, mode_t  mode) {
 /**
  * stub
  */
-static
 int
 zippyfs_utimens(const char* path,  const struct timespec ts[2]) {
     (void)path;
