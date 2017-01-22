@@ -13,7 +13,7 @@ Features:
 
 other branches:  
 (branch nozippyfs) -> exciting and more efficient version in development in C++  
-(branch master) -> the original, basic file system that allows users to mount amd edit a single zip file
+(branch master) -> the original, basic file system that allows users to mount and edit a single zip file
 
 How to install  
 -----------------
