@@ -83,7 +83,6 @@ BlockCache::in_cache(string path) {
     return file_cache_.find(path) != file_cache_.end();
 }
 
-
 int
 BlockCache::flush_to_shdw() {
     // make index file for cache

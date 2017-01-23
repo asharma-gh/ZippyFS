@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <cassert>
 #include "block.h"
-#include "fuse_ops.h"
 //#include "inode.h"
 /**
  * represents an in-memory Block Cache

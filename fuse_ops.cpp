@@ -672,8 +672,8 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
-    block_cache->flush_to_shdw();
-    return block_cache->read(path, (uint8_t*)buf, size, offset);
+    //block_cache->flush_to_shdw();
+    //return block_cache->read(path, (uint8_t*)buf, size, offset);
     load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -797,7 +797,7 @@ int
 zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
-    return block_cache->write(path, (uint8_t*)buf, size, offset);
+    //return block_cache->write(path, (uint8_t*)buf, size, offset);
 
     load_to_cache(path);
     // write to new file source
