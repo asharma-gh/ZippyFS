@@ -3,7 +3,6 @@
 #include "block_cache.h"
 #include "block.h"
 #include "util.h"
-#include "fuse_ops.h"
 #include <istream>
 #include <fstream>
 #include <unistd.h>
@@ -11,7 +10,6 @@ using namespace std;
 
 int
 main() {
-    load_to_cache("whtever");
     freopen("/home/arvin/log.txt", "w", stdout);
     // create some data
     ifstream is("/home/arvin/Makefile", ifstream::binary);
