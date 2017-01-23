@@ -48,14 +48,18 @@ static int garbage_collect();
 
 /** records the given file in path to an index file in shadow directory */
 static int record_index(const char* path, int isdeleted);
+/** okay **/
+static int load_to_cache(const char* path);
+
 
 /** the path of the mounted directory of zip files */
 static char* zip_dir_name;
 
 /** cache path */
 static char* shadow_path;
+
 int
-foobar(const char* what) {
+load_to_shdw(const char* what) {
     return load_to_cache(what);
 }
 

@@ -76,10 +76,8 @@ void zippyfs_destroy(void* private_data);
 /** change mode */
 int zippyfs_chmod(const char* path, mode_t mode);
 
-/** loads either path or dirname of path to cache */
-int load_to_cache(const char* path);
 
-int foobar(const char* ok);
+int load_to_shdw(const char* ok);
 
 #ifdef __cplusplus
 }

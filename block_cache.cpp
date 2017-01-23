@@ -93,9 +93,7 @@ BlockCache::flush_to_shdw() {
     for (auto const& entry : file_cache_) {
         // load previous version to shadow director
 
-        //load_to_cache(killme);
-
-        foobar(entry.first.c_str());
+        load_to_shdw(entry.first.c_str());
         // create path to file in shadow dir
         string shdw_file_path = path_to_shdw_ + (entry.first).substr(1);
         // get permissions of prev version
