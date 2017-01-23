@@ -17,3 +17,6 @@ file-system: $(OBJS)
 
 %.o: %.cpp $(DEP)
 	g++ --std=gnu++11 -c -o $@ $< $(CFLAGS)
+
+clean:
+	rm file-system *.o
