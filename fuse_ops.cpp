@@ -35,7 +35,7 @@ using namespace std;
 /** TODO:
  * - integrate block cache
  */
-
+BlockCache* block_cache;
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
 static struct zip* find_latest_archive(const char* path, char* name, int size);
@@ -60,6 +60,7 @@ void
 zippyfs_init(const char* shdw, const char* zip_dir) {
     shadow_path = strdup(shdw);
     zip_dir_name = strdup(zip_dir);
+    block_cache = new BlockCache(shdw);
 
 }
 /**
@@ -671,7 +672,8 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
-
+    block_cache->flush_to_shdw();
+    return block_cache->read(path, (uint8_t*)buf, size, offset);
     load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -795,6 +797,8 @@ int
 zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE:%s to  %s\n", buf, path);
     (void)fi;
+    return block_cache->write(path, (uint8_t*)buf, size, offset);
+
     load_to_cache(path);
     // write to new file source
     char shadow_file_path[strlen(path) + strlen(shadow_path)];

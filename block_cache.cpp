@@ -1,6 +1,6 @@
 #include "block_cache.h"
 #include "util.h"
-#include "inode.h"
+//#include "inode.h"
 #include "fuse_ops.h"
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -95,7 +95,7 @@ BlockCache::flush_to_shdw() {
     // create files for each item in cache
     for (auto const& entry : file_cache_) {
         // load previous version to shadow director
-
+        load_to_cache(entry.first.c_str());
         // create path to file in shadow dir
         string shdw_file_path = path_to_shdw_ + (entry.first).substr(1);
         // get permissions of prev version

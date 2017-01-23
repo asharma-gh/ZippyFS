@@ -1,16 +1,8 @@
 CC = g++
 CFLAGS = -Wall `pkg-config fuse --cflags --libs glib-2.0` -lzip -g -D_FILE_OFFSET_BITS=64
-OBJS = file-system.o
+SRCFILES = fuse_ops.cpp block_cache.cpp block.cpp Main.c util.cpp
+OBJS = fuse_ops.o block_cache.o block.o Main.o util.o
+DEP = fuse_ops.h block_cache.h block.h util.h
 
-#file-system: $(OBJS)
-#	$(CC) $(CFLAGS) $(OBJS) -o file
-
-file-system.o: fuse_ops.h
-	$(CC) $(CFLAGS) fuse_ops.cpp Main.c
-
-.PHONY: all clean
-
-all: $(PROGFILES)
-
-clean:
-	rm $(PROGFILES)
+*.o: $(DEPS)
+	$(CC) $(CFLAGS) $(SRCFILES)
