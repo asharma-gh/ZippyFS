@@ -49,8 +49,6 @@ static int garbage_collect();
 /** records the given file in path to an index file in shadow directory */
 static int record_index(const char* path, int isdeleted);
 
-/** loads either path or dirname of path to cache */
-static int load_to_cache(const char* path);
 /** the path of the mounted directory of zip files */
 static char* zip_dir_name;
 
@@ -463,7 +461,6 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
  * - does nothing if the file is already in cache
  * @param path is the path of the dir
  */
-static
 int
 load_to_cache(const char* path) {
     // construct file path in cache
