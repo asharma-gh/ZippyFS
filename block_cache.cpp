@@ -13,9 +13,7 @@ using namespace std;
  * make all this actually work
  */
 BlockCache::BlockCache(string path_to_shdw)
-    : path_to_shdw_(path_to_shdw) {
-
-}
+    : path_to_shdw_(path_to_shdw) {}
 
 int
 BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
@@ -94,7 +92,10 @@ BlockCache::flush_to_shdw() {
     // create files for each item in cache
     for (auto const& entry : file_cache_) {
         // load previous version to shadow director
-        load_to_cache(entry.first.c_str());
+
+        //load_to_cache(killme);
+
+        foobar(entry.first.c_str());
         // create path to file in shadow dir
         string shdw_file_path = path_to_shdw_ + (entry.first).substr(1);
         // get permissions of prev version
