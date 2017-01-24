@@ -36,6 +36,7 @@ using namespace std;
  * - integrate block cache
  */
 BlockCache* block_cache;
+
 /** finds the latest zip archive with the given path,
  * if it isn't deleted */
 static struct zip* find_latest_archive(const char* path, char* name, int size);
@@ -48,7 +49,8 @@ static int garbage_collect();
 
 /** records the given file in path to an index file in shadow directory */
 static int record_index(const char* path, int isdeleted);
-/** okay **/
+
+/** loads the thing in archive to shadow cache **/
 static int load_to_cache(const char* path);
 
 
@@ -58,9 +60,12 @@ static char* zip_dir_name;
 /** cache path */
 static char* shadow_path;
 
+/**
+ * loads file in path from archive to shdw dir
+ */
 int
-load_to_shdw(const char* what) {
-    return load_to_cache(what);
+load_to_shdw(const char* path) {
+    return load_to_cache(path);
 }
 
 /**
@@ -680,8 +685,8 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
-    //block_cache->flush_to_shdw();
-    //return block_cache->read(path, (uint8_t*)buf, size, offset);
+    block_cache->flush_to_shdw();
+    return block_cache->read(path, (uint8_t*)buf, size, offset);
     load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -803,9 +808,11 @@ record_index(const char* path, int deleted) {
  */
 int
 zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-    printf("WRITE:%s to  %s\n", buf, path);
+    printf("WRITE to  %s\n",  path);
     (void)fi;
-    //return block_cache->write(path, (uint8_t*)buf, size, offset);
+    block_cache->write(path, (uint8_t*)buf, size, offset);
+    block_cache->flush_to_shdw();
+    return size;
 
     load_to_cache(path);
     // write to new file source
@@ -875,6 +882,8 @@ zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
 int
 zippyfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
+    return block_cache->remove(path);
+
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));

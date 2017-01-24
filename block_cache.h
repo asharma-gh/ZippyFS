@@ -36,6 +36,12 @@ class BlockCache {
     int read(std::string path, uint8_t* buf, uint64_t size, uint64_t offset);
 
     /**
+     * removes the thing in path
+     * @param path is the path of the thing
+     */
+    int remove(std::string path);
+
+    /**
      * determines if the thing in path is in cache
      * @param true if the file exists, false otherwise
      */

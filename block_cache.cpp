@@ -10,15 +10,22 @@
 using namespace std;
 /**
  * TODO:
- * make all this actually work
- */
+ * other i/o stuff, deletions
+ * */
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
 
 int
+BlockCache::remove(string path) {
+    cache_data_[path] = (path + "[]" + to_string(Util::get_time()) + " 1");
+    return 0;
+}
+
+int
 BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
+    cout << "SIZE " << size << " OFFSET " << offset << endl;
     // create blocks for buf
-    uint64_t num_blocks = Util::ulong_ceil(size, Block::get_logical_size());
+    uint64_t num_blocks = Util::ulong_ceil(size + offset, Block::get_logical_size());
     bool loaded_in = in_cache(path);
     // for this file, make a block and add it to cache
     uint64_t curr_idx = 0;
@@ -41,10 +48,12 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         // add newly formed block to file cache
         file_cache_[path][block_idx] = ptr;
     }
+    // cout << "CUR IDX + BLS" << curr_idx + block_size << endl;
     assert(curr_idx + block_size == size);
 
     // record meta data to cache_data
     cache_data_[path] = (path + " [RW] " + to_string(Util::get_time()) +  " 0");
+    //  cout << "SUCCESS" << endl;
     return 0;
 }
 
@@ -55,7 +64,8 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
     bool offsetted = false;
     auto data = file_cache_.find(path)->second;
     auto num_blocks = data.size();
-    for (unsigned int block_idx = offset / Block::get_logical_size(); block_idx < num_blocks; block_idx++) {
+    cout << "SIZE " << size << " OFFSET " << offset << " DATA SIZE " << num_blocks << endl;
+    for (unsigned int block_idx = offset / Block::get_logical_size(); block_idx < num_blocks && read_bytes < size; block_idx++) {
         // we can read this block, find the data
         auto block = data.find(block_idx)->second;
         auto block_data = block->get_data();
@@ -66,13 +76,16 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
             offset_amt = offset < Block::get_logical_size() ? offset : (offset % Block::get_logical_size());
             offsetted = true;
         }
+        cout << "BLOCK SIZE " << block_data.size()
+             << endl;
         for (auto byte = block_data.begin() + offset_amt;
-                byte != block_data.end() || read_bytes < size; byte++) {
+                byte != block_data.end() && read_bytes < size; byte++) {
             buf[read_bytes++] = *byte;
         }
     }
     assert(read_bytes == size);
-    return 0;
+    cout << "buffer "<< buf << endl;
+    return size;
 }
 
 bool
@@ -115,10 +128,11 @@ BlockCache::flush_to_shdw() {
             uint64_t block_size = block->get_actual_size();
             // create a literal buffer for writes to file
             char buf[block_size];
-            int ii = 0;
-            for (auto byte : block_data) {
-                buf[ii] = byte;
-                ii++;
+            cout << "BLOCK SIZE " << block_size;
+            cout << " BUF SIZE " << sizeof(buf) << endl;
+            for (uint64_t ii = 0;  ii < block_size; ii++) {
+                buf[ii] = block_data[ii];
+                cout << ii << endl;
             }
             // do a write to file, offsetted based on block idx
             if (pwrite(file_fd, buf, block_size, block_idx * Block::get_logical_size()) == -1)
@@ -131,6 +145,8 @@ BlockCache::flush_to_shdw() {
         ::write(idx_fd, record, strlen(record));
 
     }
+    // file_cache_.clear();
+    // cache_data_.clear();
     close(idx_fd);
     return 0;
 }
