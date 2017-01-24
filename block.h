@@ -13,7 +13,7 @@
 
 class Block {
 
-public:
+  public:
 
     /**
      * constructs an empty block
@@ -50,12 +50,23 @@ public:
      */
     bool is_dirty();
 
+    /**
+     * @returns the actual size of this block
+     *  - actual size is defined as the size of bytes this block
+     *  contains
+     */
+    uint64_t get_actual_size();
+
+
+    /**
+     * @return the logical size of this block
+     * - logical size is defined as the total size of this block
+     */
     static uint64_t get_logical_size() {
         return SIZE_;
     }
-    uint64_t get_actual_size();
 
-private:
+  private:
     static const uint64_t SIZE_ = 4096;
     uint64_t actual_size_;
     std::array<uint8_t, SIZE_> data_;

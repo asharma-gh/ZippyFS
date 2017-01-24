@@ -24,6 +24,14 @@ class BlockCache {
     BlockCache(std::string path_to_shdw);
 
     /**
+     * loads the thing in path from the shadow director to cache
+     * @param path is the path of the file
+     * @return 0 on success, -1 on failure
+     */
+    int
+    load_from_shdw(std::string path);
+
+    /**
      * writes to the given file in cache
      * @return number of bytes written
      */

@@ -8,7 +8,14 @@
 
 class Util {
   public:
+
     Util();
+
+    /**
+     * @param a is the divisor
+     * @param b is the dividend
+     * @return ceil(a / b)
+     */
     static
     uint64_t
     ulong_ceil(uint64_t a, uint64_t b) {
@@ -18,6 +25,9 @@ class Util {
             return (a / b) + 1;
     }
 
+    /**
+     * @return the current time in milliseconds
+     */
     static
     unsigned long long
     get_time() {
@@ -43,9 +53,7 @@ class Util {
         for(int i = 0; message[i]; i++) {
             crc ^= (uint8_t)message[i];
             for (int j = 0; j < 7; j++) {
-                // I found that if I don't change the mask in respect to the last bit in crc
-                // there are inputs such as "abc123" and "123abc" which will have the same hash
-                mask = -(crc&1) ^ special_bits; // mask = 0xbits0 or 0xbits1 depending on crc
+                mask = -(crc&1) ^ special_bits;
                 crc = crc ^ mask;
                 crc = crc >> 1;
             }

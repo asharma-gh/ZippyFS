@@ -975,7 +975,7 @@ zippyfs_rename(const char* from, const char* to) {
 int
 zippyfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
-
+    return block_cache->truncate(path, size);
     load_to_cache(path);
 
     char shadow_file_path[strlen(path) + strlen(shadow_path)];

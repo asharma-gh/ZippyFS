@@ -25,6 +25,31 @@ BlockCache::remove(string path) {
 }
 
 int
+BlockCache::load_from_shdw(string path) {
+    // construct path to shdw
+    string shdw_file_path = path_to_shdw_ + path.substr(1);
+
+    // open, extract bytes
+    FILE* file;
+    if ((file = fopen(shdw_file_path.c_str(), "r")) == NULL) {
+        return -1;
+    }
+    // get file size
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    rewind(file);
+    char contents[fsize + 1];
+    memset(contents, 0, sizeof(contents) / sizeof(char));
+    fread(contents, fsize, 1, file);
+    contents[fsize] = '\0';
+    fclose(file);
+
+    // add this file to cache
+    write(path, (uint8_t*)contents, fsize, 0);
+    return 0;
+}
+
+int
 BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "SIZE " << size << " OFFSET " << offset << endl;
     // create blocks for buf

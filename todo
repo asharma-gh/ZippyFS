@@ -2,3 +2,6 @@
 use them to get stat info
 
 - implement stuff in block_cache for readdir
+
+- replace mode field in record with uint
+
