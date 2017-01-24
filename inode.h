@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <map>
 #include "block.h"
 #include "util.h"
 
@@ -64,6 +65,12 @@ class Inode {
      */
     std::vector<std::string> get_refs();
 
+    /** adds the given block to this inode */
+    void add_block(uint64_t block_index, std::shared_ptr<Block> block);
+
+    /** removes the block at the given index from this inode */
+    void remove_block(uint64_t block_index);
+
 
   private:
     /** the path of this inode **/
@@ -86,6 +93,9 @@ class Inode {
 
     /** the paths which have a reference to this inode */
     std::vector<std::string> links_;
+
+    /** list of blocks for this inode */
+    std::map<uint64_t, std::shared_ptr<Block>> blocks_;
 
 
 

@@ -78,7 +78,11 @@ class BlockCache {
      */
     int flush_to_shdw();
 
-    /** loads the thing to this cache */
+    /**
+     * loads the thing to this cache
+     * @param path is the path to the thing to load
+     * @return 0 on success, -1 otherwise
+     */
     int load_to_cache(std::string path);
 
     /**

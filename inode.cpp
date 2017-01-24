@@ -37,3 +37,10 @@ vector<string> Inode::get_refs() {
 string Inode::get_record() {
     return path_ + " " + to_string(mode_) + " " + to_string(mtime_) + "0";
 }
+
+void Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
+    blocks_[block_index] = block;
+}
+void Inode::remove_block(uint64_t block_index) {
+    blocks_.erase(block_index);
+}
