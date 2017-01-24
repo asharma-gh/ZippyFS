@@ -64,6 +64,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     }
     if (ptr->get_size() < size + offset)
         ptr->set_size(size + offset);
+    ptr->set_mtime(Util::get_time());
 
     cache_data_[path] = (path + " [RW] " + to_string(Util::get_time()) +  " 0");
     return size;
@@ -98,6 +99,14 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
     assert(read_bytes == size);
     cout << "buffer "<< buf << endl;
     return size;
+}
+int
+BlockCache::truncate(string path, uint64_t size) {
+    if (meta_data_.find(path) == meta_data_.end())
+        return -1;
+    shared_ptr<Inode> ptr = meta_data_[path];
+    ptr->set_size(size);
+    return 0;
 }
 
 bool

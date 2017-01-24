@@ -36,6 +36,14 @@ class BlockCache {
     int read(std::string path, uint8_t* buf, uint64_t size, uint64_t offset);
 
     /**
+     * truncates the file to the given size
+     * @param path is the path of the file
+     * @param size is the new size of the file
+     * @return 0 on success, -1 otherwise
+     */
+    int truncate(std::string path, uint64_t size);
+
+    /**
      * removes the thing in path
      * @param path is the path of the thing
      */
