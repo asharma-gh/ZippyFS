@@ -17,6 +17,9 @@ BlockCache::BlockCache(string path_to_shdw)
 
 int
 BlockCache::remove(string path) {
+    if (file_cache_.find(path) == file_cache_.end())
+        return -1;
+    file_cache_.erase(path);
     cache_data_[path] = (path + "[]" + to_string(Util::get_time()) + " 1");
     return 0;
 }
@@ -48,13 +51,11 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         // add newly formed block to file cache
         file_cache_[path][block_idx] = ptr;
     }
-    // cout << "CUR IDX + BLS" << curr_idx + block_size << endl;
     assert(curr_idx + block_size == size);
 
     // record meta data to cache_data
     cache_data_[path] = (path + " [RW] " + to_string(Util::get_time()) +  " 0");
-    //  cout << "SUCCESS" << endl;
-    return 0;
+    return size;
 }
 
 int
@@ -140,13 +141,14 @@ BlockCache::flush_to_shdw() {
 
         }
         close(file_fd);
+
+
+    }
+    for (auto entry : cache_data_) {
         // record to index file
         const char* record = cache_data_[entry.first].c_str();
         ::write(idx_fd, record, strlen(record));
-
     }
-    // file_cache_.clear();
-    // cache_data_.clear();
     close(idx_fd);
     return 0;
 }

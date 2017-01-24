@@ -1,4 +1,4 @@
-- integrate buffer/block cache to main file system prog.
-- fuse immediately reads and writes to and from block cache
-    - things need to be loaded and evicted some how
-    - stuff is flushed / evicted to a shadow directory
+- create inodes for each thing in cache,
+use them to get stat info
+
+- implement stuff in block_cache for readdir
