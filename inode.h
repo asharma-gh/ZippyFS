@@ -18,9 +18,13 @@ class Inode {
     Inode(std::string path);
 
     void set_mode(uint32_t mode);
-    void inc_link();
+    void inc_link(std::string ref);
     void set_mtime(unsigned long long mtime);
-    void set_blocks(std::shared_ptr<std::vector<std::shared_ptr<Block>>> blocks);
+
+    /** return the info of this inode as a string
+     * with the format of records
+     */
+    std::string get_record()
 
 
   private:
@@ -29,8 +33,8 @@ class Inode {
     uint32_t nlink_;
     unsigned long long mtime_;
     unsigned long long ctime_;
-    std::vector<std::shared_ptr<Block>> blocks_;
     uint64_t size_;
+    std::vector<std::string> links_;
 
 
 

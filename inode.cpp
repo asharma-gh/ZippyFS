@@ -10,13 +10,13 @@ Inode::Inode(string path)
 void Inode::set_mode(uint32_t mode) {
     mode_ = mode;
 }
-void Inode::inc_link() {
+void Inode::inc_link(std::string ref) {
+    links_.push_back(ref);
     nlink_++;
 }
 void Inode::set_mtime(unsigned long long mtime) {
     mtime_ = mtime;
 }
-
-void Inode::set_blocks(shared_ptr<vector<shared_ptr<Block>>> blocks) {
-    blocks_ = *blocks;
+string Inode::get_record() {
+    return path_ + " " + mode + " " + mtime_ + "0";
 }

@@ -149,6 +149,8 @@ BlockCache::flush_to_shdw() {
         const char* record = cache_data_[entry.first].c_str();
         ::write(idx_fd, record, strlen(record));
     }
+    // file_cache_.clear();
+    // cache_data_.clear();
     close(idx_fd);
     return 0;
 }
