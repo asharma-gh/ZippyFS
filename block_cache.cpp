@@ -1,6 +1,6 @@
 #include "block_cache.h"
 #include "util.h"
-//#include "inode.h"
+#include "inode.h"
 #include "fuse_ops.h"
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -54,6 +54,17 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     assert(curr_idx + block_size == size);
 
     // record meta data to cache_data
+    // get prev inode if it exists
+    shared_ptr<Inode> ptr;
+    if (meta_data_.find(path) != meta_data_.end()) {
+        ptr = meta_data_[path];
+        ptr->set_mode(S_IRUSR | S_IWUSR);
+    } else {
+        ptr = make_shared<Inode>(path);
+    }
+    if (ptr->get_size() < size + offset)
+        ptr->set_size(size + offset);
+
     cache_data_[path] = (path + " [RW] " + to_string(Util::get_time()) +  " 0");
     return size;
 }

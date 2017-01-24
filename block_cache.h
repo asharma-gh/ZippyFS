@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <cassert>
 #include "block.h"
-//#include "inode.h"
+#include "inode.h"
 /**
  * represents an in-memory Block Cache
  * @author Arvin Sharma
@@ -75,7 +75,7 @@ class BlockCache {
     std::map<std::string, std::string> cache_data_;
 
     /** represents meta data for files in cache */
-    // std::map<std::string, std::shared_ptr<Inode>> meta_data_;
+    std::map<std::string, std::shared_ptr<Inode>> meta_data_;
 
 };
 #endif
