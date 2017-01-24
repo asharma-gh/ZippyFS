@@ -29,6 +29,9 @@ void Inode::set_size(unsigned long long size) {
 uint64_t Inode::get_size() {
     return size_;
 }
+vector<string> Inode::get_refs() {
+    return links_;
+}
 
 
 string Inode::get_record() {

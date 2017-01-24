@@ -59,6 +59,11 @@ class Inode {
      */
     std::string get_record();
 
+    /**
+     * @return a list of paths that refer to this inode
+     */
+    std::vector<std::string> get_refs();
+
 
   private:
     /** the path of this inode **/

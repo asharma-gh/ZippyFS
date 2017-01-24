@@ -84,7 +84,7 @@ class BlockCache {
     /**
      * @returns a list of paths of things currently in cache
      */
-    std::vector<std::string> get_names_in_cache();
+    std::vector<std::string> get_refs(std::string path);
 
 
 

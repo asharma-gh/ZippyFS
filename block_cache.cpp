@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <iostream>
+#include <stdexcept>
 #include <cstdio>
 #include <unistd.h>
 using namespace std;
@@ -208,10 +209,8 @@ BlockCache::flush_to_shdw() {
 }
 
 vector<string>
-BlockCache::get_names_in_cache() {
-    vector<string> names;
-    for (auto a : meta_data_) {
-        names.push_back(a.first);
-    }
-    return names;
+BlockCache::get_refs(string path) {
+    if(meta_data_.find(path) == meta_data_.end())
+        throw domain_error("thing not here");
+    return meta_data_.find(path)->second->get_refs();
 }
