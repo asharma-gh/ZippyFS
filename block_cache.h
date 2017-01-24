@@ -9,6 +9,7 @@
 #include <utility>
 #include <cstdint>
 #include <cassert>
+#include <sys/stat.h>
 #include "block.h"
 #include "inode.h"
 /**
@@ -24,12 +25,17 @@ class BlockCache {
     BlockCache(std::string path_to_shdw);
 
     /**
+     * creates a file with the given path and mode
+     * @return 0 on success, -1 on failure
+     */
+    int make_file(std::string path, mode_t mode);
+
+    /**
      * loads the thing in path from the shadow director to cache
      * @param path is the path of the file
      * @return 0 on success, -1 on failure
      */
-    int
-    load_from_shdw(std::string path);
+    int load_from_shdw(std::string path);
 
     /**
      * writes to the given file in cache
@@ -61,7 +67,8 @@ class BlockCache {
      * determines if the thing in path is in cache
      * @param true if the file exists, false otherwise
      */
-    bool in_cache(std::string path);
+    bool
+    in_cache(std::string path);
 
     /**
      * flushes the contents of this block cache to
@@ -73,6 +80,11 @@ class BlockCache {
 
     /** loads the thing to this cache */
     int load_to_cache(std::string path);
+
+    /**
+     * @returns a list of paths of things currently in cache
+     */
+    std::vector<std::string> get_names_in_cache();
 
 
 

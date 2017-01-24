@@ -76,7 +76,7 @@ void zippyfs_destroy(void* private_data);
 /** change mode */
 int zippyfs_chmod(const char* path, mode_t mode);
 
-
+/** loads the thing in path to the shadow directory */
 int load_to_shdw(const char* path);
 
 #ifdef __cplusplus

@@ -23,7 +23,13 @@ BlockCache::remove(string path) {
     cache_data_[path] = (path + "[]" + to_string(Util::get_time()) + " 1");
     return 0;
 }
-
+int
+BlockCache::make_file(string path, mode_t mode) {
+    shared_ptr<Inode> ptr(new Inode(path));
+    ptr->set_mode(mode);
+    meta_data_[path] = ptr;
+    return 0;
+}
 int
 BlockCache::load_from_shdw(string path) {
     // construct path to shdw
@@ -125,6 +131,7 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "buffer "<< buf << endl;
     return size;
 }
+
 int
 BlockCache::truncate(string path, uint64_t size) {
     if (meta_data_.find(path) == meta_data_.end())
@@ -198,4 +205,13 @@ BlockCache::flush_to_shdw() {
     // cache_data_.clear();
     close(idx_fd);
     return 0;
+}
+
+vector<string>
+BlockCache::get_names_in_cache() {
+    vector<string> names;
+    for (auto a : meta_data_) {
+        names.push_back(a.first);
+    }
+    return names;
 }
