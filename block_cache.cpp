@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <cstdio>
 #include <unistd.h>
+#include <cerrno>
 using namespace std;
 /**
  * TODO:
@@ -121,10 +122,8 @@ BlockCache::in_cache(string path) {
 int
 BlockCache::flush_to_shdw() {
     // make index file for cache
-    string idx_path = path_to_shdw_ + "/index.idx";
-    int idx_fd = open(idx_path.c_str(), O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
-    if (idx_fd == -1)
-        perror("Open failed");
+    string idx_path = path_to_shdw_ + "index.idx";
+    cout << "PATH TO SHDW " << idx_path << endl;
 
     // create files for each item in cache
     for (auto const& entry : meta_data_) {
@@ -133,23 +132,24 @@ BlockCache::flush_to_shdw() {
         load_to_shdw(entry.first.c_str());
         // create path to file in shadow dir
         string shdw_file_path = path_to_shdw_ + (entry.first).substr(1);
-        // get permissions of prev version
-        struct stat st;
-        mode_t mode = 0;
-        int res = stat(shdw_file_path.c_str(), &st);
-        if (res == -1)
-            mode = S_IRUSR | S_IWUSR;
-        else
-            mode = st.st_mode;
         // open previous version / make new one
-        int file_fd = open(shdw_file_path.c_str(), O_CREAT | O_WRONLY, mode);
+        int file_fd = open(shdw_file_path.c_str(), O_CREAT | O_WRONLY);
         entry.second->flush_to_fd(file_fd);
-        const char* record = entry.second->get_record().c_str();
-        ::write(idx_fd, record, strlen(record));
+
+        int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+        if (idx_fd == -1)
+            perror("Open failed");
+        string record = entry.second->get_record();
+        int res = ::write(idx_fd, record.c_str(), record.length());
+        cout << "RES: " << res << endl;
+        cout << "fd: " << idx_fd << endl;
+        // cout << "ERRNO: " << strerror(errno) << endl;
+        close(idx_fd);
+
+
 
     }
     // meta_data__.clear();
-    close(idx_fd);
     return 0;
 }
 

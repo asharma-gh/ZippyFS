@@ -46,7 +46,8 @@ vector<string> Inode::get_refs() {
 
 
 string Inode::get_record() {
-    return path_ + " " + "[RW]" + " " + to_string(ul_mtime_) + "0";
+    cout << (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " 0\n");
+    return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " 0\n");
 }
 
 void Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
@@ -113,7 +114,7 @@ int Inode::flush_to_fd(int fd) {
         cout << " BUF SIZE " << sizeof(buf) << endl;
         for (uint64_t ii = 0;  ii < block_size; ii++) {
             buf[ii] = block_data[ii];
-            cout << ii << endl;
+            //  cout << ii << endl;
         }
         // do a write to file, offsetted based on block idx
         if (pwrite(fd, buf, block_size, block_idx * Block::get_logical_size()) == -1)

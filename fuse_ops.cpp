@@ -177,7 +177,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     token = strtok_r(contents_cpy, delim, &saveptr);
     while (token != NULL) {
         char token_path[PATH_MAX];
-        sscanf(token, "%s %*s %*f %*d", token_path);
+        sscanf(token, "%s %*u %*f %*d", token_path);
         if (strcmp(token_path, path) == 0) {
             in_index = 1;
             memset(buf, 0, sizeof(buf) / sizeof(char));
@@ -236,7 +236,7 @@ find_latest_archive(const char* path, char* name, int size) {
         // entry  is in the format: PATH [permissions] time-created deleted?
         unsigned long long file_time = 0;
         int deleted = 0;
-        sscanf(last_occurence, "%*s %*s %llu %d", &file_time, &deleted);
+        sscanf(last_occurence, "%*s %*u %llu %d", &file_time, &deleted);
 
         if (file_time > latest_time) {
             latest_time = file_time;
@@ -474,7 +474,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             char token_path[PATH_MAX];
             unsigned long long token_time;
             int deleted;
-            sscanf(token, "%s %*s %llu %d", token_path, &token_time, &deleted);
+            sscanf(token, "%s %*u %llu %d", token_path, &token_time, &deleted);
             char* temp = strdup(token_path);
             // find out of this entry is in the directory
             int in_path = strcmp(dirname(temp), path);
@@ -627,7 +627,7 @@ garbage_collect() {
                 // basically done with the file at this point
                 break;
             unsigned long long file_time;
-            sscanf(token, "%s %*s %llu %*d", token_path, &file_time);
+            sscanf(token, "%s %*u %llu %*d", token_path, &file_time);
             if (gc_table.find(token_path) != gc_table.end()) {
                 // entry is in the hash table, compare times
                 if (gc_table.find(token_path)->second <= file_time) {
@@ -765,23 +765,14 @@ record_index(const char* path, int deleted) {
      * e.g.:
      * /foo/bar [RWX] 1024 0\n
      * /foo/bar [R] 10 1\n
+     * NEW CHANGE:
+     * permissions now rep. as mode bits!!
      */
     // make path to file in cache
     char path_to_file[PATH_MAX + strlen(shadow_path) + 2];
     memset(path_to_file, 0, sizeof(path_to_file) / sizeof(char));
     sprintf(path_to_file, "%s%s", shadow_path, path+1);
     char input[PATH_MAX + 1024];
-    char permissions[6] = {0};
-
-    strcat(permissions, "[");
-    if (access(path_to_file, R_OK) == 0)
-        strcat(permissions, "R");
-    if (access(path_to_file, W_OK) == 0)
-        strcat(permissions, "W");
-    if (access(path_to_file, X_OK) == 0)
-        strcat(permissions, "X");
-
-    strcat(permissions, "]");
     struct stat buf;
     memset(&buf, 0, sizeof(struct stat));
     if (stat(path_to_file, &buf) == -1)
@@ -789,7 +780,7 @@ record_index(const char* path, int deleted) {
                path, strerror(errno));
 
     unsigned long long act_time = Util::get_time();
-    sprintf(input, "%s %s %llu %d\n", path, permissions, act_time, deleted);
+    sprintf(input, "%s %u %llu %d\n", path, buf.st_mode, act_time, deleted);
     printf("====WRITING THE FOLLOWING TO INDEX====\n%s\n", input);
     if (write(idxfd, input, strlen(input)) == -1) {
         printf("Error writing to idx file\n");
