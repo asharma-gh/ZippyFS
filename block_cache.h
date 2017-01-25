@@ -50,6 +50,17 @@ class BlockCache {
     int read(std::string path, uint8_t* buf, uint64_t size, uint64_t offset);
 
     /**
+     * @return list of names of things in path
+     */
+    std::vector<std::string> readdir(std::string path);
+    /**
+     * returns the attributes of the thing in path
+     * into st
+     * @return 0 on success, -1 otherwise
+     */
+    int getattr(std::string path, struct stat* st);
+
+    /**
      * truncates the file to the given size
      * @param path is the path of the file
      * @param size is the new size of the file
@@ -65,9 +76,9 @@ class BlockCache {
 
     /**
      * determines if the thing in path is in cache
-     * @param true if the file exists, false otherwise
-     */
-    bool in_cache(std::string path);
+     * @param 0 if the file exists, -ENOENT otherwise
+    */
+    int in_cache(std::string path);
 
     /**
      * flushes the contents of this block cache to

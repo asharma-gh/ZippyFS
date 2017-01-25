@@ -8,7 +8,10 @@
 #include <stdexcept>
 #include <cstdio>
 #include <unistd.h>
+#include <stdlib.h>
+#include <libgen.h>
 #include <cerrno>
+#include <algorithm>
 using namespace std;
 /**
  * TODO:
@@ -61,6 +64,30 @@ BlockCache::load_from_shdw(string path) {
 }
 
 int
+BlockCache::getattr(string path, struct stat* st) {
+    if (meta_data_.find(path) == meta_data_.end())
+        return -ENOENT;
+    else
+        return meta_data_[path]->stat(st);
+}
+
+vector<string>
+BlockCache::readdir(string path) {
+    vector<string> names;
+    for (auto entry : meta_data_) {
+        char* dirpath = strdup(entry.first.c_str());
+        dirpath = dirname(dirpath);
+        if (strcmp(dirpath, path.c_str()) == 0) {
+            char* temp = strdup(entry.first.c_str());
+            names.push_back(basename(temp));
+            free(temp);
+        }
+        free(dirpath);
+    }
+
+    return names;
+}
+int
 BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "SIZE " << size << " OFFSET " << offset << endl;
     // create blocks for buf
@@ -69,9 +96,10 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     shared_ptr<Inode> inode;
     if (meta_data_.find(path) != meta_data_.end()) {
         inode = meta_data_[path];
-        inode->set_mode(S_IRUSR | S_IWUSR);
     } else {
         inode = make_shared<Inode>(path);
+        inode->set_mode(S_IRUSR | S_IWUSR);
+
     }
     if (inode->get_size() < size + offset)
         inode->set_size(size + offset);
@@ -113,10 +141,10 @@ BlockCache::truncate(string path, uint64_t size) {
     return 0;
 }
 
-bool
+int
 BlockCache::in_cache(string path) {
     (void)path;
-    return meta_data_.find(path) != meta_data_.end();
+    return meta_data_.find(path) != meta_data_.end() || path == "/" ? 0 : -1;
 }
 
 int

@@ -90,8 +90,9 @@ class Inode {
     /**
      * fills in the following stat struct with info about this inode
      * @param st is the stat struct to fill
+     * @return 0 on success, -1 otherwise
      */
-    void stat(struct stat* st);
+    int stat(struct stat* st);
 
     /**
      * fills the given timespec with current time

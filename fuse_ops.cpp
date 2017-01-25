@@ -280,6 +280,7 @@ zippyfs_getattr(const char* path, struct stat* stbuf) {
         stbuf->st_nlink = 2;
         return 0;
     }
+    return block_cache->getattr(path, stbuf);
 
     load_to_cache(path);
     // construct file path in cache
@@ -407,6 +408,14 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     // unneeded
     (void) offset;
     (void) fi;
+    auto vec = block_cache->readdir(path);
+    for (auto name : vec) {
+        filler(buf, name.c_str(), NULL, 0);
+        cout << "NAME: " << name.c_str() << endl;
+    }
+    filler(buf, ".", NULL, 0);
+    filler(buf, "..", NULL, 0);
+    return 0;
 
     // helper struct for storing entries in hash table
     typedef struct index_entry {
@@ -687,7 +696,7 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
     printf("READ: %s\n", path);
     //block_cache->flush_to_shdw();
     block_cache->read(path, (uint8_t*)buf, size, offset);
-    block_cache->flush_to_shdw();
+    // block_cache->flush_to_shdw();
     return size;
     load_to_cache(path);
     // construct file path in cache
@@ -804,7 +813,7 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
     printf("WRITE to  %s\n",  path);
     (void)fi;
     block_cache->write(path, (uint8_t*)buf, size, offset);
-    block_cache->flush_to_shdw();
+    // block_cache->flush_to_shdw();
     return size;
 
     load_to_cache(path);
@@ -846,6 +855,7 @@ zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
     (void)mode;
     (void)rdev;
+    return block_cache->make_file(path, mode);
     load_to_cache(path);
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -914,6 +924,7 @@ zippyfs_rmdir(const char* path) {
 int
 zippyfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
+    return block_cache->make_file(path, mode | S_IFDIR);
     load_to_cache(path);
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -968,7 +979,7 @@ zippyfs_rename(const char* from, const char* to) {
 int
 zippyfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
-    //  return block_cache->truncate(path, size);
+    return block_cache->truncate(path, size);
     load_to_cache(path);
 
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -1007,6 +1018,7 @@ int
 zippyfs_access(const char* path, int mode) {
     printf("ACCESS: %s %d\n", path, mode);
     (void)mode;
+    return block_cache->in_cache(path);
     if (strcmp(path, "/") == 0)
         return 0;
 

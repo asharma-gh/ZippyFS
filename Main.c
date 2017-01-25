@@ -25,15 +25,15 @@
 static void init_fuse_operations(struct fuse_operations* fuse_op) {
     fuse_op->getattr = zippyfs_getattr;
     fuse_op->readdir = zippyfs_readdir;
-    fuse_op->read = zippyfs_read;
-    fuse_op->access = zippyfs_access;
+    //fuse_op->read = zippyfs_read;
+    // fuse_op->access = zippyfs_access;
     fuse_op->mknod = zippyfs_mknod;
-    fuse_op->unlink = zippyfs_unlink;
-    fuse_op->mkdir = zippyfs_mkdir;
+    //fuse_op->unlink = zippyfs_unlink;
+    //fuse_op->mkdir = zippyfs_mkdir;
     fuse_op->rename = zippyfs_rename;
     fuse_op->write = zippyfs_write;
     fuse_op->truncate = zippyfs_truncate;
-    fuse_op->open = zippyfs_open;
+    // fuse_op->open = zippyfs_open;
     fuse_op->rmdir = zippyfs_rmdir;
     fuse_op->chmod = zippyfs_chmod;
     fuse_op->utimens = zippyfs_utimens;

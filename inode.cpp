@@ -1,5 +1,6 @@
 #include "inode.h"
 #include "util.h"
+#include "libgen.h"
 using namespace std;
 
 Inode::Inode(string path)
@@ -10,6 +11,7 @@ Inode::Inode(string path)
     fill_time(&ts_mtime_);
     fill_time(&ts_ctime_);
     size_ = 0;
+    links_.insert(path);
 }
 
 
@@ -46,7 +48,6 @@ vector<string> Inode::get_refs() {
 
 
 string Inode::get_record() {
-    cout << (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " 0\n");
     return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " 0\n");
 }
 
@@ -60,17 +61,16 @@ void Inode::remove_block(uint64_t block_index) {
     blocks_.erase(block_index);
 }
 
-void Inode::stat(struct stat* st) {
-    st->st_dev = 0;
-    st->st_ino = -1;
-    st->st_uid = getuid();
-    st->st_gid = getgid();
-    st->st_mode = mode_;
-    st->st_nlink = nlink_;
-    st->st_blocks = blocks_.size();
-    st->st_size = size_;
-    st->st_ctim = ts_ctime_;
-    st->st_mtim = ts_mtime_;
+int Inode::stat(struct stat* stbuf) {
+    stbuf->st_uid = getuid();
+    stbuf->st_gid = getgid();
+    stbuf->st_mode = mode_;
+    stbuf->st_nlink = nlink_;
+    stbuf->st_blocks = blocks_.size();
+    stbuf->st_size = size_;
+    stbuf->st_ctim = ts_ctime_;
+    stbuf->st_mtim = ts_mtime_;
+    return 0;
 }
 
 int Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
