@@ -61,14 +61,13 @@ class BlockCache {
      * removes the thing in path
      * @param path is the path of the thing
      */
-    int remove(std::string path);
+    int remove_link(std::string path);
 
     /**
      * determines if the thing in path is in cache
      * @param true if the file exists, false otherwise
      */
-    bool
-    in_cache(std::string path);
+    bool in_cache(std::string path);
 
     /**
      * flushes the contents of this block cache to

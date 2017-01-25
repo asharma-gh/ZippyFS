@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <unordered_set>
 #include <map>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -42,6 +43,11 @@ class Inode {
      * @param ref is the reference to this inode
      */
     void inc_link(std::string ref);
+
+    /**
+     * decrements link count
+     */
+    void dec_link();
 
     /**
      * updates the modified time of this inode
@@ -131,7 +137,7 @@ class Inode {
     uint64_t size_;
 
     /** the paths which have a reference to this inode */
-    std::vector<std::string> links_;
+    std::unordered_set<std::string> links_;
 
     /** list of blocks for this inode */
     std::map<uint64_t, std::shared_ptr<Block>> blocks_;

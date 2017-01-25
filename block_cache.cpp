@@ -19,11 +19,10 @@ BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
 
 int
-BlockCache::remove(string path) {
-    if (file_cache_.find(path) == file_cache_.end())
+BlockCache::remove_link(string path) {
+    if (meta_data_.find(path) == meta_data_.end())
         return -1;
-    file_cache_.erase(path);
-    cache_data_[path] = (path + "[]" + to_string(Util::get_time()) + " 1");
+    meta_data_[path]->dec_link();
     return 0;
 }
 
@@ -147,11 +146,9 @@ BlockCache::flush_to_shdw() {
         // open previous version / make new one
         int file_fd = open(shdw_file_path.c_str(), O_CREAT | O_WRONLY, mode);
         entry.second->flush_to_fd(file_fd);
-    }
-    for (auto entry : cache_data_) {
-        // record to index file
-        const char* record = cache_data_[entry.first].c_str();
+        const char* record = entry.second->get_record().c_str();
         ::write(idx_fd, record, strlen(record));
+
     }
     // file_cache_.clear();
     // cache_data_.clear();

@@ -884,7 +884,7 @@ zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
 int
 zippyfs_unlink(const char* path) {
     printf("UNLINK: %s\n", path);
-    return block_cache->remove(path);
+    return block_cache->remove_link(path);
 
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];

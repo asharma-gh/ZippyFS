@@ -18,8 +18,12 @@ void Inode::set_mode(uint32_t mode) {
 }
 
 void Inode::inc_link(std::string ref) {
-    links_.push_back(ref);
+    links_.insert(ref);
     nlink_++;
+}
+
+void Inode::dec_link() {
+    nlink_--;
 }
 
 void Inode::update_mtime() {
@@ -36,12 +40,13 @@ uint64_t Inode::get_size() {
 }
 
 vector<string> Inode::get_refs() {
-    return links_;
+    vector<string> t (links_.begin(), links_.end());
+    return t;
 }
 
 
 string Inode::get_record() {
-    return path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + "0";
+    return path_ + " " + "[RW]" + " " + to_string(ul_mtime_) + "0";
 }
 
 void Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
