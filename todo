@@ -2,3 +2,6 @@
 - created index file when flushing
 
 - integrate prev. code for gc/readdir for archived things
+
+- figure out when to flush to shdw and what to do from there
+- figure out what to do with archives things and gc

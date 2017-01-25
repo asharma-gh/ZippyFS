@@ -168,7 +168,7 @@ BlockCache::in_cache(string path) {
 int
 BlockCache::flush_to_shdw() {
     if (size_ < MAX_SIZE)
-        return 0;
+        return -1;
     // make index file for cache
     string idx_path = path_to_shdw_ + "index.idx";
     cout << "PATH TO SHDW " << idx_path << endl;

@@ -16,8 +16,18 @@ class CowNode {
     /**
      * flushes the meta-data of this node to a file
      * in archive_path
+     * - file name generated using 64 byte rand int from urandom
+     *
+     * - flushes the map
+     *
+     * FORMAT:
+     * key inode_record
+     *
+     * Format of
      */
     void flush_to_archive();
+
+    void reconstruct();
 
   private:
     /** (key, inode) mapping containing data for this node */

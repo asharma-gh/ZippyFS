@@ -70,11 +70,6 @@ class Inode {
 
     std::shared_ptr<Block> get_block(uint64_t block_index);
 
-    /**
-     * @return the info of this inode as a string
-     * in the format of records
-     */
-    std::string get_record();
 
     /**
      * @return a list of paths that refer to this inode
@@ -118,6 +113,12 @@ class Inode {
      * @return 0 for success, -1 otherwise
      */
     int flush_to_fd(int fd);
+
+    /**
+     * Returns the record of this inode
+     * Format: path - mode - nlink - ul_mtime - ul_ctime - ts_mtime - ts_ctime - size - links - block_data
+     */
+    std::string get_record();
 
 
   private:

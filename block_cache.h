@@ -86,7 +86,8 @@ class BlockCache {
      * the shadow directory.
      * - ONLY FLUSHES WHEN AT MAX CAPACITY
      * Also flushes meta data to index.idx file
-     * * @return 0 for success or no flushing is needed, nonzero otherwise
+     * * @return 0 for success or no flushing is needed,
+     * -1 if no flushing occured
      */
     int flush_to_shdw();
 
