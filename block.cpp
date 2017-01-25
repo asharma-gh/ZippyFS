@@ -1,32 +1,28 @@
 #include "block.h"
+
 using namespace std;
 
 Block::Block() {
 
 }
 Block::Block(const uint8_t* data, uint64_t size) {
-    if (size > get_logical_size())
-        throw domain_error("goof");
-    insert_data(data, size);
+    insert_data(data, size, 0);
 }
 
 
 int
-Block::insert(const uint8_t* data, uint64_t size) {
-    if (has_data_)
-        return -1;
-    else
-        insert_data(data, size);
+Block::insert(const uint8_t* data, uint64_t size, uint64_t offset) {
+    insert_data(data, size, offset);
     return 0;
 }
 
 void
-Block::insert_data(const uint8_t* data, uint64_t size) {
-    for (unsigned int i = 0; i < size; i++) {
-        data_[i] = data[i];
+Block::insert_data(const uint8_t* data, uint64_t size, uint64_t offset) {
+    for (unsigned int ii = offset, jj = 0; jj < size; ii++, jj++) {
+        data_[ii] = data[jj];
     }
-    has_data_ = true;
-    actual_size_ = size;
+    if (size + offset > actual_size_)
+        actual_size_ = size + offset;
 
 }
 

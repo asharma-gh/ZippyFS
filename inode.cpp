@@ -28,6 +28,12 @@ void Inode::dec_link() {
     nlink_--;
 }
 
+bool Inode::has_block(uint64_t block_index) {
+    return blocks_.find(block_index) != blocks_.end();
+}
+shared_ptr<Block> Inode::get_block(uint64_t block_index) {
+    return blocks_.find(block_index)->second;
+}
 void Inode::update_mtime() {
     ul_mtime_ = Util::get_time();
     fill_time(&ts_mtime_);

@@ -107,17 +107,30 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     // for this file, make a block and add it to cache
     uint64_t curr_idx = 0;
     uint64_t block_size = 0;
+    bool offsetted = false;
     for (unsigned int block_idx = offset / Block::get_logical_size();  block_idx < num_blocks; block_idx++) {
         curr_idx += block_size;
+
         if (size < curr_idx + Block::get_logical_size())
             block_size = size - curr_idx;
         else
             block_size = Block::get_logical_size();
 
-        // finally create block with that much space at the current byte
-        shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
-        // add newly formed block to the inode
-        inode->add_block(block_idx, ptr);
+        int offset_amt = 0;
+        if (offsetted == false) {
+            offset_amt = offset < Block::get_logical_size() ? offset :
+                         (offset % Block::get_logical_size());
+            offsetted = true;
+        }
+
+        if (inode->has_block(block_idx)) {
+            inode->get_block(block_idx)->insert(buf, block_size, offset_amt);
+            cout << "overriding block" << endl;
+        } else {
+            shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
+            // add newly formed block to the inode
+            inode->add_block(block_idx, ptr);
+        }
     }
     assert(curr_idx + block_size == size);
 

@@ -33,7 +33,7 @@ class Block {
      * @return 0 for success, nonzero otherwise.
      * @return -1 if this block is not empty
      */
-    int insert(const uint8_t* data, uint64_t size);
+    int insert(const uint8_t* data, uint64_t size, uint64_t offset);
 
     /**
      * @return the data of this block as a string
@@ -72,7 +72,7 @@ class Block {
     std::array<uint8_t, SIZE_> data_;
     bool dirty_;
     bool has_data_ = false;
-    void insert_data(const uint8_t* data, uint64_t size);
+    void insert_data(const uint8_t* data, uint64_t size, uint64_t offset);
 
 
 

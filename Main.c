@@ -25,8 +25,8 @@
 static void init_fuse_operations(struct fuse_operations* fuse_op) {
     fuse_op->getattr = zippyfs_getattr;
     fuse_op->readdir = zippyfs_readdir;
-    //fuse_op->read = zippyfs_read;
-    // fuse_op->access = zippyfs_access;
+    fuse_op->read = zippyfs_read;
+    fuse_op->access = zippyfs_access;
     fuse_op->mknod = zippyfs_mknod;
     //fuse_op->unlink = zippyfs_unlink;
     //fuse_op->mkdir = zippyfs_mkdir;

@@ -65,6 +65,8 @@ class Inode {
      */
     uint64_t get_size();
 
+    std::shared_ptr<Block> get_block(uint64_t block_index);
+
     /**
      * @return the info of this inode as a string
      * in the format of records
@@ -86,6 +88,8 @@ class Inode {
 
     /** removes the block at the given index from this inode */
     void remove_block(uint64_t block_index);
+
+    bool has_block(uint64_t block_index);
 
     /**
      * fills in the following stat struct with info about this inode
