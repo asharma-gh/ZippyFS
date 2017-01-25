@@ -27,6 +27,7 @@ BlockCache::remove(string path) {
             entry.second->dec_link(path);
     }
     meta_data_.erase(path);
+    size_--;
     return 0;
 }
 
@@ -133,6 +134,7 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
             shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
             // add newly formed block to the inode
             inode->add_block(block_idx, ptr);
+            size_++;
         }
     }
     assert(curr_idx + block_size == size);
@@ -140,10 +142,6 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     // record meta data to cache_data
     // get prev inode if it exists
     meta_data_[path] = inode;
-    // update size
-    size_ = 0;
-    for (auto entry : meta_data_)
-        size_ += entry.second->get_size();
     return size;
 }
 
@@ -178,12 +176,15 @@ BlockCache::flush_to_shdw() {
     // create files for each item in cache
     for (auto const& entry : meta_data_) {
         // load previous version to shadow director
-
+        cout  << "NAME " << entry.first << endl;
         load_to_shdw(entry.first.c_str());
         // create path to file in shadow dir
-        string shdw_file_path = path_to_shdw_ + (entry.first).substr(1);
+        string file_path = path_to_shdw_ + entry.first.substr(1);
+        cout << "path to file " << file_path <<  endl;
         // open previous version / make new one
-        int file_fd = open(shdw_file_path.c_str(), O_CREAT | O_WRONLY);
+        int file_fd = open(file_path.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
+        if (file_fd == -1)
+            cout << "error opening file" << endl;
         entry.second->flush_to_fd(file_fd);
 
         int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);

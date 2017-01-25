@@ -118,8 +118,7 @@ class BlockCache {
     /* size of this block cache */
     uint64_t size_;
 
-    /* "big enough size of this block cache */
-    uint64_t MAX_SIZE = 16384;
-
+    /* "big enough" size of this block cache */
+    const uint64_t MAX_SIZE = 25;
 };
 #endif

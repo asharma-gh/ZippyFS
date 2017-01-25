@@ -143,8 +143,9 @@ Inode::flush_to_fd(int fd) {
         for (uint64_t ii = 0;  ii < block_size; ii++) {
             buf[ii] = block_data[ii];
         }
+        cout << "writing... " << endl;
         // do a write to file, offsetted based on block idx
-        if (pwrite(fd, buf, block_size, block_idx * Block::get_logical_size()) == -1)
+        if (pwrite(fd, buf, strlen(buf), block_idx * Block::get_logical_size()) == -1)
             perror("Error flushing block to file\n");
     }
 
