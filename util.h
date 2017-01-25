@@ -65,6 +65,7 @@ class Util {
     /**
      * verifies the checksum specified in contents
      * assumes that contents is in the form of an .idx file
+     * @param contents is the contents to verify, with checksum appendde at end
      * @return 0 if the checksum is valid, -1 otherwise
      */
     static

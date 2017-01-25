@@ -12,6 +12,7 @@ using namespace std;
 /**
  * TODO:
  * other i/o stuff, deletions
+ * integrate inodes
  *
  */
 BlockCache::BlockCache(string path_to_shdw)
@@ -25,6 +26,7 @@ BlockCache::remove(string path) {
     cache_data_[path] = (path + "[]" + to_string(Util::get_time()) + " 1");
     return 0;
 }
+
 int
 BlockCache::make_file(string path, mode_t mode) {
     shared_ptr<Inode> ptr(new Inode(path));
@@ -32,6 +34,7 @@ BlockCache::make_file(string path, mode_t mode) {
     meta_data_[path] = ptr;
     return 0;
 }
+
 int
 BlockCache::load_from_shdw(string path) {
     // construct path to shdw
@@ -62,7 +65,17 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     cout << "SIZE " << size << " OFFSET " << offset << endl;
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size + offset, Block::get_logical_size());
-    bool loaded_in = in_cache(path);
+    /*** create inode for write if needed ***/
+    shared_ptr<Inode> inode;
+    if (meta_data_.find(path) != meta_data_.end()) {
+        inode = meta_data_[path];
+        inode->set_mode(S_IRUSR | S_IWUSR);
+    } else {
+        inode = make_shared<Inode>(path);
+    }
+    if (inode->get_size() < size + offset)
+        inode->set_size(size + offset);
+
     // for this file, make a block and add it to cache
     uint64_t curr_idx = 0;
     uint64_t block_size = 0;
@@ -73,65 +86,24 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         else
             block_size = Block::get_logical_size();
 
-        // invalidate old block if it exists
-        if (loaded_in) {
-            auto block_map = file_cache_.find(path)->second;
-            if (block_map.find(block_idx) != block_map.end())
-                block_map[block_idx]->set_dirty();
-        }
         // finally create block with that much space at the current byte
         shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
-        // add newly formed block to file cache
-        file_cache_[path][block_idx] = ptr;
+        // add newly formed block to the inode
+        inode->add_block(block_idx, ptr);
+        // file_cache_[path][block_idx] = ptr;
     }
     assert(curr_idx + block_size == size);
 
     // record meta data to cache_data
     // get prev inode if it exists
-    shared_ptr<Inode> ptr;
-    if (meta_data_.find(path) != meta_data_.end()) {
-        ptr = meta_data_[path];
-        ptr->set_mode(S_IRUSR | S_IWUSR);
-    } else {
-        ptr = make_shared<Inode>(path);
-    }
-    if (ptr->get_size() < size + offset)
-        ptr->set_size(size + offset);
-    ptr->set_mtime(Util::get_time());
-
+    meta_data_[path] = inode;
     cache_data_[path] = (path + " [RW] " + to_string(Util::get_time()) +  " 0");
     return size;
 }
 
 int
 BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
-    // get blocks
-    uint64_t read_bytes = 0;
-    bool offsetted = false;
-    auto data = file_cache_.find(path)->second;
-    auto num_blocks = data.size();
-    cout << "SIZE " << size << " OFFSET " << offset << " DATA SIZE " << num_blocks << endl;
-    for (unsigned int block_idx = offset / Block::get_logical_size(); block_idx < num_blocks && read_bytes < size; block_idx++) {
-        // we can read this block, find the data
-        auto block = data.find(block_idx)->second;
-        auto block_data = block->get_data();
-        // offset into the data and add all to buf
-        // should only offset once
-        auto offset_amt = 0;
-        if (offsetted == false) {
-            offset_amt = offset < Block::get_logical_size() ? offset : (offset % Block::get_logical_size());
-            offsetted = true;
-        }
-        cout << "BLOCK SIZE " << block_data.size()
-             << endl;
-        for (auto byte = block_data.begin() + offset_amt;
-                byte != block_data.end() && read_bytes < size; byte++) {
-            buf[read_bytes++] = *byte;
-        }
-    }
-    assert(read_bytes == size);
-    cout << "buffer "<< buf << endl;
-    return size;
+    return meta_data_[path]->read(buf, size, offset);
 }
 
 int
@@ -158,7 +130,7 @@ BlockCache::flush_to_shdw() {
         perror("Open failed");
 
     // create files for each item in cache
-    for (auto const& entry : file_cache_) {
+    for (auto const& entry : meta_data_) {
         // load previous version to shadow director
 
         load_to_shdw(entry.first.c_str());
@@ -174,29 +146,7 @@ BlockCache::flush_to_shdw() {
             mode = st.st_mode;
         // open previous version / make new one
         int file_fd = open(shdw_file_path.c_str(), O_CREAT | O_WRONLY, mode);
-        // write blocks to it
-        for (auto const& data : entry.second) {
-            // extract information for current block
-            uint64_t block_idx = data.first;
-            shared_ptr<Block> block = data.second;
-            vector<uint8_t> block_data = block->get_data();
-            uint64_t block_size = block->get_actual_size();
-            // create a literal buffer for writes to file
-            char buf[block_size];
-            cout << "BLOCK SIZE " << block_size;
-            cout << " BUF SIZE " << sizeof(buf) << endl;
-            for (uint64_t ii = 0;  ii < block_size; ii++) {
-                buf[ii] = block_data[ii];
-                cout << ii << endl;
-            }
-            // do a write to file, offsetted based on block idx
-            if (pwrite(file_fd, buf, block_size, block_idx * Block::get_logical_size()) == -1)
-                perror("Error flushing block to file\n");
-
-        }
-        close(file_fd);
-
-
+        entry.second->flush_to_fd(file_fd);
     }
     for (auto entry : cache_data_) {
         // record to index file

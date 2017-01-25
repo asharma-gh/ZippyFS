@@ -485,7 +485,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 if (added_names.find(token_path) != added_names.end()) {
                     auto entry = added_names.find(token_path);
                     val = entry->second;
-                    //  if (g_hash_table_lookup_extended(added_entries, token_path, (void*)&old_name, (void*)&val)) {
+
                     // entry is in the hash table, compare times
                     if (val.added_time <= token_time) {
                         // this token is a later version. Create new hash-table entry
@@ -493,7 +493,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                         new_entry.added_time = token_time;
                         new_entry.deleted = deleted;
                         // add to hash table
-                        // g_hash_table_insert(added_entries, new_name, new_entry);
+
                         added_names[token_path] = new_entry;
                     }
                 } else {
@@ -501,7 +501,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                     index_entry new_entry;
                     new_entry.added_time = token_time;
                     new_entry.deleted = deleted;
-                    //g_hash_table_insert(added_entries, new_name, new_entry);
+
                     added_names[token_path] = new_entry;
                 }
             }
@@ -685,8 +685,10 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
+    //block_cache->flush_to_shdw();
+    block_cache->read(path, (uint8_t*)buf, size, offset);
     block_cache->flush_to_shdw();
-    return block_cache->read(path, (uint8_t*)buf, size, offset);
+    return size;
     load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -975,7 +977,7 @@ zippyfs_rename(const char* from, const char* to) {
 int
 zippyfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
-    return block_cache->truncate(path, size);
+    //  return block_cache->truncate(path, size);
     load_to_cache(path);
 
     char shadow_file_path[strlen(path) + strlen(shadow_path)];

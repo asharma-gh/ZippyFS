@@ -6,6 +6,12 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <ctime>
+#include <iostream>
+#include <cassert>
 #include "block.h"
 #include "util.h"
 
@@ -38,10 +44,9 @@ class Inode {
     void inc_link(std::string ref);
 
     /**
-     * sets the modified time of this inode
-     * @param mtime the new modified time of this inode
+     * updates the modified time of this inode
      */
-    void set_mtime(unsigned long long mtime);
+    void update_mtime();
 
     /**
      * sets the size of this inode
@@ -65,11 +70,39 @@ class Inode {
      */
     std::vector<std::string> get_refs();
 
-    /** adds the given block to this inode */
+    /**
+     * adds the given block to this inode
+     * @param block_index is the index of the block
+     * @param block is the block of data
+     * - Invalidates old block if it exists
+     */
     void add_block(uint64_t block_index, std::shared_ptr<Block> block);
 
     /** removes the block at the given index from this inode */
     void remove_block(uint64_t block_index);
+
+    /**
+     * fills in the following stat struct with info about this inode
+     * @param st is the stat struct to fill
+     */
+    void stat(struct stat* st);
+
+    /**
+     * fills the given timespec with current time
+     * doing this because time is weird in c/c++
+     */
+    static
+    void
+    fill_time(struct timespec* ts) {
+        clock_gettime(CLOCK_REALTIME, ts);
+    }
+    int read(uint8_t* buf, uint64_t size, uint64_t offset);
+
+    /**
+     * writes data in this inode to thing in fd
+     * @return 0 for success, -1 otherwise
+     */
+    int flush_to_fd(int fd);
 
 
   private:
@@ -82,11 +115,17 @@ class Inode {
     /** number of links for this inode */
     uint32_t nlink_;
 
-    /** modified time for this inode */
-    unsigned long long  mtime_;
+    /** modified time for this inode as ull*/
+    unsigned long long  ul_mtime_;
 
-    /** creation time for this inode */
-    unsigned long long ctime_;
+    /** creation time for this inode as ull*/
+    unsigned long long ul_ctime_;
+
+    /** modified time for this inode as time spec */
+    struct timespec ts_mtime_;
+
+    /** creatio ntime for this inode as time spec */
+    struct timespec ts_ctime_;
 
     /** size of this inode */
     uint64_t size_;
