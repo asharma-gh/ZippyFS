@@ -4,7 +4,11 @@
 #include <cstdint>
 #include <cstring>
 #include <cstdlib>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <string>
 #include <sys/time.h>
+#include <linux/random.h>
 
 class Util {
   public:
@@ -92,6 +96,19 @@ class Util {
             return -1;
 
         return 0;
+    }
+
+    std::string
+    generate_rand_hex_name() {
+        // create archive name
+        char num[16] = {'\0'};
+        char hex_name[33] = {'\0'};
+        syscall(SYS_getrandom, num, sizeof(num), GRND_NONBLOCK);
+
+        for (int i = 0; i < 16; i++) {
+            sprintf(hex_name + i*2,"%02X", num[i]);
+        }
+        return std::string(hex_name);
     }
 
 };
