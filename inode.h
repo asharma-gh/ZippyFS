@@ -110,6 +110,7 @@ class Inode {
     fill_time(struct timespec* ts) {
         clock_gettime(CLOCK_REALTIME, ts);
     }
+
     int read(uint8_t* buf, uint64_t size, uint64_t offset);
 
     /**
