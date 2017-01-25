@@ -5,6 +5,7 @@ using namespace std;
 Block::Block() {
 
 }
+
 Block::Block(const uint8_t* data, uint64_t size) {
     insert_data(data, size, 0);
 }

@@ -80,11 +80,13 @@ class BlockCache {
     */
     int in_cache(std::string path);
 
+
     /**
      * flushes the contents of this block cache to
      * the shadow directory.
-     * Also flushes cache_data_ to an index file in the directory
-     * @return 0 for success, nonzero otherwise
+     * - ONLY FLUSHES WHEN AT MAX CAPACITY
+     * Also flushes meta data to index.idx file
+     * * @return 0 for success or no flushing is needed, nonzero otherwise
      */
     int flush_to_shdw();
 
@@ -112,6 +114,12 @@ class BlockCache {
 
     /** represents meta data for files in cache */
     std::map<std::string, std::shared_ptr<Inode>> meta_data_;
+
+    /* size of this block cache */
+    uint64_t size_;
+
+    /* "big enough size of this block cache */
+    uint64_t MAX_SIZE = 16384;
 
 };
 #endif

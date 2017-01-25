@@ -89,6 +89,7 @@ BlockCache::readdir(string path) {
 
     return names;
 }
+
 int
 BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "SIZE " << size << " OFFSET " << offset << endl;
@@ -139,6 +140,10 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
     // record meta data to cache_data
     // get prev inode if it exists
     meta_data_[path] = inode;
+    // update size
+    size_ = 0;
+    for (auto entry : meta_data_)
+        size_ += entry.second->get_size();
     return size;
 }
 
@@ -164,6 +169,8 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::flush_to_shdw() {
+    if (size_ < MAX_SIZE)
+        return 0;
     // make index file for cache
     string idx_path = path_to_shdw_ + "index.idx";
     cout << "PATH TO SHDW " << idx_path << endl;
