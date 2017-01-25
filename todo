@@ -1,7 +1,4 @@
-- create inodes for each thing in cache,
-use them to get stat info
+- flush block cache when needed
+- created index file when flushing
 
-- implement stuff in block_cache for readdir
-
-- replace mode field in record with uint
-
+- integrate prev. code for gc/readdir for archived things

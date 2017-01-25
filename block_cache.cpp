@@ -13,12 +13,7 @@
 #include <cerrno>
 #include <algorithm>
 using namespace std;
-/**
- * TODO:
- * other i/o stuff, deletions
- * integrate inodes
- *
- */
+
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
 
