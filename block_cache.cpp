@@ -89,14 +89,12 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
         shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
         // add newly formed block to the inode
         inode->add_block(block_idx, ptr);
-        // file_cache_[path][block_idx] = ptr;
     }
     assert(curr_idx + block_size == size);
 
     // record meta data to cache_data
     // get prev inode if it exists
     meta_data_[path] = inode;
-    cache_data_[path] = (path + " [RW] " + to_string(Util::get_time()) +  " 0");
     return size;
 }
 
@@ -117,7 +115,7 @@ BlockCache::truncate(string path, uint64_t size) {
 bool
 BlockCache::in_cache(string path) {
     (void)path;
-    return file_cache_.find(path) != file_cache_.end();
+    return meta_data_.find(path) != meta_data_.end();
 }
 
 int
@@ -150,8 +148,7 @@ BlockCache::flush_to_shdw() {
         ::write(idx_fd, record, strlen(record));
 
     }
-    // file_cache_.clear();
-    // cache_data_.clear();
+    // meta_data__.clear();
     close(idx_fd);
     return 0;
 }

@@ -96,14 +96,8 @@ class BlockCache {
     /** absolute path of shadow directory */
     std::string path_to_shdw_;
 
-    /** file cache **/
-    std::map<std::string, std::map<uint64_t, std::shared_ptr<Block>>> file_cache_;
-
     /** for multithreaded mode potentially */
     std::mutex mutex_;
-
-    /** represents entries (path, meta-data) in an index file for files in cache */
-    std::map<std::string, std::string> cache_data_;
 
     /** represents meta data for files in cache */
     std::map<std::string, std::shared_ptr<Inode>> meta_data_;
