@@ -46,8 +46,11 @@ class Inode {
 
     /**
      * decrements link count
+     * clears blocks if link is 0
      */
-    void dec_link();
+    void dec_link(std::string ref);
+
+    uint32_t get_link();
 
     /**
      * updates the modified time of this inode

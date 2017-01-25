@@ -23,10 +23,15 @@ BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
 
 int
-BlockCache::remove_link(string path) {
+BlockCache::remove(string path) {
     if (meta_data_.find(path) == meta_data_.end())
         return -1;
-    meta_data_[path]->dec_link();
+    for (auto entry : meta_data_) {
+        auto vec = entry.second->get_refs();
+        if (find(vec.begin(), vec.end(), path) != vec.end())
+            entry.second->dec_link(path);
+    }
+    meta_data_.erase(path);
     return 0;
 }
 
@@ -75,6 +80,8 @@ vector<string>
 BlockCache::readdir(string path) {
     vector<string> names;
     for (auto entry : meta_data_) {
+        if (entry.second->get_link() == 0)
+            continue;
         char* dirpath = strdup(entry.first.c_str());
         dirpath = dirname(dirpath);
         if (strcmp(dirpath, path.c_str()) == 0) {
@@ -181,10 +188,7 @@ BlockCache::flush_to_shdw() {
         if (idx_fd == -1)
             perror("Open failed");
         string record = entry.second->get_record();
-        int res = ::write(idx_fd, record.c_str(), record.length());
-        cout << "RES: " << res << endl;
-        cout << "fd: " << idx_fd << endl;
-        // cout << "ERRNO: " << strerror(errno) << endl;
+        ::write(idx_fd, record.c_str(), record.length());
         close(idx_fd);
 
 

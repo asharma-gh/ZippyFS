@@ -72,7 +72,7 @@ class BlockCache {
      * removes the thing in path
      * @param path is the path of the thing
      */
-    int remove_link(std::string path);
+    int remove(std::string path);
 
     /**
      * determines if the thing in path is in cache

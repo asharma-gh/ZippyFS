@@ -15,61 +15,81 @@ Inode::Inode(string path)
 }
 
 
-void Inode::set_mode(uint32_t mode) {
+void
+Inode::set_mode(uint32_t mode) {
+    if (S_ISDIR(mode))
+        nlink_ = nlink_ < 2 ? 2 : nlink_;
     mode_ = mode;
 }
 
-void Inode::inc_link(std::string ref) {
+void
+Inode::inc_link(std::string ref) {
     links_.insert(ref);
     nlink_++;
 }
 
-void Inode::dec_link() {
+void
+Inode::dec_link(string path) {
     nlink_--;
+    links_.erase(path);
+    if (nlink_ == 0)
+        blocks_.clear();
+}
+uint32_t
+Inode::get_link() {
+    return nlink_;
 }
 
-bool Inode::has_block(uint64_t block_index) {
+bool
+Inode::has_block(uint64_t block_index) {
     return blocks_.find(block_index) != blocks_.end();
 }
-shared_ptr<Block> Inode::get_block(uint64_t block_index) {
+shared_ptr<Block>
+Inode::get_block(uint64_t block_index) {
     return blocks_.find(block_index)->second;
 }
-void Inode::update_mtime() {
+void
+Inode::update_mtime() {
     ul_mtime_ = Util::get_time();
     fill_time(&ts_mtime_);
 }
 
-void Inode::set_size(unsigned long long size) {
+void
+Inode::set_size(unsigned long long size) {
     size_ = size;
 }
 
-uint64_t Inode::get_size() {
+uint64_t
+Inode::get_size() {
     return size_;
 }
 
-vector<string> Inode::get_refs() {
+vector<string>
+Inode::get_refs() {
     vector<string> t (links_.begin(), links_.end());
     return t;
 }
 
 
-string Inode::get_record() {
+string
+Inode::get_record() {
     return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " 0\n");
 }
 
-void Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
+void
+Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
     if (blocks_.find(block_index) != blocks_.end())
         blocks_[block_index]->set_dirty();
     blocks_[block_index] = block;
 }
 
-void Inode::remove_block(uint64_t block_index) {
+void
+Inode::remove_block(uint64_t block_index) {
     blocks_.erase(block_index);
 }
 
-int Inode::stat(struct stat* stbuf) {
-    stbuf->st_uid = getuid();
-    stbuf->st_gid = getgid();
+int
+Inode::stat(struct stat* stbuf) {
     stbuf->st_mode = mode_;
     stbuf->st_nlink = nlink_;
     stbuf->st_blocks = blocks_.size();
@@ -79,7 +99,8 @@ int Inode::stat(struct stat* stbuf) {
     return 0;
 }
 
-int Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
+int
+Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     // get blocks
     uint64_t read_bytes = 0;
     bool offsetted = false;
@@ -107,7 +128,8 @@ int Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "buffer "<< buf << endl;
     return size;
 }
-int Inode::flush_to_fd(int fd) {
+int
+Inode::flush_to_fd(int fd) {
     for (auto const& data : blocks_) {
         // extract information for current block
         uint64_t block_idx = data.first;
