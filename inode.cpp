@@ -47,10 +47,6 @@ Inode::get_link() {
 
 bool
 Inode::has_block(uint64_t block_index) {
-    cout << "checking if block " << block_index << endl;
-    //  if (blocks_.find(1) == blocks_.end())
-    //     cout << "ok" << endl;
-    // cout << (blocks_.find(block_index) != blocks_.end()) << endl;
     return blocks_.find(block_index) != blocks_.end();
 }
 

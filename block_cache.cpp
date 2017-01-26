@@ -43,6 +43,8 @@ BlockCache::make_file(string path, mode_t mode) {
 
 int
 BlockCache::load_from_shdw(string path) {
+    cout << "loading to shdw " << path << endl;
+    load_to_shdw(path.c_str());
     // construct path to shdw
     string shdw_file_path = path_to_shdw_ + path.substr(1);
 
@@ -69,10 +71,9 @@ BlockCache::load_from_shdw(string path) {
 
 int
 BlockCache::getattr(string path, struct stat* st) {
-    if (meta_data_.find(path) == meta_data_.end()) {
-        cout << "FILE DNE" << endl;
+    if (in_cache(path) == -1 && load_from_shdw(path) == -1)
         return -ENOENT;
-    } else
+    else
         return meta_data_[path]->stat(st);
 }
 
@@ -102,6 +103,7 @@ BlockCache::readdir(string path) {
 int
 BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
     if (in_cache(path) == -1) {
+        cout << "loading from shdw " << path << endl;
         load_from_shdw(path);
     }
     // create blocks for buf
@@ -155,8 +157,10 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
 
 int
 BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
-    if (in_cache(path) == -1)
+    if (in_cache(path) == -1) {
+        cout << " READ: loading from shdw " << path << endl;
         load_from_shdw(path);
+    }
     return meta_data_[path]->read(buf, size, offset);
 }
 

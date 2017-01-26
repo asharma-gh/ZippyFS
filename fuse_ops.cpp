@@ -284,8 +284,8 @@ zippyfs_getattr(const char* path, struct stat* stbuf) {
         stbuf->st_nlink = 2;
         return 0;
     }
-    if (block_cache->in_cache(path) == 0)
-        return block_cache->getattr(path, stbuf);
+    //if (block_cache->in_cache(path) == 0)
+    return block_cache->getattr(path, stbuf);
 
     load_to_cache(path);
     // construct file path in cache
@@ -316,6 +316,7 @@ flush_dir() {
     printf("Checking %s\n", path_to_indx);
     if (access(path_to_indx, F_OK) == -1) {
         printf("no index, no writes, exiting..\n");
+        garbage_collect();
         return -1;
     }
     FILE* file  = fopen(path_to_indx, "r");
@@ -582,13 +583,22 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
 
 /****
- * HashTable for efficient garbage collection
+ * HashTables for efficient garbage collection
  * (Path, Time#)
- * - iterate thru index file and add entry if time is later. If no entries can be added
- *   then delete index file and zip archive
- * Initialized in main
+ * - contains latest time for each file
  ****/
-static map<string, unsigned long long> gc_table;
+typedef struct {
+    unsigned long long f_time;
+    string indx_file;
+} ent_info;
+static map<string, ent_info> gc_table;
+
+/*****
+ * (index path, valid entries)
+ * contains the number of updated entries for the index file
+ * if this value is 0, the files are garbage collected
+ *****/
+static map<string, unsigned long long> valid_ents;
 
 /** lock for gc_table, for multithreaded mode */
 mutex gc_mtx;
@@ -602,6 +612,7 @@ static
 int
 garbage_collect() {
     lock_guard<mutex> lock(gc_mtx);
+    printf("GARBAGE COLLECTING . . .\n");
     // make path to rmlog
     char rmlog_path[PATH_MAX];
     sprintf(rmlog_path, "~/.config/zippyfs/");
@@ -650,7 +661,8 @@ garbage_collect() {
         // make path to index file
         char path_to_indx[strlen(archive_entry->d_name) + strlen(zip_dir_name) + 1];
         memset(path_to_indx, 0, sizeof(path_to_indx) / sizeof(char));
-        sprintf(path_to_indx, "%s/%s", zip_dir_name, archive_entry->d_name);
+        sprintf(path_to_indx, "%s%s", zip_dir_name, archive_entry->d_name);
+        cout << "CHECKING " << path_to_indx << endl;
         // read contents
         FILE* file  = fopen(path_to_indx, "r");
         // get file size
@@ -670,8 +682,8 @@ garbage_collect() {
         strcpy(contents_cpy, contents);
 
         token = strtok_r(contents_cpy, delim, &save_ptr);
-        int is_outdated = 1;
-
+        // int is_outdated = 1;
+        valid_ents[path_to_indx] = 0;
         while (token != NULL) {
             // fetch path from token
             char token_path[PATH_MAX];
@@ -680,26 +692,54 @@ garbage_collect() {
                 break;
             unsigned long long file_time;
             sscanf(token, "%s %*u %llu %*d", token_path, &file_time);
+            // if this is actually the latest version, the file is not outdated we can move on
+            // char* entry = (char*) malloc(PATH_MAX * sizeof(char));
+
             if (gc_table.find(token_path) != gc_table.end()) {
                 // entry is in the hash table, compare times
-                if (gc_table.find(token_path)->second <= file_time) {
+                if (gc_table.find(token_path)->second.f_time <= file_time) {
                     // we have an updated entry
-                    is_outdated = 0;
+                    //    is_outdated = 0;
+                    printf("%s is UPDATED!\n", token_path);
+                    // decrease valid ents for an indx file
+                    valid_ents[gc_table[token_path].indx_file]--;
                     // add to hash table
-                    gc_table[token_path] = file_time;
+                    ent_info ent;
+                    ent.indx_file = path_to_indx;
+                    ent.f_time = file_time;
+                    gc_table[token_path] = ent;
+                    valid_ents[path_to_indx]++;
+                    cout << "inc ent" << endl;
                 }
             } else {
+                //printf("CHECKING %s\n", path_to_indx);
+                printf("%s is NEW!\n", token_path);
                 // make entry for this item
-                is_outdated = 0;
-                gc_table[token_path] = file_time;
+                //       is_outdated = 0;
+                valid_ents[path_to_indx]++;
+                ent_info ent;
+                ent.indx_file = path_to_indx;
+                ent.f_time = file_time;
+                gc_table[token_path] = ent;
+
             }
             token = strtok_r(NULL, delim, &save_ptr);
         }
 
-        if (is_outdated) {
+        for (auto ents : valid_ents) {
+            cout << "ent name " << ents.first << " num " << ents.second << endl;
+            if (ents.second > 0)
+                continue;
+
+            cout << "GARBAGE COLLECTING " << ents.first  << endl;
+            // trim path name to just base name
+            char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
+            strcpy(b_name, ents.first.c_str());
+            b_name = basename(b_name);
+            cout << "BASE NAME " << b_name << endl;
             // write to machine log file
             FILE* log_file = fopen(path_local_log, "a");
-            int res =  fprintf(log_file, "%s\n", archive_entry->d_name);
+            int res =  fprintf(log_file, "%s\n", b_name);
             if (res == -1) {
                 printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
             }
@@ -708,13 +748,13 @@ garbage_collect() {
              * now locally delete zip file and index, since its
              * outdated!
              */
-            char indx_name_no_type[strlen(archive_entry->d_name)];
-            strcpy(indx_name_no_type, archive_entry->d_name);
-            indx_name_no_type[strlen(indx_name_no_type) - 4] = '\0';
+            b_name[strlen(b_name) - 4] = '\0';
             // create command to remove both index and zip file
-            char command[(strlen(indx_name_no_type) * 2) + (strlen(zip_dir_name) * 2) + 10];
-            sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, indx_name_no_type, zip_dir_name, indx_name_no_type);
+            char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
+            sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
             system(command);
+            //free(b_name);
+
         }
     }
     free(path_local_log);
@@ -774,7 +814,8 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
 int
 zippyfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
-    block_cache->load_from_shdw(path);
+    if (block_cache->in_cache(path))
+        block_cache->load_from_shdw(path);
     return 0;
     (void)fi;
     char idx_path[strlen(shadow_path) + 15];
@@ -857,7 +898,7 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
     printf("WRITE to  %s\n",  path);
     (void)fi;
     block_cache->write(path, (uint8_t*)buf, size, offset);
-    if (block_cache->flush_to_shdw(1) == 0) {
+    if (block_cache->flush_to_shdw(0) == 0) {
 
     }
 //     flush_dir();
