@@ -1,5 +1,5 @@
 # zippyfs
-
+Note: currently being developed in branch nozippyfs  
 Distributed file system using libzip and fuse  
 Features: 
 - file synchronization via ssh  
