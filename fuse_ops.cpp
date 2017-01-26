@@ -28,6 +28,7 @@
 #include <string>
 #include <map>
 #include <mutex>
+#include <fstream>
 #include "util.h"
 #include "block_cache.h"
 #include "block.h"
@@ -520,6 +521,50 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             token = strtok_r(NULL, delim, &saveptr);
         }
     }
+    // check file cache
+    string index_path = (string)shadow_path + "/index.idx";
+    ifstream in_file(index_path);
+    string curline;
+    while (getline(in_file, curline)) {
+        char token_path[PATH_MAX];
+        unsigned long long token_time;
+        int deleted;
+        sscanf(curline.c_str(), "%s %*u %llu %d", token_path, &token_time, &deleted);
+        cout << "token path " << token_path << endl;
+        char* temp = strdup(token_path);
+        // find out of this entry is in the directory
+        int in_path = strcmp(dirname(temp), path);
+        cout << "in dir? " << in_path << endl;
+        free(temp);
+        if (in_path == 0) {
+            index_entry val;
+            string old_name;
+            if (added_names.find(token_path) != added_names.end()) {
+                auto entry = added_names.find(token_path);
+                val = entry->second;
+
+                // entry is in the hash table, compare times
+                if (val.added_time <= token_time) {
+                    // this token is a later version. Create new hash-table entry
+                    index_entry new_entry;
+                    new_entry.added_time = token_time;
+                    new_entry.deleted = deleted;
+                    // add to hash table
+
+                    added_names[token_path] = new_entry;
+                }
+            } else {
+                // it is not in the hash table so we need to add it
+                index_entry new_entry;
+                new_entry.added_time = token_time;
+                new_entry.deleted = deleted;
+
+                added_names[token_path] = new_entry;
+            }
+        }
+
+    }
+
     // iterate thru it and add them to filler unless its a deletion
     for (auto entry : added_names) {
         if (!entry.second.deleted) {
@@ -818,36 +863,40 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
     (void)fi;
     if (block_cache->in_cache(path) == 0) {
         block_cache->write(path, (uint8_t*)buf, size, offset);
-        if (block_cache->flush_to_shdw() == 0)
-            //     flush_dir();
-            return size;
+        if (block_cache->flush_to_shdw() == 0) {
+
+        }
     }
-
-    load_to_cache(path);
-    // write to new file source
-    char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
-    strcat(shadow_file_path, shadow_path);
-    strcat(shadow_file_path, path+1);
-    struct stat st;
-    memset(&st, 0, sizeof(struct stat));
-    mode_t mode = 0;
-    int res = stat(shadow_file_path, &st);
-    if (res == -1)
-        mode = S_IRUSR | S_IWUSR | S_IXUSR;
-    else
-        mode = st.st_mode;
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, mode);
-    if (pwrite(shadow_file, buf, size, offset) == -1)
-        printf("error writing to shadow file\n");
-    if (close(shadow_file))
-        printf("error closing shadow file\n");
-
-    // record to index file
-    record_index(path, 0);
-
-    flush_dir();
+    //     flush_dir();
     return size;
+
+    /*
+        load_to_cache(path);
+        // write to new file source
+        char shadow_file_path[strlen(path) + strlen(shadow_path)];
+        memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
+        strcat(shadow_file_path, shadow_path);
+        strcat(shadow_file_path, path+1);
+        struct stat st;
+        memset(&st, 0, sizeof(struct stat));
+        mode_t mode = 0;
+        int res = stat(shadow_file_path, &st);
+        if (res == -1)
+            mode = S_IRUSR | S_IWUSR | S_IXUSR;
+        else
+            mode = st.st_mode;
+        int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, mode);
+        if (pwrite(shadow_file, buf, size, offset) == -1)
+            printf("error writing to shadow file\n");
+        if (close(shadow_file))
+            printf("error closing shadow file\n");
+
+        // record to index file
+        record_index(path, 0);
+
+        flush_dir();
+        return size;
+        */
 }
 
 /**
@@ -863,6 +912,7 @@ zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     (void)mode;
     (void)rdev;
     return block_cache->make_file(path, mode);
+    /*
     load_to_cache(path);
     // create path to file
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -882,6 +932,7 @@ zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     record_index(path, 0);
     flush_dir();
     return 0;
+    */
 }
 
 /**
@@ -995,6 +1046,7 @@ zippyfs_truncate(const char* path, off_t size) {
             // flush_dir();
             return 0;
     }
+    /*
     load_to_cache(path);
 
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -1020,6 +1072,7 @@ zippyfs_truncate(const char* path, off_t size) {
     // record to index
     record_index(path, 0);
     flush_dir();
+    */
     return 0;
 }
 
@@ -1087,8 +1140,8 @@ zippyfs_destroy(void* private_data) {
     char removal_cmd[PATH_MAX + 12];
     sprintf(removal_cmd, "rm -rf %s", shadow_path);
     system(removal_cmd);
+    rmdir(shadow_path);
     free(shadow_path);
     free(zip_dir_name);
 
-    rmdir(shadow_path);
 }

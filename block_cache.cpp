@@ -207,8 +207,16 @@ BlockCache::flush_to_shdw() {
         // create path to file in shadow dir
         string file_path = path_to_shdw_ + entry.first.substr(1);
         cout << "path to file " << file_path <<  endl;
+
+        // open index file
+        int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+        if (idx_fd == -1)
+            perror("Open failed");
+
         if (entry.second->is_dir()) {
             mkdir(file_path.c_str(), entry.second->get_mode());
+            string record = entry.second->get_record();
+            ::write(idx_fd, record.c_str(), record.length());
             continue;
         }
         cout << "alrighty" << endl;
@@ -221,9 +229,6 @@ BlockCache::flush_to_shdw() {
         entry.second->flush_to_fd(file_fd);
         cout << "finished flush" << endl;
 
-        int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-        if (idx_fd == -1)
-            perror("Open failed");
         string record = entry.second->get_record();
         ::write(idx_fd, record.c_str(), record.length());
         close(idx_fd);
@@ -231,7 +236,7 @@ BlockCache::flush_to_shdw() {
 
 
     }
-    // meta_data__.clear();
+    meta_data_.clear();
     return 0;
 }
 
