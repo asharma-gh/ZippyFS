@@ -1,5 +1,2 @@
-- load file from main dir back to cache when needed
-- figure out when to flush to shdw and what to do from there
-- figure out what to do with archived things and gc
-
-
+- symlinks
+- removals

@@ -686,7 +686,6 @@ garbage_collect() {
         strcpy(contents_cpy, contents);
 
         token = strtok_r(contents_cpy, delim, &save_ptr);
-        // int is_outdated = 1;
         valid_ents[path_to_indx] = 0;
         while (token != NULL) {
             // fetch path from token
@@ -697,14 +696,10 @@ garbage_collect() {
             unsigned long long file_time;
             sscanf(token, "%s %*u %llu %*d", token_path, &file_time);
             // if this is actually the latest version, the file is not outdated we can move on
-            // char* entry = (char*) malloc(PATH_MAX * sizeof(char));
-
             if (gc_table.find(token_path) != gc_table.end()) {
                 // entry is in the hash table, compare times
                 if (gc_table.find(token_path)->second.f_time <= file_time) {
                     // we have an updated entry
-                    //    is_outdated = 0;
-                    printf("%s is UPDATED!\n", token_path);
                     // decrease valid ents for an indx file
                     valid_ents[gc_table[token_path].indx_file]--;
                     // add to hash table
@@ -713,13 +708,9 @@ garbage_collect() {
                     ent.f_time = file_time;
                     gc_table[token_path] = ent;
                     valid_ents[path_to_indx]++;
-                    cout << "inc ent" << endl;
                 }
             } else {
-                //printf("CHECKING %s\n", path_to_indx);
-                printf("%s is NEW!\n", token_path);
                 // make entry for this item
-                //       is_outdated = 0;
                 valid_ents[path_to_indx]++;
                 ent_info ent;
                 ent.indx_file = path_to_indx;
@@ -731,16 +722,13 @@ garbage_collect() {
         }
 
         for (auto ents : valid_ents) {
-            cout << "ent name " << ents.first << " num " << ents.second << endl;
             if (ents.second > 0)
                 continue;
-
-            cout << "GARBAGE COLLECTING " << ents.first  << endl;
+            cout << "GARBAGE COLLECTING " << ents.first << endl;
             // trim path name to just base name
             char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
             strcpy(b_name, ents.first.c_str());
             b_name = basename(b_name);
-            cout << "BASE NAME " << b_name << endl;
             // write to machine log file
             FILE* log_file = fopen(path_local_log, "a");
             int res =  fprintf(log_file, "%s\n", b_name);
@@ -757,8 +745,6 @@ garbage_collect() {
             char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
             sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
             system(command);
-            //free(b_name);
-
         }
     }
     free(path_local_log);
@@ -782,7 +768,6 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
     (void) offset;
     printf("READ: %s\n", path);
     block_cache->read(path, (uint8_t*)buf, size, offset);
-    // flush_dir();
     return size;
 
     load_to_cache(path);
@@ -821,17 +806,6 @@ zippyfs_open(const char* path, struct fuse_file_info* fi) {
     if (block_cache->in_cache(path))
         block_cache->load_from_shdw(path);
     return 0;
-    (void)fi;
-    char idx_path[strlen(shadow_path) + 15];
-    sprintf(idx_path, "%s/index.idx", shadow_path);
-    char temp_buf[PATH_MAX + PATH_MAX];
-    int res = get_latest_entry(idx_path, 1, path, temp_buf);
-    struct zip* archive = find_latest_archive(path, NULL, 0);
-    if (archive != NULL) {
-        zip_close(archive);
-        return 0;
-    }
-    return res;
 }
 
 /**
@@ -975,21 +949,6 @@ int
 zippyfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
     return block_cache->make_file(path, mode | S_IFDIR);
-    load_to_cache(path);
-    // create path to file
-    char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
-    strcat(shadow_file_path, shadow_path);
-    strcat(shadow_file_path, path+1);
-    int shadow_file = mkdir(shadow_file_path, mode);
-    if (shadow_file == -1) {
-        printf("error making shadow file descriptor\n");
-        printf("ERRNO: %s\n", strerror(errno));
-    }
-    // record to index
-    record_index(path, 0);
-    flush_dir();
-    return 0;
 
 }
 /**
