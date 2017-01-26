@@ -76,6 +76,7 @@ load_to_shdw(const char* path) {
  * does not overwrite files already cached.
  * - does nothing if the file is already in cache
  * @param path is the path of the dir
+ * @return -1 on error, 1 if parent was loaded, 0 if file
  */
 int
 load_to_cache(const char* path) {
@@ -128,6 +129,8 @@ load_to_cache(const char* path) {
         system(unzip_command);
         chdir(cwd);
     }
+    if (is_dir)
+        return 1;
     return 0;
 }
 
@@ -526,11 +529,11 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         unsigned long long token_time;
         int deleted;
         sscanf(curline.c_str(), "%s %*u %llu %d", token_path, &token_time, &deleted);
-        cout << "token path " << token_path << endl;
+        //  cout << "token path " << token_path << endl;
         char* temp = strdup(token_path);
         // find out of this entry is in the directory
         int in_path = strcmp(dirname(temp), path);
-        cout << "in dir? " << in_path << endl;
+        // cout << "in dir? " << in_path << endl;
         free(temp);
         if (in_path == 0) {
             BlockCache::index_entry val;

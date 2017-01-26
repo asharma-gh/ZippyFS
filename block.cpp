@@ -26,7 +26,6 @@ Block::insert_data(const uint8_t* data, uint64_t size, uint64_t offset) {
     cout << "writing.." << endl;
     for (unsigned int ii = offset, jj = 0; jj < size && ii < SIZE_; ii++, jj++) {
         data_[ii] = data[jj];
-        cout << data_[ii];
     }
     if (size + offset > actual_size_) {
         actual_size_ = size + offset;

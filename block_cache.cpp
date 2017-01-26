@@ -43,11 +43,25 @@ BlockCache::make_file(string path, mode_t mode) {
 
 int
 BlockCache::load_from_shdw(string path) {
-    cout << "loading to shdw " << path << endl;
-    load_to_shdw(path.c_str());
+    cout << "loading to cache from shdw " << path << endl;
+    int res = load_to_shdw(path.c_str());
     // construct path to shdw
     string shdw_file_path = path_to_shdw_ + path.substr(1);
+    cout << "path to shdw file " << shdw_file_path << endl;
 
+    if (res == -1) {
+        cout << "could not find the thing " << endl;
+        return -1;
+    }
+    cout << " thing is in shdw" << endl;
+    struct stat st;
+    stat(shdw_file_path.c_str(), &st);
+
+    if (S_ISDIR(st.st_mode)) {
+        cout << "made dir" << endl;
+        make_file(path, st.st_mode);
+        return 0;
+    }
     // open, extract bytes
     FILE* file;
     if ((file = fopen(shdw_file_path.c_str(), "r")) == NULL) {
@@ -61,11 +75,10 @@ BlockCache::load_from_shdw(string path) {
     memset(contents, 0, sizeof(contents) / sizeof(char));
     fread(contents, fsize, 1, file);
     fclose(file);
-    struct stat st;
-    stat(shdw_file_path.c_str(), &st);
     // add this file to cache
     make_file(path, st.st_mode);
     write(path, (uint8_t*)contents, fsize, 0);
+    cout << "finished loading to shdw" << endl;
     return 0;
 }
 
