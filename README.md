@@ -1,8 +1,11 @@
-# nozippyfs
+# "no"zippyfs
 distributed file system in fuse  
-currently in development (also the name). For a less exciting but stable version, goto branch distfs.
+Original version: branch distfs  
 
-How to install:
+This one is like btrfs meets dropbox  
+without the zip archives of the old version for efficiency's sake  
+Features:  
+How to install:  
 How to use:  
-Todo... 
+Todo...  
 
