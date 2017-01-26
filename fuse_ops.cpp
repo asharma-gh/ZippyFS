@@ -695,7 +695,8 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
     (void) offset;
     printf("READ: %s\n", path);
     block_cache->read(path, (uint8_t*)buf, size, offset);
-    block_cache->flush_to_shdw();
+    if (block_cache->flush_to_shdw() == 0)
+        flush_dir();
     return size;
     load_to_cache(path);
     // construct file path in cache
@@ -812,7 +813,8 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
     printf("WRITE to  %s\n",  path);
     (void)fi;
     block_cache->write(path, (uint8_t*)buf, size, offset);
-    block_cache->flush_to_shdw();
+    if (block_cache->flush_to_shdw() == 0)
+        flush_dir();
     return size;
 
     load_to_cache(path);
@@ -979,7 +981,9 @@ zippyfs_rename(const char* from, const char* to) {
 int
 zippyfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
-    return block_cache->truncate(path, size);
+    block_cache->truncate(path, size);
+    if (block_cache->flush_to_shdw() == 0)
+        flush_dir();
     load_to_cache(path);
 
     char shadow_file_path[strlen(path) + strlen(shadow_path)];

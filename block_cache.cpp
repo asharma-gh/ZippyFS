@@ -36,6 +36,7 @@ BlockCache::make_file(string path, mode_t mode) {
     shared_ptr<Inode> ptr(new Inode(path));
     ptr->set_mode(mode);
     meta_data_[path] = ptr;
+    size_++;
     return 0;
 }
 
@@ -134,7 +135,6 @@ BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offse
             shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
             // add newly formed block to the inode
             inode->add_block(block_idx, ptr);
-            size_++;
         }
     }
     assert(curr_idx + block_size == size);
@@ -167,6 +167,7 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::flush_to_shdw() {
+    cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE)
         return -1;
     // make index file for cache
