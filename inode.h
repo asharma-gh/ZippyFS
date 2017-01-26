@@ -64,6 +64,10 @@ class Inode {
     void update_mtime();
 
     /**
+     * @return the mtime as ull
+     */
+    unsigned long long get_ull_mtime();
+    /**
      * sets the size of this inode
      * @param size is the new size for this inode
      */

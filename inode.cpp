@@ -60,6 +60,10 @@ Inode::update_mtime() {
     ul_mtime_ = Util::get_time();
     fill_time(&ts_mtime_);
 }
+unsigned long long
+Inode::get_ull_mtime() {
+    return ul_mtime_;
+}
 
 void
 Inode::set_size(unsigned long long size) {
@@ -113,6 +117,7 @@ Inode::is_dir() {
 
 int
 Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
+    cout << "READING FROM INODE " << endl;
     // get blocks
     uint64_t read_bytes = 0;
     bool offsetted = false;
@@ -134,10 +139,12 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
         for (auto byte = block_data.begin() + offset_amt;
                 byte != block_data.end() && read_bytes < size; byte++) {
             buf[read_bytes++] = *byte;
+            if (*byte == '\0')
+                cout << "OOPS" << endl;
         }
     }
     assert(read_bytes == size);
-    cout << "buffer "<< buf << endl;
+    cout << "DONE READING FROM INODE " << endl;
     return size;
 }
 int

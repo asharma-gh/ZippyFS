@@ -5,10 +5,12 @@ using namespace std;
 Block::Block() {
     actual_size_ = 0;
     dirty_ = false;
+    data_ = {0};
 }
 
 Block::Block(const uint8_t* data, uint64_t size) {
     actual_size_ = 0;
+    data_ = {0};
     insert_data(data, size, 0);
 }
 
@@ -23,7 +25,8 @@ void
 Block::insert_data(const uint8_t* data, uint64_t size, uint64_t offset) {
     cout << "inserting data with size " << size << " offset " << offset << endl;
     cout << "Current size " << actual_size_ << endl;
-    for (unsigned int ii = offset, jj = 0; jj < size; ii++, jj++) {
+    unsigned int ii = offset;
+    for (unsigned int jj = 0; jj < size; ii++, jj++) {
         data_[ii] = data[jj];
     }
     if (size + offset > actual_size_) {

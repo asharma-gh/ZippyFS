@@ -67,7 +67,7 @@ class Block {
     }
 
   private:
-    static const uint64_t SIZE_ = 4096;
+    static const uint64_t SIZE_ = 4097;
     uint64_t actual_size_;
     std::array<uint8_t, SIZE_> data_;
     bool dirty_;

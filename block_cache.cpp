@@ -55,13 +55,14 @@ BlockCache::load_from_shdw(string path) {
     fseek(file, 0, SEEK_END);
     long fsize = ftell(file);
     rewind(file);
-    char contents[fsize + 1];
+    char contents[fsize];
     memset(contents, 0, sizeof(contents) / sizeof(char));
     fread(contents, fsize, 1, file);
-    contents[fsize] = '\0';
     fclose(file);
-
+    struct stat st;
+    stat(shdw_file_path.c_str(), &st);
     // add this file to cache
+    make_file(path, st.st_mode);
     write(path, (uint8_t*)contents, fsize, 0);
     return 0;
 }
@@ -75,40 +76,39 @@ BlockCache::getattr(string path, struct stat* st) {
         return meta_data_[path]->stat(st);
 }
 
-vector<string>
+vector<BlockCache::index_entry>
 BlockCache::readdir(string path) {
-    vector<string> names;
+    vector<BlockCache::index_entry> ents;
     for (auto entry : meta_data_) {
         if (entry.second->get_link() == 0)
             continue;
         char* dirpath = strdup(entry.first.c_str());
         dirpath = dirname(dirpath);
         if (strcmp(dirpath, path.c_str()) == 0) {
-            char* temp = strdup(entry.first.c_str());
-            names.push_back(basename(temp));
-            free(temp);
+            struct stat st;
+            entry.second->stat(&st);
+            index_entry ent;
+            ent.path = entry.first;
+            ent.deleted = 0;
+            ent.added_time = entry.second->get_ull_mtime();
+            ents.push_back(ent);
         }
         free(dirpath);
     }
 
-    return names;
+    return ents;
 }
 
 int
 BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
-    cout << "SIZE " << size << endl;
-    cout <<"OFFSET " << offset << endl;
+    if (in_cache(path) == -1) {
+        load_from_shdw(path);
+    }
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size + offset, Block::get_logical_size());
     /*** create inode for write if needed ***/
     shared_ptr<Inode> inode;
-    if (meta_data_.find(path) != meta_data_.end()) {
-        inode = meta_data_[path];
-    } else {
-        inode = make_shared<Inode>(path);
-        inode->set_mode(S_IRUSR | S_IWUSR);
-
-    }
+    inode = meta_data_.find(path)->second;
     if (inode->get_size() < size + offset)
         inode->set_size(size + offset);
 
@@ -150,6 +150,8 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
 
 int
 BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
+    if (in_cache(path) == -1)
+        load_from_shdw(path);
     return meta_data_[path]->read(buf, size, offset);
 }
 
@@ -169,9 +171,9 @@ BlockCache::in_cache(string path) {
 }
 
 int
-BlockCache::flush_to_shdw() {
+BlockCache::flush_to_shdw(int on_close) {
     cout << "SIZE " << size_ << endl;
-    if (size_ < MAX_SIZE)
+    if (size_ < MAX_SIZE && on_close == 0)
         return -1;
     // make index file for cache
     string idx_path = path_to_shdw_ + "index.idx";

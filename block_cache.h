@@ -49,10 +49,18 @@ class BlockCache {
      */
     int read(std::string path, uint8_t* buf, uint64_t size, uint64_t offset);
 
+
+    // helper struct for storing entries for readdir
+    typedef struct index_entry {
+        std::string path;
+        unsigned long long added_time;
+        int deleted;
+    } index_entry;
+
     /**
      * @return list of names of things in path
      */
-    std::vector<std::string> readdir(std::string path);
+    std::vector<index_entry> readdir(std::string path);
     /**
      * returns the attributes of the thing in path
      * into st
@@ -86,10 +94,11 @@ class BlockCache {
      * the shadow directory.
      * - ONLY FLUSHES WHEN AT MAX CAPACITY
      * Also flushes meta data to index.idx file
-     * * @return 0 for success or no flushing is needed,
+     * @param on_close is whether this is being called on close
+     * @return 0 for success or no flushing is needed,
      * -1 if no flushing occured
      */
-    int flush_to_shdw();
+    int flush_to_shdw(int on_close);
 
     /**
      * loads the thing to this cache

@@ -414,17 +414,13 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     // unneeded
     (void) offset;
     (void) fi;
-    auto vec = block_cache->readdir(path);
-    for (auto name : vec) {
-        filler(buf, name.c_str(), NULL, 0);
-        cout << "NAME: " << name.c_str() << endl;
-    }
 
-    // helper struct for storing entries in hash table
-    typedef struct index_entry {
-        double added_time;
-        int deleted;
-    } index_entry;
+    map<string, BlockCache::index_entry> added_names;
+
+    auto vec = block_cache->readdir(path);
+    for (auto ent : vec) {
+        added_names[ent.path] = ent;
+    }
 
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -440,7 +436,6 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     }
 
     struct dirent* entry;
-    map<string, index_entry> added_names;
     // find the paths to things in the given path
     while((entry = readdir(zip_dir)) != NULL) {
 
@@ -492,7 +487,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             int in_path = strcmp(dirname(temp), path);
             free(temp);
             if (in_path == 0) {
-                index_entry val;
+                BlockCache::index_entry val;
                 string old_name;
                 if (added_names.find(token_path) != added_names.end()) {
                     auto entry = added_names.find(token_path);
@@ -501,7 +496,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                     // entry is in the hash table, compare times
                     if (val.added_time <= token_time) {
                         // this token is a later version. Create new hash-table entry
-                        index_entry new_entry;
+                        BlockCache::index_entry new_entry;
                         new_entry.added_time = token_time;
                         new_entry.deleted = deleted;
                         // add to hash table
@@ -510,7 +505,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                     }
                 } else {
                     // it is not in the hash table so we need to add it
-                    index_entry new_entry;
+                    BlockCache::index_entry new_entry;
                     new_entry.added_time = token_time;
                     new_entry.deleted = deleted;
 
@@ -537,7 +532,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         cout << "in dir? " << in_path << endl;
         free(temp);
         if (in_path == 0) {
-            index_entry val;
+            BlockCache::index_entry val;
             string old_name;
             if (added_names.find(token_path) != added_names.end()) {
                 auto entry = added_names.find(token_path);
@@ -546,7 +541,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 // entry is in the hash table, compare times
                 if (val.added_time <= token_time) {
                     // this token is a later version. Create new hash-table entry
-                    index_entry new_entry;
+                    BlockCache::index_entry new_entry;
                     new_entry.added_time = token_time;
                     new_entry.deleted = deleted;
                     // add to hash table
@@ -555,7 +550,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 }
             } else {
                 // it is not in the hash table so we need to add it
-                index_entry new_entry;
+                BlockCache::index_entry new_entry;
                 new_entry.added_time = token_time;
                 new_entry.deleted = deleted;
 
@@ -568,6 +563,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     // iterate thru it and add them to filler unless its a deletion
     for (auto entry : added_names) {
         if (!entry.second.deleted) {
+            cout << "Adding " << entry.first << endl;
             char* base_name = strdup(entry.first.c_str());
             filler(buf, basename(base_name), NULL, 0);
             free(base_name);
@@ -741,12 +737,10 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
     (void) fi;
     (void) offset;
     printf("READ: %s\n", path);
-    if (block_cache->in_cache(path) == 0) {
-        block_cache->read(path, (uint8_t*)buf, size, offset);
-        if (block_cache->flush_to_shdw() == 0)
-            // flush_dir();
-            return size;
-    }
+    block_cache->read(path, (uint8_t*)buf, size, offset);
+    // flush_dir();
+    return size;
+
     load_to_cache(path);
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
@@ -780,6 +774,7 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
 int
 zippyfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
+    block_cache->load_from_shdw(path);
     return 0;
     (void)fi;
     char idx_path[strlen(shadow_path) + 15];
@@ -861,13 +856,11 @@ int
 zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
     printf("WRITE to  %s\n",  path);
     (void)fi;
-    if (block_cache->in_cache(path) == 0) {
-        block_cache->write(path, (uint8_t*)buf, size, offset);
-        if (block_cache->flush_to_shdw() == 0) {
+    block_cache->write(path, (uint8_t*)buf, size, offset);
+    if (block_cache->flush_to_shdw(0) == 0) {
 
-        }
     }
-    //     flush_dir();
+//     flush_dir();
     return size;
 }
 
@@ -991,12 +984,11 @@ zippyfs_rename(const char* from, const char* to) {
 int
 zippyfs_truncate(const char* path, off_t size) {
     printf("TRUNCATE: %s\n", path);
-    if (block_cache->in_cache(path) == 0) {
-        block_cache->truncate(path, size);
-        if (block_cache->flush_to_shdw() == 0)
-            // flush_dir();
-            return 0;
+    block_cache->truncate(path, size);
+    if (block_cache->flush_to_shdw(0) == 0) {
+
     }
+    // flush_dir();
     return 0;
 }
 
@@ -1059,6 +1051,7 @@ void
 zippyfs_destroy(void* private_data) {
     (void)private_data;
     // flush
+    block_cache->flush_to_shdw(1);
     flush_dir();
     // delete process cache directory
     char removal_cmd[PATH_MAX + 12];

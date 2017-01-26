@@ -7,11 +7,12 @@
 
 
 /**
- * Represents a Copy-On-Write B-Tree
+ * Represents a Copy-On-Write Persistent B-Tree
  * @author Arvin Sharma
  */
 class CowTree {
     /**
+     * This class represents the persistent part
      * - persistent B-tree containing Inodes
      * - each node is flushed to disk when modified
      * - can be reconstructed using disk files
