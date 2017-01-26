@@ -210,15 +210,18 @@ find_latest_archive(const char* path, char* name, int size) {
     printf("FINDING LATEST ARCHIVE CONTAINING: %s %s %d\n", path, name, size);
     /** Finds latest archive based on index files **/
     DIR* dir = opendir(zip_dir_name);
+    if (dir == NULL) {
+        printf("ERROR opening dir ERRNO: %s\n", strerror(errno));
+        return NULL;
+    }
     struct dirent* entry;
     char* entry_name;
-    char latest_name[FILENAME_MAX];
+    char latest_name[100];
     int is_deleted = 0;
     unsigned long long latest_time = 0;
     int exists = 0;
     while ((entry = readdir(dir)) != NULL) {
-        entry_name = entry->d_name;
-
+        entry_name = strdup(entry->d_name);
         if (strcmp(entry_name, ".") == 0
                 || strcmp(entry_name, "..") == 0
                 || strlen(entry_name) < 4
@@ -226,12 +229,10 @@ find_latest_archive(const char* path, char* name, int size) {
 
             continue;
         }
-
         // make path to index file
         char path_to_indx[strlen(entry_name) + strlen(zip_dir_name) + 1];
         memset(path_to_indx, 0, sizeof(path_to_indx) / sizeof(char));
         sprintf(path_to_indx, "%s/%s", zip_dir_name, entry_name);
-
         char last_occurence[PATH_MAX + FILENAME_MAX];
         int res = get_latest_entry(path_to_indx, 0, path, last_occurence);
         if (res == -1) {
@@ -252,6 +253,7 @@ find_latest_archive(const char* path, char* name, int size) {
             is_deleted = deleted;
             exists = 1;
         }
+        free(entry_name);
     }
     closedir(dir);
     if (exists == 0)

@@ -117,7 +117,11 @@ int
 BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
     if (in_cache(path) == -1) {
         cout << "loading from shdw " << path << endl;
-        load_from_shdw(path);
+        if (load_from_shdw(path) == -1) {
+            cout << "error loading file in " << endl;
+            return -1;
+        }
+
     }
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size + offset, Block::get_logical_size());
@@ -194,6 +198,7 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::flush_to_shdw(int on_close) {
+
     cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE && on_close == 0)
         return -1;
@@ -208,7 +213,7 @@ BlockCache::flush_to_shdw(int on_close) {
 
         // load file or parent to shdw
         int res = load_to_shdw(entry.first.c_str());
-
+        cout << "this was reached " << endl;
         if (res == -1) {
             char* dirpath = strdup(entry.first.c_str());
             cout << "dirp " << dirpath << endl;
@@ -241,6 +246,8 @@ BlockCache::flush_to_shdw(int on_close) {
             mkdir(file_path.c_str(), entry.second->get_mode());
             string record = entry.second->get_record();
             ::write(idx_fd, record.c_str(), record.length());
+            if (close(idx_fd) == -1)
+                cout << "Error closing indx fd Errno " << strerror(errno) << endl;
             continue;
         }
         cout << "alrighty" << endl;
@@ -255,12 +262,17 @@ BlockCache::flush_to_shdw(int on_close) {
 
         string record = entry.second->get_record();
         ::write(idx_fd, record.c_str(), record.length());
-        close(idx_fd);
+        if (close(file_fd) == -1)
+            cout << "Error closing file ERRNO " << strerror(errno) << endl;
+        if (close(idx_fd) == -1)
+            cout << "Errror closing indx fd ERRNO " << strerror(errno) << endl;
 
 
 
     }
     meta_data_.clear();
+    size_ = 0;
+
     return 0;
 }
 

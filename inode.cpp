@@ -173,6 +173,5 @@ Inode::flush_to_fd(int fd) {
         free(buf);
     }
 
-    close(fd);
     return 0;
 }
