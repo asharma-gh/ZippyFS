@@ -23,15 +23,11 @@ Block::insert(const uint8_t* data, uint64_t size, uint64_t offset) {
 
 void
 Block::insert_data(const uint8_t* data, uint64_t size, uint64_t offset) {
-    cout << "inserting data with size " << size << " offset " << offset << endl;
-    cout << "Current size " << actual_size_ << endl;
-    unsigned int ii = offset;
-    for (unsigned int jj = 0; jj < size; ii++, jj++) {
+    for (unsigned int ii = offset, jj = 0; jj < size; ii++, jj++) {
         data_[ii] = data[jj];
     }
     if (size + offset > actual_size_) {
         actual_size_ = size + offset;
-        cout << "changed size to " << actual_size_ << endl;
     }
 
 }
