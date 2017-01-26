@@ -39,6 +39,12 @@ class Inode {
     void set_mode(uint32_t mode);
 
     /**
+     * gets the mode for this inode
+     * @return the mode
+     */
+    uint32_t get_mode();
+
+    /**
      * increments the link count and adds ref to this inode
      * @param ref is the reference to this inode
      */
@@ -95,6 +101,12 @@ class Inode {
      * @return 0 on success, -1 otherwise
      */
     int stat(struct stat* st);
+
+    /**
+     * @return 1 if this is a dir, 0 otherwise
+     */
+    int is_dir();
+
 
     /**
      * fills the given timespec with current time

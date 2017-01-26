@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <stdexcept>
+#include <sys/stat.h>
 #include <cstdio>
 #include <unistd.h>
 #include <stdlib.h>
@@ -67,9 +68,10 @@ BlockCache::load_from_shdw(string path) {
 
 int
 BlockCache::getattr(string path, struct stat* st) {
-    if (meta_data_.find(path) == meta_data_.end())
+    if (meta_data_.find(path) == meta_data_.end()) {
+        cout << "FILE DNE" << endl;
         return -ENOENT;
-    else
+    } else
         return meta_data_[path]->stat(st);
 }
 
@@ -93,8 +95,9 @@ BlockCache::readdir(string path) {
 }
 
 int
-BlockCache::write(string path, const uint8_t* buf, uint64_t size, uint64_t offset) {
-    cout << "SIZE " << size << " OFFSET " << offset << endl;
+BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
+    cout << "SIZE " << size << endl;
+    cout <<"OFFSET " << offset << endl;
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size + offset, Block::get_logical_size());
     /*** create inode for write if needed ***/
@@ -162,7 +165,7 @@ BlockCache::truncate(string path, uint64_t size) {
 int
 BlockCache::in_cache(string path) {
     (void)path;
-    return meta_data_.find(path) != meta_data_.end() || path == "/" ? 0 : -1;
+    return meta_data_.find(path) != meta_data_.end() || path.compare("/") == 0 ? 0 : -1;
 }
 
 int
@@ -178,15 +181,45 @@ BlockCache::flush_to_shdw() {
     for (auto const& entry : meta_data_) {
         // load previous version to shadow director
         cout  << "NAME " << entry.first << endl;
-        load_to_shdw(entry.first.c_str());
+
+        // load file or parent to shdw
+        int res = load_to_shdw(entry.first.c_str());
+
+        if (res == -1) {
+            char* dirpath = strdup(entry.first.c_str());
+            cout << "dirp " << dirpath << endl;
+            dirpath = dirname(dirpath);
+            cout << "dirname " << dirpath << endl;
+            if (strcmp(dirpath, "/") != 0) {
+                string file_path = path_to_shdw_ + (dirpath + 1);
+                if (access(file_path.c_str(), F_OK) != 0) {
+                    cout << "file path " << file_path << endl;
+                    auto parent = meta_data_.find(file_path);
+                    mkdir(file_path.c_str(), parent->second->get_mode());
+                }
+            }
+            free(dirpath);
+            cout <<"Wew"<<endl;
+
+        }
+
+
         // create path to file in shadow dir
         string file_path = path_to_shdw_ + entry.first.substr(1);
         cout << "path to file " << file_path <<  endl;
+        if (entry.second->is_dir()) {
+            mkdir(file_path.c_str(), entry.second->get_mode());
+            continue;
+        }
+        cout << "alrighty" << endl;
+
         // open previous version / make new one
         int file_fd = open(file_path.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
         if (file_fd == -1)
-            cout << "error opening file" << endl;
+            cout << "error opening file ERRNO " << strerror(errno) << endl;
+        cout << "initiating the flush" << endl;
         entry.second->flush_to_fd(file_fd);
+        cout << "finished flush" << endl;
 
         int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
         if (idx_fd == -1)

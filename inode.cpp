@@ -1,6 +1,7 @@
 #include "inode.h"
 #include "util.h"
 #include "libgen.h"
+#include <iostream>
 using namespace std;
 
 Inode::Inode(string path)
@@ -20,6 +21,10 @@ Inode::set_mode(uint32_t mode) {
     if (S_ISDIR(mode))
         nlink_ = nlink_ < 2 ? 2 : nlink_;
     mode_ = mode;
+}
+uint32_t
+Inode::get_mode() {
+    return mode_;
 }
 
 void
@@ -102,6 +107,11 @@ Inode::stat(struct stat* stbuf) {
 }
 
 int
+Inode::is_dir() {
+    return S_ISDIR(mode_);
+}
+
+int
 Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     // get blocks
     uint64_t read_bytes = 0;
@@ -138,8 +148,9 @@ Inode::flush_to_fd(int fd) {
         shared_ptr<Block> block = data.second;
         vector<uint8_t> block_data = block->get_data();
         uint64_t block_size = block->get_actual_size();
+        cout << "got block size" << endl;
         // create a literal buffer for writes to file
-        char buf[block_size];
+        char* buf = (char*)malloc(block_size * sizeof(char));
         cout << "BLOCK SIZE " << block_size;
         cout << " BUF SIZE " << sizeof(buf) << endl;
         for (uint64_t ii = 0;  ii < block_size; ii++) {
@@ -149,6 +160,7 @@ Inode::flush_to_fd(int fd) {
         // do a write to file, offsetted based on block idx
         if (pwrite(fd, buf, strlen(buf), block_idx * Block::get_logical_size()) == -1)
             perror("Error flushing block to file\n");
+        free(buf);
     }
 
     close(fd);
