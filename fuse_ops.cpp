@@ -132,6 +132,7 @@ load_to_cache(const char* path) {
 
 void
 zippyfs_init(const char* shdw, const char* zip_dir) {
+    printf("starting w/ shdw %s and zip %s\n", shdw, zip_dir);
     shadow_path = strdup(shdw);
     zip_dir_name = strdup(zip_dir);
     block_cache = new BlockCache(shdw);
@@ -311,6 +312,7 @@ flush_dir() {
     // read contents of index file
     char path_to_indx[PATH_MAX + strlen(shadow_path)];
     sprintf(path_to_indx, "%s/index.idx", shadow_path);
+    printf("Checking %s\n", path_to_indx);
     if (access(path_to_indx, F_OK) == -1) {
         printf("no index, no writes, exiting..\n");
         return -1;
@@ -1079,13 +1081,14 @@ zippyfs_utimens(const char* path,  const struct timespec ts[2]) {
 void
 zippyfs_destroy(void* private_data) {
     (void)private_data;
-    free(shadow_path);
-    free(zip_dir_name);
     // flush
     flush_dir();
     // delete process cache directory
     char removal_cmd[PATH_MAX + 12];
     sprintf(removal_cmd, "rm -rf %s", shadow_path);
     system(removal_cmd);
+    free(shadow_path);
+    free(zip_dir_name);
+
     rmdir(shadow_path);
 }
