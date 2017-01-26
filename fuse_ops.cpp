@@ -221,7 +221,7 @@ find_latest_archive(const char* path, char* name, int size) {
     unsigned long long latest_time = 0;
     int exists = 0;
     while ((entry = readdir(dir)) != NULL) {
-        entry_name = strdup(entry->d_name);
+        entry_name = entry->d_name;
         if (strcmp(entry_name, ".") == 0
                 || strcmp(entry_name, "..") == 0
                 || strlen(entry_name) < 4
@@ -253,7 +253,6 @@ find_latest_archive(const char* path, char* name, int size) {
             is_deleted = deleted;
             exists = 1;
         }
-        free(entry_name);
     }
     closedir(dir);
     if (exists == 0)
