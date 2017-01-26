@@ -857,7 +857,7 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
     printf("WRITE to  %s\n",  path);
     (void)fi;
     block_cache->write(path, (uint8_t*)buf, size, offset);
-    if (block_cache->flush_to_shdw(0) == 0) {
+    if (block_cache->flush_to_shdw(1) == 0) {
 
     }
 //     flush_dir();

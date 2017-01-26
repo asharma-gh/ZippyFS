@@ -47,6 +47,10 @@ Inode::get_link() {
 
 bool
 Inode::has_block(uint64_t block_index) {
+    cout << "checking if block " << block_index << endl;
+    //  if (blocks_.find(1) == blocks_.end())
+    //     cout << "ok" << endl;
+    // cout << (blocks_.find(block_index) != blocks_.end()) << endl;
     return blocks_.find(block_index) != blocks_.end();
 }
 
@@ -134,17 +138,19 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
             offset_amt = offset < Block::get_logical_size() ? offset : (offset % Block::get_logical_size());
             offsetted = true;
         }
-        cout << "BLOCK SIZE " << block_data.size()
+        cout << "BLOCK SIZE " << block->get_actual_size()
              << endl;
+        uint64_t blksz = block->get_actual_size();
+        uint64_t ii = offset_amt;
         for (auto byte = block_data.begin() + offset_amt;
-                byte != block_data.end() && read_bytes < size; byte++) {
+                byte != block_data.end() && ii < blksz && read_bytes < size; ii++, byte++) {
+
             buf[read_bytes++] = *byte;
-            if (*byte == '\0')
-                cout << "OOPS" << endl;
         }
     }
-    assert(read_bytes == size);
+    //assert(read_bytes == size);
     cout << "DONE READING FROM INODE " << endl;
+    cout << "READ BYTES: " << read_bytes << endl;
     return size;
 }
 int
@@ -158,6 +164,7 @@ Inode::flush_to_fd(int fd) {
         cout << "got block size" << endl;
         // create a literal buffer for writes to file
         char* buf = (char*)malloc(block_size * sizeof(char));
+        memset(buf, 0, block_size * sizeof(char));
         cout << "BLOCK SIZE " << block_size;
         cout << " BUF SIZE " << sizeof(buf) << endl;
         for (uint64_t ii = 0;  ii < block_size; ii++) {
@@ -165,7 +172,7 @@ Inode::flush_to_fd(int fd) {
         }
         cout << "writing... " << endl;
         // do a write to file, offsetted based on block idx
-        if (pwrite(fd, buf, strlen(buf), block_idx * Block::get_logical_size()) == -1)
+        if (pwrite(fd, buf, block_size * sizeof(char), block_idx * Block::get_logical_size()) == -1)
             perror("Error flushing block to file\n");
         free(buf);
     }

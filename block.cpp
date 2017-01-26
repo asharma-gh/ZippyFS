@@ -23,7 +23,7 @@ Block::insert(const uint8_t* data, uint64_t size, uint64_t offset) {
 
 void
 Block::insert_data(const uint8_t* data, uint64_t size, uint64_t offset) {
-    for (unsigned int ii = offset, jj = 0; jj < size; ii++, jj++) {
+    for (unsigned int ii = offset, jj = 0; jj < size && ii < SIZE_; ii++, jj++) {
         data_[ii] = data[jj];
     }
     if (size + offset > actual_size_) {
@@ -49,5 +49,5 @@ Block::get_actual_size() {
 
 vector<uint8_t>
 Block::get_data() {
-    return vector<uint8_t>(data_.begin(), data_.end());
+    return vector<uint8_t>(data_.begin(), data_.begin() + actual_size_);
 }

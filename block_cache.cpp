@@ -117,6 +117,7 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
     uint64_t block_size = 0;
     bool offsetted = false;
     for (unsigned int block_idx = offset / Block::get_logical_size();  block_idx < num_blocks; block_idx++) {
+
         curr_idx += block_size;
 
         if (size < curr_idx + Block::get_logical_size())
@@ -130,10 +131,14 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
                          (offset % Block::get_logical_size());
             offsetted = true;
         }
-
+        cout << "block idx " << block_idx << endl;
         if (inode->has_block(block_idx)) {
-            inode->get_block(block_idx)->insert(buf, block_size, offset_amt);
-            cout << "overriding block" << endl;
+            cout << "WE HAVE THE BLOCK" << endl;
+            shared_ptr<Block> temp = inode->get_block(block_idx);
+            temp->insert(buf, block_size, offset_amt);
+            cout << "overrided block" << endl;
+
+
         } else {
             shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
             // add newly formed block to the inode
