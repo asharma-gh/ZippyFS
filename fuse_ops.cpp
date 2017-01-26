@@ -869,34 +869,6 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
     }
     //     flush_dir();
     return size;
-
-    /*
-        load_to_cache(path);
-        // write to new file source
-        char shadow_file_path[strlen(path) + strlen(shadow_path)];
-        memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
-        strcat(shadow_file_path, shadow_path);
-        strcat(shadow_file_path, path+1);
-        struct stat st;
-        memset(&st, 0, sizeof(struct stat));
-        mode_t mode = 0;
-        int res = stat(shadow_file_path, &st);
-        if (res == -1)
-            mode = S_IRUSR | S_IWUSR | S_IXUSR;
-        else
-            mode = st.st_mode;
-        int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, mode);
-        if (pwrite(shadow_file, buf, size, offset) == -1)
-            printf("error writing to shadow file\n");
-        if (close(shadow_file))
-            printf("error closing shadow file\n");
-
-        // record to index file
-        record_index(path, 0);
-
-        flush_dir();
-        return size;
-        */
 }
 
 /**
@@ -912,27 +884,6 @@ zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     (void)mode;
     (void)rdev;
     return block_cache->make_file(path, mode);
-    /*
-    load_to_cache(path);
-    // create path to file
-    char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
-    strcat(shadow_file_path, shadow_path);
-    strcat(shadow_file_path, path+1);
-    int shadow_file = mknod(shadow_file_path, mode, rdev);
-    if (shadow_file == -1) {
-        printf("error making shadow file descriptor\n");
-        printf("ERRNO: %s\n", strerror(errno));
-    }
-    if (close(shadow_file)) {
-        printf("error closing shadow file descriptor\n");
-        printf("ERRNO: %s\n", strerror(errno));
-    }
-    // record to index file
-    record_index(path, 0);
-    flush_dir();
-    return 0;
-    */
 }
 
 /**
@@ -1046,33 +997,6 @@ zippyfs_truncate(const char* path, off_t size) {
             // flush_dir();
             return 0;
     }
-    /*
-    load_to_cache(path);
-
-    char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
-    strcat(shadow_file_path, shadow_path);
-    strcat(shadow_file_path, path+1);
-    struct stat st;
-    memset(&st, 0, sizeof(struct stat));
-    stat(shadow_file_path, &st);
-    mode_t mode = 0;
-    int res = stat(shadow_file_path, &st);
-    if (res == -1)
-        mode = S_IRUSR | S_IWUSR | S_IXUSR;
-    else
-        mode = st.st_mode;
-
-    int shadow_file = open(shadow_file_path, O_CREAT | O_WRONLY, mode);
-    if (ftruncate(shadow_file, size)  == -1)
-        printf("error writing to shadow file\n");
-    if (close(shadow_file))
-        printf("error closing shadow file\n");
-
-    // record to index
-    record_index(path, 0);
-    flush_dir();
-    */
     return 0;
 }
 
