@@ -88,6 +88,11 @@ class BlockCache {
     int remove(std::string path);
 
     /**
+     * removes the dir in path
+     */
+    int rmdir(std::string path);
+
+    /**
      * determines if the thing in path is in cache
      * @param 0 if the file exists, -1 otherwise
     */

@@ -31,6 +31,22 @@ BlockCache::remove(string path) {
     size_--;
     return 0;
 }
+
+int
+BlockCache::rmdir(string path) {
+    if (in_cache(path) == -1)
+        return -1;
+    for (auto entry : meta_data_) {
+        if (entry.second->get_link() == 0)
+            continue;
+        char* dirpath = strdup(entry.first.c_str());
+        dirpath = dirname(dirpath);
+        if (strcmp(dirpath, path.c_str()) == 0) {
+            entry.second->delete_inode();
+        }
+    }
+    return 0;
+}
 int
 BlockCache::rename(string from, string to) {
     int res = 0;
