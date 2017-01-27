@@ -49,6 +49,11 @@ class BlockCache {
      */
     int read(std::string path, uint8_t* buf, uint64_t size, uint64_t offset);
 
+    /**
+     * renames the from file to the one in to
+     */
+    int rename(std::string from, std::string to);
+
 
     // helper struct for storing entries for readdir
     typedef struct index_entry {
@@ -129,6 +134,6 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 25;
+    const uint64_t MAX_SIZE = 50;
 };
 #endif

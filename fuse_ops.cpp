@@ -309,7 +309,6 @@ zippyfs_getattr(const char* path, struct stat* stbuf) {
  * - flushes the entire cache when calledi
  * @return 0 on success, nonzero if cache is empty or other error occured.
  */
-static
 int
 flush_dir() {
     printf("Flushing \n");
@@ -424,6 +423,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
     auto vec = block_cache->readdir(path);
     for (auto ent : vec) {
+        printf("ADDING %s %llu %dFROM CACHE\n", ent.path.c_str(), ent.added_time, ent.deleted);
         added_names[ent.path] = ent;
     }
 
@@ -492,6 +492,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             int in_path = strcmp(dirname(temp), path);
             free(temp);
             if (in_path == 0) {
+                cout << "token " << token << endl;
                 BlockCache::index_entry val;
                 string old_name;
                 if (added_names.find(token_path) != added_names.end()) {
@@ -537,6 +538,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         // cout << "in dir? " << in_path << endl;
         free(temp);
         if (in_path == 0) {
+            cout << "token" << curline << endl;
             BlockCache::index_entry val;
             string old_name;
             if (added_names.find(token_path) != added_names.end()) {
@@ -959,6 +961,8 @@ zippyfs_mkdir(const char* path, mode_t mode) {
  */
 int
 zippyfs_rename(const char* from, const char* to) {
+    printf("RENAME \n");
+    return block_cache->rename(from, to);
     load_to_cache(from);
     load_to_cache(to);
     // add new file to cache

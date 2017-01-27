@@ -79,6 +79,9 @@ int zippyfs_chmod(const char* path, mode_t mode);
 /** loads the thing in path to the shadow directory */
 int load_to_shdw(const char* path);
 
+/** flushes shadow dir to storage */
+int flush_dir();
+
 #ifdef __cplusplus
 }
 #endif

@@ -31,6 +31,12 @@ class Inode {
      */
     Inode(std::string path);
 
+    /**
+     * constructs an inode with the contents of that one
+     * with the given path
+     */
+    Inode(std::string path, Inode that);
+
 
     /**
      * sets the mode for this inode
@@ -79,6 +85,8 @@ class Inode {
     uint64_t get_size();
 
     std::shared_ptr<Block> get_block(uint64_t block_index);
+
+    std::vector<uint64_t> get_block_indx();
 
 
     /**
@@ -136,6 +144,12 @@ class Inode {
      */
     std::string get_record();
 
+    /** deletes this inode */
+    void delete_inode();
+
+    /** is this inode deleted */
+    int is_deleted();
+
 
   private:
     /** the path of this inode **/
@@ -161,6 +175,9 @@ class Inode {
 
     /** size of this inode */
     uint64_t size_;
+
+    /** is this inode deleted? */
+    int deleted_;
 
     /** the paths which have a reference to this inode */
     std::unordered_set<std::string> links_;

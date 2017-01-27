@@ -31,6 +31,23 @@ BlockCache::remove(string path) {
     size_--;
     return 0;
 }
+int
+BlockCache::rename(string from, string to) {
+    int res = 0;
+    if (in_cache(from) == -1)
+        res = load_from_shdw(from);
+    if (res == -1)
+        return -1;
+    if (in_cache(to) == -1)
+        res = load_from_shdw(to);
+    if (res == -1)
+        make_file(to, meta_data_[from]->get_mode());
+
+    shared_ptr<Inode> to_inode(new Inode(to, *meta_data_.find(from)->second));
+    meta_data_[from]->delete_inode();
+    meta_data_[to] = to_inode;
+    return 0;
+}
 
 int
 BlockCache::make_file(string path, mode_t mode) {
@@ -84,7 +101,8 @@ BlockCache::load_from_shdw(string path) {
 
 int
 BlockCache::getattr(string path, struct stat* st) {
-    if (in_cache(path) == -1 && load_from_shdw(path) == -1)
+    if ((in_cache(path) == -1 && load_from_shdw(path) == -1)
+            || (in_cache(path) == 0 && meta_data_[path]->is_deleted()))
         return -ENOENT;
     else
         return meta_data_[path]->stat(st);
@@ -103,7 +121,7 @@ BlockCache::readdir(string path) {
             entry.second->stat(&st);
             index_entry ent;
             ent.path = entry.first;
-            ent.deleted = 0;
+            ent.deleted = entry.second->is_deleted();
             ent.added_time = entry.second->get_ull_mtime();
             ents.push_back(ent);
         }
@@ -210,6 +228,18 @@ BlockCache::flush_to_shdw(int on_close) {
     for (auto const& entry : meta_data_) {
         // load previous version to shadow director
         cout  << "NAME " << entry.first << endl;
+        // open index file
+        int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+        if (idx_fd == -1)
+            perror("Open failed");
+
+        if (entry.second->is_deleted()) {
+            string record = entry.second->get_record();
+            ::write(idx_fd, record.c_str(), record.length());
+            close(idx_fd);
+            continue;
+
+        }
 
         // load file or parent to shdw
         int res = load_to_shdw(entry.first.c_str());
@@ -237,10 +267,6 @@ BlockCache::flush_to_shdw(int on_close) {
         string file_path = path_to_shdw_ + entry.first.substr(1);
         cout << "path to file " << file_path <<  endl;
 
-        // open index file
-        int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-        if (idx_fd == -1)
-            perror("Open failed");
 
         if (entry.second->is_dir()) {
             mkdir(file_path.c_str(), entry.second->get_mode());

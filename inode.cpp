@@ -12,21 +12,40 @@ Inode::Inode(string path)
     fill_time(&ts_mtime_);
     fill_time(&ts_ctime_);
     size_ = 0;
+    deleted_ = 0;
     links_.insert(path);
 }
 
+Inode::Inode(string path, Inode that) {
+    path_ = path;
+    nlink_ = that.get_link();
+    ul_ctime_ = Util::get_time();
+    ul_mtime_ = Util::get_time();
+    fill_time(&ts_mtime_);
+    fill_time(&ts_ctime_);
+    size_ = get_size();
+    for (auto ent : that.get_refs())
+        links_.insert(ent);
+
+    for (auto indx : that.get_block_indx()) {
+        blocks_[indx] = that.get_block(indx);
+    }
+    deleted_ = 0;
+    mode_ = that.get_mode();
+}
 
 void
 Inode::set_mode(uint32_t mode) {
     if (S_ISDIR(mode))
         nlink_ = nlink_ < 2 ? 2 : nlink_;
     mode_ = mode;
+    ul_mtime_ = Util::get_time();
+
 }
 uint32_t
 Inode::get_mode() {
     return mode_;
 }
-
 void
 Inode::inc_link(std::string ref) {
     links_.insert(ref);
@@ -52,6 +71,7 @@ Inode::has_block(uint64_t block_index) {
 
 shared_ptr<Block>
 Inode::get_block(uint64_t block_index) {
+    ul_mtime_ = Util::get_time();
     return blocks_.find(block_index)->second;
 }
 
@@ -70,6 +90,27 @@ Inode::set_size(unsigned long long size) {
     size_ = size;
 }
 
+vector<uint64_t>
+Inode::get_block_indx() {
+    vector<uint64_t> indxs;
+    for (auto ent : blocks_) {
+        indxs.push_back(ent.first);
+    }
+    return indxs;
+}
+
+int
+Inode::is_deleted() {
+    return deleted_;
+}
+
+void
+Inode::delete_inode() {
+    //links_.clear();
+    blocks_.clear();
+    deleted_ = 1;
+
+}
 uint64_t
 Inode::get_size() {
     return size_;
@@ -84,7 +125,7 @@ Inode::get_refs() {
 
 string
 Inode::get_record() {
-    return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " 0\n");
+    return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " " + to_string(deleted_) + "\n");
 }
 
 void
