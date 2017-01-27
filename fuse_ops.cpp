@@ -882,15 +882,6 @@ int
 zippyfs_rmdir(const char* path) {
     printf("RMDIR: %s\n", path);
     return block_cache->rmdir(path);
-    // create path to file
-    char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
-    strcat(shadow_file_path, shadow_path);
-    strcat(shadow_file_path, path+1);
-    record_index(path, 1);
-    rmdir(shadow_file_path);
-    flush_dir();
-    return 0;
 }
 /**
  * creates a directory with the given name
