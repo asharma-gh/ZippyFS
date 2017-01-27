@@ -50,12 +50,16 @@ BlockCache::rmdir(string path) {
 int
 BlockCache::rename(string from, string to) {
     int res = 0;
+
     if (in_cache(from) == -1)
         res = load_from_shdw(from);
+
     if (res == -1)
         return -1;
+
     if (in_cache(to) == -1)
         res = load_from_shdw(to);
+
     if (res == -1)
         make_file(to, meta_data_[from]->get_mode());
 
@@ -191,7 +195,6 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
             temp->insert(buf, block_size, offset_amt);
             cout << "overrided block" << endl;
 
-
         } else {
             shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
             // add newly formed block to the inode
@@ -278,11 +281,9 @@ BlockCache::flush_to_shdw(int on_close) {
 
         }
 
-
         // create path to file in shadow dir
         string file_path = path_to_shdw_ + entry.first.substr(1);
         cout << "path to file " << file_path <<  endl;
-
 
         if (entry.second->is_dir()) {
             mkdir(file_path.c_str(), entry.second->get_mode());
@@ -308,8 +309,6 @@ BlockCache::flush_to_shdw(int on_close) {
             cout << "Error closing file ERRNO " << strerror(errno) << endl;
         if (close(idx_fd) == -1)
             cout << "Errror closing indx fd ERRNO " << strerror(errno) << endl;
-
-
 
     }
     meta_data_.clear();

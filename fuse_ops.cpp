@@ -953,24 +953,6 @@ int
 zippyfs_rename(const char* from, const char* to) {
     printf("RENAME \n");
     return block_cache->rename(from, to);
-    load_to_cache(from);
-    load_to_cache(to);
-    // add new file to cache
-    char shadow_file_path_f[strlen(from) + strlen(shadow_path)];
-    char shadow_file_path_t[strlen(to) + strlen(shadow_path)];
-    memset(shadow_file_path_f, 0, sizeof(shadow_file_path_f) / sizeof(char));
-    strcat(shadow_file_path_f, shadow_path);
-    strcat(shadow_file_path_f, from+1);
-
-    memset(shadow_file_path_t, 0, sizeof(shadow_file_path_t) / sizeof(char));
-    strcat(shadow_file_path_t, shadow_path);
-    strcat(shadow_file_path_t, to+1);
-
-    record_index(from, 1);
-    int res = rename(shadow_file_path_f, shadow_file_path_t);
-    record_index(to, 0);
-    flush_dir();
-    return res;
 }
 
 /**
