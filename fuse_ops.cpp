@@ -805,8 +805,8 @@ zippyfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse
 int
 zippyfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
-    if (block_cache->in_cache(path))
-        block_cache->load_from_shdw(path);
+    (void)fi;
+    block_cache->load_from_shdw(path);
     return 0;
 }
 
@@ -995,7 +995,6 @@ zippyfs_access(const char* path, int mode) {
     strcat(shadow_file_path, path+1);
 
     return access(shadow_file_path, mode);
-
 }
 
 /**
@@ -1040,5 +1039,4 @@ zippyfs_destroy(void* private_data) {
     rmdir(shadow_path);
     free(shadow_path);
     free(zip_dir_name);
-
 }
