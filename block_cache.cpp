@@ -44,6 +44,7 @@ BlockCache::rmdir(string path) {
         if (strcmp(dirpath, path.c_str()) == 0) {
             entry.second->delete_inode();
         }
+        free(dirpath);
     }
     return 0;
 }
