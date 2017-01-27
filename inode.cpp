@@ -27,9 +27,9 @@ Inode::Inode(string path, Inode that) {
     for (auto ent : that.get_refs())
         links_.insert(ent);
 
-    for (auto indx : that.get_block_indx()) {
+    for (auto indx : that.get_block_indx())
         blocks_[indx] = that.get_block(indx);
-    }
+
     deleted_ = 0;
     mode_ = that.get_mode();
 }
@@ -91,6 +91,7 @@ Inode::get_ull_mtime() {
 
 void
 Inode::set_size(unsigned long long size) {
+    update_mtime();
     size_ = size;
 }
 
@@ -111,6 +112,7 @@ Inode::is_deleted() {
 void
 Inode::delete_inode() {
     //links_.clear();
+    update_mtime();
     blocks_.clear();
     deleted_ = 1;
 
@@ -136,11 +138,13 @@ void
 Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
     if (blocks_.find(block_index) != blocks_.end())
         blocks_[block_index]->set_dirty();
+    update_mtime();
     blocks_[block_index] = block;
 }
 
 void
 Inode::remove_block(uint64_t block_index) {
+    update_mtime();
     blocks_.erase(block_index);
 }
 
