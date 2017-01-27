@@ -1,2 +1,3 @@
-- symlinks
-- removals
+- b tree
+- store blocks not files
+- each b tree node is file-backed, can be added/removed over network

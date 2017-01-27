@@ -27,7 +27,7 @@ BlockCache::remove(string path) {
         if (find(vec.begin(), vec.end(), path) != vec.end())
             entry.second->dec_link(path);
     }
-    meta_data_.erase(path);
+    meta_data_[path]->delete_inode();
     size_--;
     return 0;
 }
@@ -41,7 +41,7 @@ BlockCache::rmdir(string path) {
             continue;
         char* dirpath = strdup(entry.first.c_str());
         dirpath = dirname(dirpath);
-        if (strcmp(dirpath, path.c_str()) == 0) {
+        if (strcmp(dirpath, path.c_str()) == 0 || path.compare(entry.first) == 0) {
             entry.second->delete_inode();
         }
         free(dirpath);

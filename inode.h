@@ -62,8 +62,14 @@ class Inode {
      */
     void dec_link(std::string ref);
 
+    /**
+     * checks if ref links to this inode
+     */
     int is_link(std::string ref);
 
+    /**
+     * gets the number of links to this inode
+     */
     uint32_t get_link();
 
     /**
@@ -86,8 +92,14 @@ class Inode {
      */
     uint64_t get_size();
 
+    /**
+     * gets the block at block_index
+     */
     std::shared_ptr<Block> get_block(uint64_t block_index);
 
+    /**
+     * gets a list of block indexes for this inode
+     */
     std::vector<uint64_t> get_block_indx();
 
 
@@ -107,6 +119,9 @@ class Inode {
     /** removes the block at the given index from this inode */
     void remove_block(uint64_t block_index);
 
+    /**
+     * @return true if this inode has a block at block_index
+     */
     bool has_block(uint64_t block_index);
 
     /**
