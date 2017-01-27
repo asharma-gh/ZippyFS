@@ -54,6 +54,16 @@ class BlockCache {
      */
     int rename(std::string from, std::string to);
 
+    /**
+     * symlink support
+     */
+    int symlink(std::string from, std::string to);
+
+    /**
+     * read symlink
+     */
+    int readlink(std::string path,  uint8_t* buf, uint64_t size);
+
 
     // helper struct for storing entries for readdir
     typedef struct index_entry {
@@ -139,6 +149,6 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 50;
+    const uint64_t MAX_SIZE = 100;
 };
 #endif

@@ -1013,6 +1013,21 @@ zippyfs_chmod(const char* path, mode_t  mode) {
     record_index(path, 0);
     return res;
 }
+/**
+ * symlink
+ */
+int
+zippyfs_symlink(const char* from, const char* to) {
+    return block_cache->symlink(from, to);
+}
+
+/**
+ * read symlink
+ */
+int
+zippyfs_readlink(const char* path, char* buf, size_t size) {
+    return block_cache->readlink(path, (uint8_t*)buf, size);
+}
 
 /**
  * stub

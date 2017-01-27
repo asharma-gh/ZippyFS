@@ -76,6 +76,12 @@ void zippyfs_destroy(void* private_data);
 /** change mode */
 int zippyfs_chmod(const char* path, mode_t mode);
 
+/** symlink */
+int zippyfs_symlink(const char* from, const char* to);
+
+/** read symlink */
+int zippyfs_readlink(const char* path, char* buf, size_t size);
+
 /** loads the thing in path to the shadow directory */
 int load_to_shdw(const char* path);
 

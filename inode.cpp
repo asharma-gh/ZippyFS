@@ -59,6 +59,10 @@ Inode::dec_link(string path) {
     if (nlink_ == 0)
         blocks_.clear();
 }
+int
+Inode::is_link(string path) {
+    return links_.find(path) != links_.end();
+}
 uint32_t
 Inode::get_link() {
     return nlink_;

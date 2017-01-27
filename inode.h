@@ -62,6 +62,8 @@ class Inode {
      */
     void dec_link(std::string ref);
 
+    int is_link(std::string ref);
+
     uint32_t get_link();
 
     /**

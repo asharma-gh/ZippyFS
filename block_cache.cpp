@@ -70,6 +70,24 @@ BlockCache::rename(string from, string to) {
 }
 
 int
+BlockCache::symlink(string from, string to) {
+    shared_ptr<Inode> ll(new Inode(from));
+    ll->set_mode(S_IFLNK | S_IRUSR | S_IWUSR);
+    meta_data_[to] = ll;
+    return 0;
+}
+
+int
+BlockCache::readlink(std::string path, uint8_t* buf, uint64_t size) {
+    if (in_cache(path) == -1
+            || !S_ISLNK(meta_data_[path]->get_mode()))
+        return -ENOENT;
+    else {
+        return meta_data_[path]->read(buf, size, 0);
+    }
+
+}
+int
 BlockCache::make_file(string path, mode_t mode) {
     shared_ptr<Inode> ptr(new Inode(path));
     ptr->set_mode(mode);
@@ -277,7 +295,6 @@ BlockCache::flush_to_shdw(int on_close) {
                 }
             }
             free(dirpath);
-            cout <<"Wew"<<endl;
 
         }
 
@@ -293,7 +310,6 @@ BlockCache::flush_to_shdw(int on_close) {
                 cout << "Error closing indx fd Errno " << strerror(errno) << endl;
             continue;
         }
-        cout << "alrighty" << endl;
 
         // open previous version / make new one
         int file_fd = open(file_path.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);

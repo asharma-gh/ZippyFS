@@ -37,6 +37,8 @@ static void init_fuse_operations(struct fuse_operations* fuse_op) {
     fuse_op->rmdir = zippyfs_rmdir;
     fuse_op->chmod = zippyfs_chmod;
     fuse_op->utimens = zippyfs_utimens;
+    fuse_op->readlink = zippyfs_readlink;
+    fuse_op->symlink = zippyfs_symlink;
     fuse_op->destroy = zippyfs_destroy;
 
 }
