@@ -2,11 +2,12 @@
 distributed file system in fuse  
 Original version: branch distfs  
  
-Features (so far):  
-everything in distfs + in memory cache for reads / writes  
-(soon) some distributed persistent data structure replacing zip archive directory  
+# Features (so far):  
+read / write stuff over a network
+more to come . . .
 
-How to install:  
-How to use:  
-Todo...  
+# How to install:  
+requires libzip, fuse, linux
+# How to use:   
+todo
 
