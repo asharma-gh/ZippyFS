@@ -1,3 +1,5 @@
 - make gc faster
 - normalize block cache map
 - work on file backing normalized maps
+
+- fix time with old file and inode
