@@ -86,8 +86,6 @@ load_to_cache(const char* path) {
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
-    if (access(shadow_file_path, F_OK) == 0)
-        return 0;
 
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
@@ -576,8 +574,8 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
 /****
  * HashTables for efficient garbage collection
- * (Path, Time#)
- * - contains latest time for each file
+ * (Path, (time, indx file))
+ * - contains latest time for each file and the index file it came from
  ****/
 typedef struct {
     unsigned long long f_time;
