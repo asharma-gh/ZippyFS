@@ -361,7 +361,7 @@ flush_dir() {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-    //garbage_collect();
+    garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;

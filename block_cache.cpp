@@ -315,7 +315,7 @@ BlockCache::flush_to_shdw(int on_close) {
         }
 
         // open previous version / make new one
-        int file_fd = open(file_path.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
+        int file_fd = open(file_path.c_str(), O_CREAT | O_WRONLY, entry.second->get_mode());
         if (file_fd == -1)
             cout << "error opening file ERRNO " << strerror(errno) << endl;
         cout << "initiating the flush" << endl;
