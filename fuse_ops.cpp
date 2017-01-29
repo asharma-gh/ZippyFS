@@ -34,9 +34,8 @@
 #include "block.h"
 using namespace std;
 /** TODO:
- * - integrate block cache
- * - check block cache first,
- *   if it isn't there, do normal load to shdw from archive
+ * - clean up stuff
+ * - rewrite gc
  */
 BlockCache* block_cache;
 
