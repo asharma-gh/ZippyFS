@@ -86,6 +86,8 @@ load_to_cache(const char* path) {
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
+    if (access(shadow_file_path, F_OK) == 0)
+        return 0;
 
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
@@ -102,6 +104,7 @@ load_to_cache(const char* path) {
             printf("CANNOT FIND MAIN FILE OR DIRNAME!!\n");
             return -1;
         } else {
+            printf("FOUND DIR NAME\n");
             is_dir = 1;
         }
     }
@@ -358,7 +361,7 @@ flush_dir() {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-    garbage_collect();
+    //garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;
@@ -590,6 +593,7 @@ static map<string, ent_info> gc_table;
  *****/
 static map<string, unsigned long long> valid_ents;
 
+
 /** lock for gc_table, for multithreaded mode */
 mutex gc_mtx;
 
@@ -602,6 +606,8 @@ static
 int
 garbage_collect() {
     lock_guard<mutex> lock(gc_mtx);
+    valid_ents.clear();
+    gc_table.clear();
     printf("GARBAGE COLLECTING . . .\n");
     // make path to rmlog
     char rmlog_path[PATH_MAX];
@@ -706,33 +712,38 @@ garbage_collect() {
             }
             token = strtok_r(NULL, delim, &save_ptr);
         }
-
-        for (auto ents : valid_ents) {
-            if (ents.second > 0)
-                continue;
-            cout << "GARBAGE COLLECTING " << ents.first << endl;
-            // trim path name to just base name
-            char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
-            strcpy(b_name, ents.first.c_str());
-            b_name = basename(b_name);
-            // write to machine log file
-            FILE* log_file = fopen(path_local_log, "a");
-            int res =  fprintf(log_file, "%s\n", b_name);
-            if (res == -1) {
-                printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
-            }
-            fclose(log_file);
-            /**
-             * now locally delete zip file and index, since its
-             * outdated!
-             */
-            b_name[strlen(b_name) - 4] = '\0';
-            // create command to remove both index and zip file
-            char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
-            sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
-            system(command);
-        }
     }
+
+    for (auto ents : valid_ents) {
+        cout << "NAME " << ents.first;
+
+        if (ents.second > 0)
+            continue;
+        cout << "GARBAGE COLLECTING " << ents.first << endl;
+        // trim path name to just base name
+        char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
+        strcpy(b_name, ents.first.c_str());
+        b_name = basename(b_name);
+        // write to machine log file
+        FILE* log_file = fopen(path_local_log, "a");
+        int res =  fprintf(log_file, "%s\n", b_name);
+        if (res == -1) {
+            printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
+        }
+        fclose(log_file);
+        /**
+         * now locally delete zip file and index, since its
+         * outdated!
+         */
+
+        b_name[strlen(b_name) - 4] = '\0';
+        // create command to remove both index and zip file
+        char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
+        sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
+        system(command);
+
+    }
+
     free(path_local_log);
     closedir(zip_dir);
     return 0;
@@ -840,7 +851,7 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
     (void)fi;
     block_cache->write(path, (uint8_t*)buf, size, offset);
     if (block_cache->flush_to_shdw(0) == 0) {
-
+        cout << "ok" << endl;
     }
     return size;
 }

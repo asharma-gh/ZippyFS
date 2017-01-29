@@ -1,0 +1,21 @@
+./file-system
+-f
+something
+shadow dir name: PID10843
+shadow dir path: ~/.cache/zippyfs/
+expanded dir path: /home/arvin/.cache/zippyfs/
+error making zipfs directory ERRNO: File exists
+starting w/ shdw /home/arvin/.cache/zippyfs/PID10843/ and zip /home/arvin/FileSystem/zipfs/o/dir/
+error making rmlog dir ERRNO:File exists
+machine path /home/arvin/.config/zippyfs/
+error making machine rmlog path ERRNO: File exists
+SIZE 0
+PATH TO SHDW /home/arvin/.cache/zippyfs/PID10843/index.idx
+Flushing 
+Checking /home/arvin/.cache/zippyfs/PID10843//index.idx
+no index, no writes, exiting..
+GARBAGE COLLECTING . . .
+Flushing 
+Checking /home/arvin/.cache/zippyfs/PID10843//index.idx
+no index, no writes, exiting..
+GARBAGE COLLECTING . . .

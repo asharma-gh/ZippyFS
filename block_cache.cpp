@@ -94,6 +94,7 @@ BlockCache::make_file(string path, mode_t mode) {
     ptr->set_mode(mode);
     meta_data_[path] = ptr;
     size_++;
+    //flush_to_shdw(0);
     return 0;
 }
 
@@ -105,7 +106,8 @@ BlockCache::load_from_shdw(string path) {
     string shdw_file_path = path_to_shdw_ + path.substr(1);
     cout << "path to shdw file " << shdw_file_path << endl;
 
-    if (res == -1) {
+    cout << "RESULT " << res << endl;
+    if ((res == -1 || res == 1) && in_cache(path) == -1) {
         cout << "could not find the thing " << endl;
         return -1;
     }
@@ -330,6 +332,7 @@ BlockCache::flush_to_shdw(int on_close) {
     }
     meta_data_.clear();
     size_ = 0;
+    flush_dir();
 
     return 0;
 }
