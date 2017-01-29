@@ -167,6 +167,9 @@ class Inode {
     /** is this inode deleted */
     int is_deleted();
 
+    /** is this inode dirty? */
+    int is_dirty();
+
 
   private:
     /** the path of this inode **/
@@ -195,6 +198,9 @@ class Inode {
 
     /** is this inode deleted? */
     int deleted_;
+
+    /** has this inode been written to? */
+    int dirty_;
 
     /** the paths which have a reference to this inode */
     std::unordered_set<std::string> links_;

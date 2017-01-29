@@ -33,7 +33,8 @@
 #include "block_cache.h"
 #include "block.h"
 using namespace std;
-/** TODO:
+/**
+ * TODO:
  * - clean up stuff
  * - rewrite gc
  */
@@ -85,8 +86,8 @@ load_to_cache(const char* path) {
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
-    if (access(shadow_file_path, F_OK) == 0)
-        return 0;
+    // if (access(shadow_file_path, F_OK) == 0)
+    //     return 0;
 
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
@@ -865,7 +866,6 @@ zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, stru
 int
 zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
-    (void)mode;
     (void)rdev;
     return block_cache->make_file(path, mode);
 }

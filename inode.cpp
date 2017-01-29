@@ -13,6 +13,7 @@ Inode::Inode(string path)
     fill_time(&ts_ctime_);
     size_ = 0;
     deleted_ = 0;
+    dirty_ = 0;
     links_.insert(path);
 }
 
@@ -31,6 +32,7 @@ Inode::Inode(string path, Inode that) {
         blocks_[indx] = that.get_block(indx);
 
     deleted_ = 0;
+    dirty_ = 0;
     mode_ = that.get_mode();
 }
 
@@ -39,6 +41,8 @@ Inode::set_mode(uint32_t mode) {
     if (S_ISDIR(mode))
         nlink_ = nlink_ < 2 ? 2 : nlink_;
     mode_ = mode;
+    cout <<" MODE " << mode;
+    dirty_ = 1;
     ul_mtime_ = Util::get_time();
 
 }
@@ -76,6 +80,7 @@ Inode::has_block(uint64_t block_index) {
 shared_ptr<Block>
 Inode::get_block(uint64_t block_index) {
     ul_mtime_ = Util::get_time();
+    dirty_ = 1;
     return blocks_.find(block_index)->second;
 }
 
@@ -92,6 +97,7 @@ Inode::get_ull_mtime() {
 void
 Inode::set_size(unsigned long long size) {
     update_mtime();
+    dirty_ = 1;
     size_ = size;
 }
 
@@ -114,6 +120,7 @@ Inode::delete_inode() {
     //links_.clear();
     update_mtime();
     blocks_.clear();
+    dirty_ = 1;
     deleted_ = 1;
 
 }
@@ -131,6 +138,8 @@ Inode::get_refs() {
 
 string
 Inode::get_record() {
+    if (mode_ > 9999999)
+        cout << "RECORD MODE FOR " << path_ << " IS " << mode_ << endl;
     return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " " + to_string(deleted_) + "\n");
 }
 
@@ -139,6 +148,7 @@ Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
     if (blocks_.find(block_index) != blocks_.end())
         blocks_[block_index]->set_dirty();
     update_mtime();
+    dirty_ = 1;
     blocks_[block_index] = block;
 }
 
@@ -146,6 +156,10 @@ void
 Inode::remove_block(uint64_t block_index) {
     update_mtime();
     blocks_.erase(block_index);
+}
+int
+Inode::is_dirty() {
+    return dirty_;
 }
 
 int

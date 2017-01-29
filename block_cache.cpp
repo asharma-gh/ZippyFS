@@ -110,14 +110,30 @@ BlockCache::load_from_shdw(string path) {
     if ((res == -1 || res == 1) && in_cache(path) == -1) {
         cout << "could not find the thing " << endl;
         return -1;
+    } else if ((res == -1 || res == 1) && in_cache(path) == 0) {
+        cout << "already in cache" << endl;
     }
-    cout << " thing is in shdw" << endl;
+    // compare times of thing in cache and entry
+    // if both exist
     struct stat st;
+    struct stat ino_st;
     stat(shdw_file_path.c_str(), &st);
+
+    if (res == 0 && in_cache(path) == 0) {
+        meta_data_[path]->stat(&ino_st);
+        if (difftime((time_t)st.st_mtim.tv_sec, (time_t)ino_st.st_mtim.tv_sec) < 1)
+            // updated version in here
+            return 0;
+    }
+
+    cout << " thing is in shdw" << endl;
+
+    struct stat shdw_st;
+    stat(shdw_file_path.c_str(), &shdw_st);
 
     if (S_ISDIR(st.st_mode)) {
         cout << "made dir" << endl;
-        make_file(path, st.st_mode);
+        make_file(path, shdw_st.st_mode);
         return 0;
     }
     // open, extract bytes
@@ -268,6 +284,9 @@ BlockCache::flush_to_shdw(int on_close) {
     for (auto const& entry : meta_data_) {
         // load previous version to shadow director
         cout  << "NAME " << entry.first << endl;
+        if (entry.second->is_dirty() == 0)
+            continue;
+
         // open index file
         int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
         if (idx_fd == -1)
@@ -316,6 +335,7 @@ BlockCache::flush_to_shdw(int on_close) {
 
         // open previous version / make new one
         int file_fd = open(file_path.c_str(), O_CREAT | O_WRONLY, entry.second->get_mode());
+        cout << "MODE " << entry.second->get_mode();
         if (file_fd == -1)
             cout << "error opening file ERRNO " << strerror(errno) << endl;
         cout << "initiating the flush" << endl;
