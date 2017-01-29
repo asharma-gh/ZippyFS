@@ -86,9 +86,6 @@ load_to_cache(const char* path) {
     strcat(shadow_file_path, shadow_path);
     strcat(shadow_file_path, path+1);
 
-    // if (access(shadow_file_path, F_OK) == 0)
-    //     return 0;
-
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
     int is_dir = 0;
@@ -575,27 +572,9 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
 
 
-/****
- * HashTables for efficient garbage collection
- * (Path, (time, indx file))
- * - contains latest time for each file and the index file it came from
- ****/
-typedef struct {
-    unsigned long long f_time;
-    string indx_file;
-} ent_info;
-static map<string, ent_info> gc_table;
-
-/*****
- * (index path, valid entries)
- * contains the number of updated entries for the index file
- * if this value is 0, the files are garbage collected
- *****/
-static map<string, unsigned long long> valid_ents;
 
 
-/** lock for gc_table, for multithreaded mode */
-mutex gc_mtx;
+
 
 /**
  * removes fully updated zip archives
@@ -605,9 +584,24 @@ mutex gc_mtx;
 static
 int
 garbage_collect() {
-    lock_guard<mutex> lock(gc_mtx);
-    valid_ents.clear();
-    gc_table.clear();
+    // TODO: move files from archive with high% outdated ones
+    /****
+     * HashTables for efficient garbage collection
+     * (Path, (time, indx file))
+     * - contains latest time for each file and the index file it came from
+     ****/
+    typedef struct {
+        unsigned long long f_time;
+        string indx_file;
+    } ent_info;
+    map<string, ent_info> gc_table;
+    /*****
+     * (index path, valid entries)
+     * contains the number of updated entries for the index file
+     * if this value is 0, the files are garbage collected
+     *****/
+    map<string, unsigned long long> valid_ents;
+
     printf("GARBAGE COLLECTING . . .\n");
     // make path to rmlog
     char rmlog_path[PATH_MAX];
@@ -715,7 +709,7 @@ garbage_collect() {
     }
 
     for (auto ents : valid_ents) {
-        cout << "NAME " << ents.first;
+        cout << "NAME " << ents.first << endl;
 
         if (ents.second > 0)
             continue;

@@ -138,8 +138,6 @@ Inode::get_refs() {
 
 string
 Inode::get_record() {
-    if (mode_ > 9999999)
-        cout << "RECORD MODE FOR " << path_ << " IS " << mode_ << endl;
     return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " " + to_string(deleted_) + "\n");
 }
 
