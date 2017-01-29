@@ -1,7 +1,6 @@
 #include "inode.h"
 #include "util.h"
 #include "libgen.h"
-#include <iostream>
 using namespace std;
 
 Inode::Inode(string path)

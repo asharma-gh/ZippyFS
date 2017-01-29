@@ -2,17 +2,7 @@
 #include "util.h"
 #include "inode.h"
 #include "fuse_ops.h"
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <iostream>
-#include <stdexcept>
-#include <sys/stat.h>
-#include <cstdio>
-#include <unistd.h>
-#include <stdlib.h>
-#include <libgen.h>
-#include <cerrno>
-#include <algorithm>
+#include "includes.h"
 using namespace std;
 
 BlockCache::BlockCache(string path_to_shdw)

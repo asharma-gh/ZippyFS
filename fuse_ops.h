@@ -5,22 +5,7 @@ extern "C" {
 #endif
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <dirent.h>
-#include <alloca.h>
-#include <limits.h>
-#include <wordexp.h>
-#include <inttypes.h>
-#include <linux/random.h>
-#include <limits.h>
-#include <zip.h>
-#include <syscall.h>
-#include <stdlib.h>
-#include <sys/time.h>
+
 
 /***** fuse functions *******/
 

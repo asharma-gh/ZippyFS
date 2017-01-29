@@ -1,15 +1,7 @@
 #ifndef BLOCK_CACHE_H
 #define BLOCK_CACHE_H
 
-#include <mutex>
-#include <map>
-#include <vector>
-#include <memory>
-#include <string>
-#include <utility>
-#include <cstdint>
-#include <cassert>
-#include <sys/stat.h>
+#include "includes.h"
 #include "block.h"
 #include "inode.h"
 /**

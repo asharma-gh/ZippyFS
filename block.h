@@ -1,11 +1,6 @@
 #ifndef BLOCK_H
 #define BLOCK_H
-#include <string>
-#include <cstring>
-#include <array>
-#include <stdexcept>
-#include <cstdint>
-#include <vector>
+#include "includes.h"
 /**
  * Represents a block of data for a file
  * @author Arvin Sharma

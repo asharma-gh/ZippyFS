@@ -1,21 +1,8 @@
 #ifndef INODE_H
 #define INODE_H
 
-#include <string>
-#include <cstdint>
-#include <memory>
-#include <vector>
-#include <unordered_set>
-#include <map>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <ctime>
-#include <iostream>
-#include <cassert>
 #include "block.h"
-#include "util.h"
-
+#include "includes.h"
 /**
  * Represents an inode. A structure containing
  * information about a file in the file system
