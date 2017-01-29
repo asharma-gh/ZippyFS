@@ -123,6 +123,11 @@ class Inode {
      */
     int is_dir();
 
+    /**
+     * sets the files times to the given ones
+     */
+    void set_st_time(struct timespec  mtim, struct timespec ctim);
+
 
     /**
      * fills the given timespec with current time

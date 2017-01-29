@@ -32,6 +32,8 @@
 #include "util.h"
 #include "block_cache.h"
 #include "block.h"
+// proportion of outdated entries in idx file for deletion
+#define GC_PROP .8
 using namespace std;
 /**
  * TODO:
@@ -596,11 +598,20 @@ garbage_collect() {
     } ent_info;
     map<string, ent_info> gc_table;
     /*****
-     * (index path, valid entries)
+     * (index path, valid entries
      * contains the number of updated entries for the index file
      * if this value is 0, the files are garbage collected
      *****/
     map<string, unsigned long long> valid_ents;
+
+    /*****
+     * (index path, num entries)
+     */
+    map<string, unsigned long long> num_ents;
+    /****
+     * (index path, list of valid entries)
+     */
+    map<string, unordered_set<string>> valid_files;
 
     printf("GARBAGE COLLECTING . . .\n");
     // make path to rmlog
@@ -682,22 +693,26 @@ garbage_collect() {
             unsigned long long file_time;
             sscanf(token, "%s %*u %llu %*d", token_path, &file_time);
             // if this is actually the latest version, the file is not outdated we can move on
+            num_ents[path_to_indx]++;
             if (gc_table.find(token_path) != gc_table.end()) {
                 // entry is in the hash table, compare times
                 if (gc_table.find(token_path)->second.f_time <= file_time) {
                     // we have an updated entry
                     // decrease valid ents for an indx file
                     valid_ents[gc_table[token_path].indx_file]--;
+                    valid_files[gc_table[token_path].indx_file].erase(token_path);
                     // add to hash table
                     ent_info ent;
                     ent.indx_file = path_to_indx;
                     ent.f_time = file_time;
                     gc_table[token_path] = ent;
                     valid_ents[path_to_indx]++;
+                    valid_files[path_to_indx].insert(token_path);
                 }
             } else {
                 // make entry for this item
                 valid_ents[path_to_indx]++;
+                valid_files[path_to_indx].insert(token_path);
                 ent_info ent;
                 ent.indx_file = path_to_indx;
                 ent.f_time = file_time;
@@ -711,8 +726,14 @@ garbage_collect() {
     for (auto ents : valid_ents) {
         cout << "NAME " << ents.first << endl;
 
-        if (ents.second > 0)
+        if ((double)ents.second / num_ents[ents.first] < GC_PROP)
             continue;
+        // else delete invalid files from archive
+        // make path to zip archive
+        // open with libzip
+        // delete all things not in valid files list
+        // remake indx file with all things not in file list
+        // ok now we're done
         cout << "GARBAGE COLLECTING " << ents.first << endl;
         // trim path name to just base name
         char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));

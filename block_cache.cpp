@@ -142,6 +142,7 @@ BlockCache::load_from_shdw(string path) {
     // add this file to cache
     make_file(path, st.st_mode);
     write(path, (uint8_t*)contents, fsize, 0);
+    meta_data_[path]->set_st_time(shdw_st.st_mtim, shdw_st.st_ctim);
     cout << "finished loading to shdw" << endl;
     return 0;
 }

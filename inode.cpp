@@ -154,9 +154,16 @@ Inode::remove_block(uint64_t block_index) {
     update_mtime();
     blocks_.erase(block_index);
 }
+
 int
 Inode::is_dirty() {
     return dirty_;
+}
+
+void
+Inode::set_st_time(struct timespec mtim, struct timespec ctim) {
+    ts_mtime_ = mtim;
+    ts_ctime_ = ctim;
 }
 
 int
@@ -209,6 +216,7 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "READ BYTES: " << read_bytes << endl;
     return size;
 }
+
 int
 Inode::flush_to_fd(int fd) {
     for (auto const& data : blocks_) {
