@@ -172,6 +172,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
 
     if (!in_cache) {
         if (Util::verify_checksum(contents) == -1) {
+            printf("BAD checksum\n");
             return -1;
         }
 
@@ -841,7 +842,7 @@ garbage_collect() {
             }
             fclose(log_file);
 
-            if (delete_stuff && 0) {
+            if (delete_stuff) {
                 /**
                  * now locally delete zip file and index, since its
                  * outdated!

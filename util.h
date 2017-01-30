@@ -90,11 +90,9 @@ class Util {
         checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
         // make new checksum
         uint64_t new_checksum = crc64(contents_cpy);
-        std::cout << "OLD CS " << checksum_val << " NEW " << new_checksum << std::endl;
-        if (new_checksum != checksum_val) {
-            std::cout << "SHIT DONT MATCH" << std::endl;
+        if (new_checksum != checksum_val)
             return -1;
-        }
+
 
         return 0;
     }
