@@ -34,7 +34,7 @@
 #include "block_cache.h"
 #include "block.h"
 // proportion of outdated entries in idx file for deletion
-#define GC_PROP 2
+#define GC_PROP .5
 using namespace std;
 /**
  * TODO:
@@ -611,7 +611,7 @@ garbage_collect() {
      */
     map<string, unsigned long long> num_ents;
     /****
-     * (index path, list of valid entries)
+     * (index path, list of invalid entries)
      */
     map<string, unordered_set<string>> invalid_files;
 
@@ -722,6 +722,18 @@ garbage_collect() {
                     ent.f_time = file_time;
                     gc_table[token_path] = ent;
                     valid_ents[path_to_indx]++;
+                } else {
+                    // this token is invalid!!
+                    valid_ents[path_to_indx]--;
+                    invalid_files[path_to_indx].insert(token_path);
+                    cout << "INV FILE CONTENTS -------------" << endl;
+                    for (auto f : invalid_files) {
+                        cout << "CHECKING " << f.first << endl;
+                        for (auto e : f.second) {
+                            cout << e << endl;
+                        }
+                    }
+
                 }
             } else {
                 // make entry for this item
@@ -735,107 +747,106 @@ garbage_collect() {
             token = strtok_r(NULL, delim, &save_ptr);
         }
     }
-
+    closedir(zip_dir);
+    free(path_local_log);
     for (auto ents : valid_ents) {
         cout << "NAME " << ents.first << endl;
         double prop = (double)ents.second / num_ents[ents.first];
         cout << "PROP " << prop << endl;
-        // if (ents.second < 1)
-        //  continue;
-        // if (prop < GC_PROP || true) {
+        if (prop < GC_PROP  && prop > 0) {
 
-        if (invalid_files.find(ents.first) != invalid_files.end()) {
-            // make path to zip archive
-            string zip_path = ents.first.substr(0, ents.first.length() - 4);
-            zip_path = zip_path + ".zip";
-            cout << "PATH TO ARCHIVE FROM IDX " << zip_path << endl;
-            struct zip* archive = zip_open(zip_path.c_str(), 0, 0);
-            vector<int64_t> invalid_zip_idx;
+            if (invalid_files.find(ents.first) != invalid_files.end()) {
+                // make path to zip archive
+                string zip_path = ents.first.substr(0, ents.first.length() - 4);
+                zip_path = zip_path + ".zip";
+                cout << "PATH TO ARCHIVE FROM IDX " << zip_path << endl;
+                struct zip* archive = zip_open(zip_path.c_str(), 0, 0);
+                vector<int64_t> invalid_zip_idx;
 
-            for (auto inv_name : invalid_files[ents.first]) {
-                cout << "IDX FILE " << inv_name << endl;
-                cout << "CHECKING " << inv_name << endl;
-                int64_t fidx = zip_name_locate(archive, inv_name.c_str() + 1, 0);
-                if (fidx == -1) {
-                    cout<< "ERROR FINDING FILE IN ZIP ARCHIVE" << endl;
-                    continue;
+                for (auto inv_name : invalid_files[ents.first]) {
+                    cout << "IDX FILE " << ents.first << endl;
+                    cout << "CHECKING " << inv_name << endl;
+                    int64_t fidx = zip_name_locate(archive, inv_name.c_str() + 1, 0);
+                    if (fidx == -1) {
+                        cout<< "ERROR FINDING FILE IN ZIP ARCHIVE" << endl;
+                        continue;
+                    }
+                    invalid_zip_idx.push_back(fidx);
                 }
-                invalid_zip_idx.push_back(fidx);
-            }
 
-            for (auto idx : invalid_zip_idx) {
-                cout << "DELETING AT " << idx << endl;
-                zip_delete(archive, idx);
+                for (auto idx : invalid_zip_idx) {
+                    cout << "DELETING AT " << idx << endl;
+                    zip_delete(archive, idx);
+                }
+                // TODO: Rewrite indx file here
+                // get each line num
+                // write each char not from a deleted entry
+                zip_close(archive);
+                FILE* new_idx = fopen(ents.first.c_str(), "wa+");
+                for (auto rec : indx_content[ents.first]) {
+                    // fetch path from token
+                    char token_path[PATH_MAX];
+                    sscanf(rec.c_str(), "%s %*u %*f %*d", token_path);
+
+                    // if this file is valid
+                    cout << "count for " << token_path << " is " << invalid_files[ents.first].count(token_path) << endl;
+                    if (invalid_files[ents.first].count(token_path) == 0) {
+                        fwrite(rec.c_str(), sizeof(char), strlen(rec.c_str()), new_idx);
+                        fputs("\n", new_idx);
+                    }
+                }
+                fclose(new_idx);
+                // create new checksum
+                FILE* file  = fopen(ents.first.c_str(), "r");
+                // get file size
+                fseek(file, 0, SEEK_END);
+                long fsize = ftell(file);
+                rewind(file);
+                char* contents = (char*)alloca(fsize + 1);
+                memset(contents, 0, sizeof(contents) / sizeof(char));
+                fread(contents, fsize, 1, file);
+                contents[fsize] = '\0';
+                fclose(file);
+                // generate checksum
+                uint64_t checksum = Util::crc64(contents);
+                // append to file
+                FILE* file_ap = fopen(ents.first.c_str(), "a");
+                fprintf(file_ap, "CHECKSUM");
+                fprintf(file_ap, "%" PRIu64, checksum);
+                fclose(file_ap);
+
             }
-            // TODO: Rewrite indx file here
-            // get each line num
-            // write each char not from a deleted entry
-            zip_close(archive);
-            FILE* new_idx = fopen(ents.first.c_str(), "wa+");
-            for (auto rec : indx_content[ents.first]) {
-                fwrite(rec.c_str(), sizeof(char), strlen(rec.c_str()), new_idx);
-                fputs("\n", new_idx);
+        }
+
+        if (prop == 0) {
+            cout << "GARBAGE COLLECTING " << ents.first << endl;
+            // trim path name to just base name
+            char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
+            strcpy(b_name, ents.first.c_str());
+            b_name = basename(b_name);
+            // write to machine log file
+            FILE* log_file = fopen(path_local_log, "a");
+            int res =  fprintf(log_file, "%s\n", b_name);
+            if (res == -1) {
+                printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
             }
-            fclose(new_idx);
-            // create new checksum
-            FILE* file  = fopen(ents.first.c_str(), "r");
-            // get file size
-            fseek(file, 0, SEEK_END);
-            long fsize = ftell(file);
-            rewind(file);
-            char* contents = (char*)alloca(fsize + 1);
-            memset(contents, 0, sizeof(contents) / sizeof(char));
-            fread(contents, fsize, 1, file);
-            contents[fsize] = '\0';
-            fclose(file);
-            // generate checksum
-            uint64_t checksum = Util::crc64(contents);
-            // append to file
-            FILE* file_ap = fopen(ents.first.c_str(), "a");
-            fprintf(file_ap, "CHECKSUM");
-            fprintf(file_ap, "%" PRIu64, checksum);
-            fclose(file_ap);
+            fclose(log_file);
+            /**
+             * now locally delete zip file and index, since its
+             * outdated!
+             */
+            b_name[strlen(b_name) - 4] = '\0';
+            // create command to remove both index and zip file
+            char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
+            sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
+            system(command);
 
         }
-        // if prop == 1
-        // delete idx and zip
     }
+
     return 0;
+
 }
-
-
-/*
-        cout << "GARBAGE COLLECTING " << ents.first << endl;
-        // trim path name to just base name
-        char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
-        strcpy(b_name, ents.first.c_str());
-        b_name = basename(b_name);
-        // write to machine log file
-        FILE* log_file = fopen(path_local_log, "a");
-        int res =  fprintf(log_file, "%s\n", b_name);
-        if (res == -1) {
-            printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
-        }
-        fclose(log_file);
-        **
-         * now locally delete zip file and index, since its
-         * outdated!
-
-
-        b_name[strlen(b_name) - 4] = '\0';
-        // create command to remove both index and zip file
-        char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
-        sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
-        system(command);
-
-    }
-
-    free(path_local_log);
-    closedir(zip_dir);
-    return 0;
-    */
-
-
 
 /**
  * Reads bytes from the given file into the buffer, starting from an
