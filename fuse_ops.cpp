@@ -748,7 +748,6 @@ garbage_collect() {
         }
     }
     closedir(zip_dir);
-    free(path_local_log);
     for (auto ents : valid_ents) {
         cout << "NAME " << ents.first << endl;
         double prop = (double)ents.second / num_ents[ents.first];
@@ -816,9 +815,8 @@ garbage_collect() {
                 fclose(file_ap);
 
             }
-        }
-
-        if (prop == 0) {
+        } else {
+            int delete_stuff = prop == 0;
             cout << "GARBAGE COLLECTING " << ents.first << endl;
             // trim path name to just base name
             char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
@@ -831,18 +829,21 @@ garbage_collect() {
                 printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
             }
             fclose(log_file);
-            /**
-             * now locally delete zip file and index, since its
-             * outdated!
-             */
-            b_name[strlen(b_name) - 4] = '\0';
-            // create command to remove both index and zip file
-            char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
-            sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
-            system(command);
+            if (delete_stuff) {
+                /**
+                 * now locally delete zip file and index, since its
+                 * outdated!
+                 */
+                b_name[strlen(b_name) - 4] = '\0';
+                // create command to remove both index and zip file
+                char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
+                sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
+                system(command);
 
+            }
         }
     }
+    free(path_local_log);
 
     return 0;
 
