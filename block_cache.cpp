@@ -120,13 +120,17 @@ BlockCache::load_from_shdw(string path) {
             return 0;
         }
     }
+    if (res == -1 && in_cache(path) == 0) {
+        cout << "this thing has been in cache ever" << endl;
+        return 0;
+    }
 
     cout << " thing is in shdw" << endl;
 
     struct stat shdw_st;
     stat(shdw_file_path.c_str(), &shdw_st);
 
-    if (S_ISDIR(st.st_mode)) {
+    if (S_ISDIR(shdw_st.st_mode)) {
         cout << "made dir" << endl;
         make_file(path, shdw_st.st_mode, 0);
         return 0;
