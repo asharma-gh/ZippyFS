@@ -141,8 +141,15 @@ zippyfs_init(const char* shdw, const char* zip_dir) {
     shadow_path = strdup(shdw);
     zip_dir_name = strdup(zip_dir);
     block_cache = new BlockCache(shdw);
-
 }
+
+/**
+ * Cache for each index file
+ * modified in get_latest_entry and garbage_collect
+ */
+// mutex because idk if gcs and lookups can occur concurrently in multi threaded mode
+mutex map_lock;
+static map<string, string> entries_in_indx;
 /**
  * gets the latest entry of path in the index file index
  * @param index is the path to the index file
