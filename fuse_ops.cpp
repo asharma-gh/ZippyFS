@@ -762,8 +762,12 @@ garbage_collect() {
                 zip_delete(archive, idx);
             }
             // TODO: Rewrite indx file here
+            //
+            // write each char not from a deleted entry
             zip_close(archive);
         }
+        // if prop == 1
+        // delete idx and zip
     }
 
     // if (prop == 1)
