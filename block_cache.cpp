@@ -52,7 +52,7 @@ BlockCache::rename(string from, string to) {
         res = load_from_shdw(to);
 
     if (res == -1)
-        make_file(to, meta_data_[from]->get_mode());
+        make_file(to, meta_data_[from]->get_mode(), 1);
 
     shared_ptr<Inode> to_inode(new Inode(to, *meta_data_.find(from)->second));
     meta_data_[from]->delete_inode();
@@ -79,10 +79,12 @@ BlockCache::readlink(std::string path, uint8_t* buf, uint64_t size) {
 
 }
 int
-BlockCache::make_file(string path, mode_t mode) {
+BlockCache::make_file(string path, mode_t mode, bool dirty) {
     shared_ptr<Inode> ptr(new Inode(path));
     ptr->set_mode(mode);
     meta_data_[path] = ptr;
+    if (dirty)
+        ptr->set_dirty();
     size_++;
     //flush_to_shdw(0);
     return 0;
@@ -123,7 +125,7 @@ BlockCache::load_from_shdw(string path) {
 
     if (S_ISDIR(st.st_mode)) {
         cout << "made dir" << endl;
-        make_file(path, shdw_st.st_mode);
+        make_file(path, shdw_st.st_mode, 0);
         return 0;
     }
     // open, extract bytes
@@ -140,7 +142,7 @@ BlockCache::load_from_shdw(string path) {
     fread(contents, fsize, 1, file);
     fclose(file);
     // add this file to cache
-    make_file(path, st.st_mode);
+    make_file(path, st.st_mode, 0);
     write(path, (uint8_t*)contents, fsize, 0);
     meta_data_[path]->set_st_time(shdw_st.st_mtim, shdw_st.st_ctim);
     cout << "finished loading to shdw" << endl;
@@ -265,7 +267,7 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::flush_to_shdw(int on_close) {
-    clear_shdw();
+    //clear_shdw();
     cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE && on_close == 0)
         return -1;
@@ -346,7 +348,7 @@ BlockCache::flush_to_shdw(int on_close) {
     meta_data_.clear();
     size_ = 0;
     flush_dir();
-    clear_shdw();
+    // clear_shdw();
     return 0;
 }
 

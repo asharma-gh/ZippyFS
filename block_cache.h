@@ -20,7 +20,7 @@ class BlockCache {
      * creates a file with the given path and mode
      * @return 0 on success, -1 on failure
      */
-    int make_file(std::string path, mode_t mode);
+    int make_file(std::string path, mode_t mode, bool dirty);
 
     /**
      * loads the thing in path from the shadow director to cache

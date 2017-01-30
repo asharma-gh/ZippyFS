@@ -361,7 +361,7 @@ flush_dir() {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-    garbage_collect();
+    // garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;
@@ -605,6 +605,7 @@ garbage_collect() {
      *****/
     map<string, unsigned long long> valid_ents;
 
+
     /*****
      * (index path, num entries)
      */
@@ -702,6 +703,13 @@ garbage_collect() {
                     // decrease valid ents for an indx file
                     valid_ents[gc_table[token_path].indx_file]--;
                     invalid_files[gc_table[token_path].indx_file].insert(token_path);
+                    cout << "INV FILE CONTENTS -------------" << endl;
+                    for (auto f : invalid_files) {
+                        cout << "CHECKING " << f.first << endl;
+                        for (auto e : f.second) {
+                            cout << e << endl;
+                        }
+                    }
                     // add to hash table
                     ent_info ent;
                     ent.indx_file = path_to_indx;
@@ -753,40 +761,43 @@ garbage_collect() {
                 cout << "DELETING AT " << idx << endl;
                 zip_delete(archive, idx);
             }
+            // TODO: Rewrite indx file here
             zip_close(archive);
         }
-
-        // if (prop == 1)
-        return 0;
-
-        cout << "GARBAGE COLLECTING " << ents.first << endl;
-        // trim path name to just base name
-        char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
-        strcpy(b_name, ents.first.c_str());
-        b_name = basename(b_name);
-        // write to machine log file
-        FILE* log_file = fopen(path_local_log, "a");
-        int res =  fprintf(log_file, "%s\n", b_name);
-        if (res == -1) {
-            printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
-        }
-        fclose(log_file);
-        /**
-         * now locally delete zip file and index, since its
-         * outdated!
-         */
-
-        b_name[strlen(b_name) - 4] = '\0';
-        // create command to remove both index and zip file
-        char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
-        sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
-        system(command);
-
     }
 
-    free(path_local_log);
-    closedir(zip_dir);
+    // if (prop == 1)
     return 0;
+    /*
+            cout << "GARBAGE COLLECTING " << ents.first << endl;
+            // trim path name to just base name
+            char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
+            strcpy(b_name, ents.first.c_str());
+            b_name = basename(b_name);
+            // write to machine log file
+            FILE* log_file = fopen(path_local_log, "a");
+            int res =  fprintf(log_file, "%s\n", b_name);
+            if (res == -1) {
+                printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
+            }
+            fclose(log_file);
+            **
+             * now locally delete zip file and index, since its
+             * outdated!
+
+
+            b_name[strlen(b_name) - 4] = '\0';
+            // create command to remove both index and zip file
+            char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
+            sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
+            system(command);
+
+        }
+
+        free(path_local_log);
+        closedir(zip_dir);
+        return 0;
+        */
 }
 
 /**
@@ -907,7 +918,7 @@ int
 zippyfs_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("MKNOD: %s\n", path);
     (void)rdev;
-    return block_cache->make_file(path, mode);
+    return block_cache->make_file(path, mode, 1);
 }
 
 /**
@@ -940,7 +951,7 @@ zippyfs_rmdir(const char* path) {
 int
 zippyfs_mkdir(const char* path, mode_t mode) {
     printf("MKDIR: %s\n", path);
-    return block_cache->make_file(path, mode | S_IFDIR);
+    return block_cache->make_file(path, mode | S_IFDIR, 1);
 
 }
 /**
