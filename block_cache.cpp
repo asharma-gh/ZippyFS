@@ -113,9 +113,12 @@ BlockCache::load_from_shdw(string path) {
 
     if (res == 0 && in_cache(path) == 0) {
         meta_data_[path]->stat(&ino_st);
-        if (difftime((time_t)st.st_mtim.tv_sec, (time_t)ino_st.st_mtim.tv_sec) < 1)
+        cout << "time dif " << to_string(difftime(st.st_mtim.tv_sec, ino_st.st_mtim.tv_sec)) << endl;
+        if (difftime(st.st_mtim.tv_sec, ino_st.st_mtim.tv_sec) < 1) {
+            cout << "UPDATED VERSION IS IN CACHE " << endl;
             // updated version in here
             return 0;
+        }
     }
 
     cout << " thing is in shdw" << endl;
@@ -145,6 +148,8 @@ BlockCache::load_from_shdw(string path) {
     make_file(path, st.st_mode, 0);
     write(path, (uint8_t*)contents, fsize, 0);
     meta_data_[path]->set_st_time(shdw_st.st_mtim, shdw_st.st_ctim);
+    meta_data_[path]->undo_dirty();
+    cout << "FLIPPED DIRTY " << endl;
     cout << "finished loading to shdw" << endl;
     return 0;
 }
@@ -264,10 +269,18 @@ BlockCache::in_cache(string path) {
     (void)path;
     return meta_data_.find(path) != meta_data_.end() || path.compare("/") == 0 ? 0 : -1;
 }
+int
+BlockCache::open(string path) {
+    int res = load_from_shdw(path);
+    cout << "open res " << res << endl;
+    if (res == 0)
+        meta_data_[path]->update_mtime();
+    return 0;
+}
 
 int
 BlockCache::flush_to_shdw(int on_close) {
-    //clear_shdw();
+    clear_shdw();
     cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE && on_close == 0)
         return -1;
@@ -279,11 +292,13 @@ BlockCache::flush_to_shdw(int on_close) {
     for (auto const& entry : meta_data_) {
         // load previous version to shadow director
         cout  << "NAME " << entry.first << endl;
+        cout << "DIRTY? " << entry.second->is_dirty() << endl;
         if (entry.second->is_dirty() == 0)
             continue;
+        cout << "IS NOT DIRTY" << endl;
 
         // open index file
-        int idx_fd = open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+        int idx_fd = ::open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
         if (idx_fd == -1)
             perror("Open failed");
 
@@ -329,7 +344,7 @@ BlockCache::flush_to_shdw(int on_close) {
         }
 
         // open previous version / make new one
-        int file_fd = open(file_path.c_str(), O_CREAT | O_WRONLY, entry.second->get_mode());
+        int file_fd = ::open(file_path.c_str(), O_CREAT | O_WRONLY, entry.second->get_mode());
         cout << "MODE " << entry.second->get_mode();
         if (file_fd == -1)
             cout << "error opening file ERRNO " << strerror(errno) << endl;

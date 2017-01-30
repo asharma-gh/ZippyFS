@@ -119,6 +119,8 @@ class BlockCache {
      */
     int load_to_cache(std::string path);
 
+    int open(std::string path);
+
     /**
      * @returns a list of paths of things currently in cache
      */

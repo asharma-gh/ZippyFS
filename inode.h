@@ -164,6 +164,8 @@ class Inode {
 
     void set_dirty();
 
+    void undo_dirty();
+
 
 
   private:

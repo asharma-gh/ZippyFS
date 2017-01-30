@@ -85,6 +85,7 @@ void
 Inode::update_mtime() {
     ul_mtime_ = Util::get_time();
     fill_time(&ts_mtime_);
+    dirty_ = 1;
 }
 unsigned long long
 Inode::get_ull_mtime() {
@@ -95,6 +96,7 @@ void
 Inode::set_size(unsigned long long size) {
     update_mtime();
     size_ = size;
+    dirty_ = 1;
 }
 
 vector<uint64_t>
@@ -116,13 +118,17 @@ Inode::delete_inode() {
     //links_.clear();
     update_mtime();
     blocks_.clear();
-    dirty_ = 1;
     deleted_ = 1;
 
 }
 void
 Inode::set_dirty() {
     dirty_ = 1;
+}
+void
+Inode::undo_dirty() {
+    if (dirty_ == 1)
+        dirty_ = 0;
 }
 uint64_t
 Inode::get_size() {
@@ -146,7 +152,6 @@ Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
     if (blocks_.find(block_index) != blocks_.end())
         blocks_[block_index]->set_dirty();
     update_mtime();
-    dirty_ = 1;
     blocks_[block_index] = block;
 }
 

@@ -615,6 +615,11 @@ garbage_collect() {
      */
     map<string, unordered_set<string>> invalid_files;
 
+    /**
+     * (indx path, content in indx file, delimited by \n
+     */
+    map<string, vector<string>> indx_content;
+
     printf("GARBAGE COLLECTING . . .\n");
     // make path to rmlog
     char rmlog_path[PATH_MAX];
@@ -692,6 +697,7 @@ garbage_collect() {
             if (strstr(token, "CHECKSUM"))
                 // basically done with the file at this point
                 break;
+            indx_content[path_to_indx].push_back(token);
             unsigned long long file_time;
             sscanf(token, "%s %*u %llu %*d", token_path, &file_time);
             // if this is actually the latest version, the file is not outdated we can move on
@@ -736,7 +742,7 @@ garbage_collect() {
         cout << "PROP " << prop << endl;
         // if (ents.second < 1)
         //  continue;
-        //if (prop < GC_PROP) {
+        // if (prop < GC_PROP || true) {
 
         if (invalid_files.find(ents.first) != invalid_files.end()) {
             // make path to zip archive
@@ -762,47 +768,74 @@ garbage_collect() {
                 zip_delete(archive, idx);
             }
             // TODO: Rewrite indx file here
-            //
+            // get each line num
             // write each char not from a deleted entry
             zip_close(archive);
+            FILE* new_idx = fopen(ents.first.c_str(), "wa+");
+            for (auto rec : indx_content[ents.first]) {
+                fwrite(rec.c_str(), sizeof(char), strlen(rec.c_str()), new_idx);
+                fputs("\n", new_idx);
+            }
+            fclose(new_idx);
+            // create new checksum
+            FILE* file  = fopen(ents.first.c_str(), "r");
+            // get file size
+            fseek(file, 0, SEEK_END);
+            long fsize = ftell(file);
+            rewind(file);
+            char* contents = (char*)alloca(fsize + 1);
+            memset(contents, 0, sizeof(contents) / sizeof(char));
+            fread(contents, fsize, 1, file);
+            contents[fsize] = '\0';
+            fclose(file);
+            // generate checksum
+            uint64_t checksum = Util::crc64(contents);
+            // append to file
+            FILE* file_ap = fopen(ents.first.c_str(), "a");
+            fprintf(file_ap, "CHECKSUM");
+            fprintf(file_ap, "%" PRIu64, checksum);
+            fclose(file_ap);
+
         }
         // if prop == 1
         // delete idx and zip
     }
-
-    // if (prop == 1)
     return 0;
-    /*
-            cout << "GARBAGE COLLECTING " << ents.first << endl;
-            // trim path name to just base name
-            char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
-            strcpy(b_name, ents.first.c_str());
-            b_name = basename(b_name);
-            // write to machine log file
-            FILE* log_file = fopen(path_local_log, "a");
-            int res =  fprintf(log_file, "%s\n", b_name);
-            if (res == -1) {
-                printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
-            }
-            fclose(log_file);
-            **
-             * now locally delete zip file and index, since its
-             * outdated!
-
-
-            b_name[strlen(b_name) - 4] = '\0';
-            // create command to remove both index and zip file
-            char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
-            sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
-            system(command);
-
-        }
-
-        free(path_local_log);
-        closedir(zip_dir);
-        return 0;
-        */
 }
+
+
+/*
+        cout << "GARBAGE COLLECTING " << ents.first << endl;
+        // trim path name to just base name
+        char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
+        strcpy(b_name, ents.first.c_str());
+        b_name = basename(b_name);
+        // write to machine log file
+        FILE* log_file = fopen(path_local_log, "a");
+        int res =  fprintf(log_file, "%s\n", b_name);
+        if (res == -1) {
+            printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
+        }
+        fclose(log_file);
+        **
+         * now locally delete zip file and index, since its
+         * outdated!
+
+
+        b_name[strlen(b_name) - 4] = '\0';
+        // create command to remove both index and zip file
+        char command[(strlen(b_name) * 2) + (strlen(zip_dir_name) * 2) + 10];
+        sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
+        system(command);
+
+    }
+
+    free(path_local_log);
+    closedir(zip_dir);
+    return 0;
+    */
+
+
 
 /**
  * Reads bytes from the given file into the buffer, starting from an
@@ -833,8 +866,7 @@ int
 zippyfs_open(const char* path, struct fuse_file_info* fi) {
     printf("OPEN: %s\n", path);
     (void)fi;
-    block_cache->load_from_shdw(path);
-    return 0;
+    return block_cache->open(path);
 }
 
 /**
