@@ -33,7 +33,7 @@
 #include "util.h"
 #include "block_cache.h"
 #include "block.h"
-// proportion of outdated entries in idx file for deletion
+// proportion of valid entries in idx file for deletion
 #define GC_PROP .5
 using namespace std;
 /**
@@ -171,8 +171,9 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     fclose(file);
 
     if (!in_cache) {
-        if (Util::verify_checksum(contents) == -1)
+        if (Util::verify_checksum(contents) == -1) {
             return -1;
+        }
 
     }
 
@@ -193,8 +194,10 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
         }
         token = strtok_r(NULL, delim, &saveptr);
     }
-    if (!in_index)
+    if (!in_index) {
+        printf("NOT IN INDEX? \n");
         return -1;
+    }
     return 0;
 }
 
@@ -239,7 +242,7 @@ find_latest_archive(const char* path, char* name, int size) {
         if (res == -1) {
             continue;
         }
-
+        printf("LAST OCCURANCE %s\n", last_occurence);
         // so we have a file's information from the index file now
         // now we need to interpret the entry
         // entry  is in the format: PATH [permissions] time-created deleted?
@@ -457,8 +460,10 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         contents[fsize] = '\0';
         fclose(file);
 
-        if (Util::verify_checksum(contents) == -1)
+        if (Util::verify_checksum(contents) == -1) {
+            printf("bad checksum\n");
             continue;
+        }
 
         // now we need to find all of the entries which are in the given path
         // and update our hash table
@@ -479,6 +484,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             int in_path = strcmp(dirname(temp), path);
             free(temp);
             if (in_path == 0) {
+                printf("%s is in path\n", token);
                 cout << "token " << token << endl;
                 BlockCache::index_entry val;
                 string old_name;
@@ -707,7 +713,8 @@ garbage_collect() {
                 if (gc_table.find(token_path)->second.f_time <= file_time) {
                     // we have an updated entry
                     // decrease valid ents for an indx file
-                    valid_ents[gc_table[token_path].indx_file]--;
+                    if (valid_ents[gc_table[token_path].indx_file] > 0)
+                        valid_ents[gc_table[token_path].indx_file]--;
                     invalid_files[gc_table[token_path].indx_file].insert(token_path);
                     cout << "INV FILE CONTENTS -------------" << endl;
                     for (auto f : invalid_files) {
@@ -724,7 +731,8 @@ garbage_collect() {
                     valid_ents[path_to_indx]++;
                 } else {
                     // this token is invalid!!
-                    valid_ents[path_to_indx]--;
+                    if (valid_ents[path_to_indx] > 0)
+                        valid_ents[path_to_indx]--;
                     invalid_files[path_to_indx].insert(token_path);
                     cout << "INV FILE CONTENTS -------------" << endl;
                     for (auto f : invalid_files) {
@@ -750,6 +758,8 @@ garbage_collect() {
     closedir(zip_dir);
     for (auto ents : valid_ents) {
         cout << "NAME " << ents.first << endl;
+        cout << "NUM VALID " << ents.second << "TOTAL " << num_ents[ents.first]
+             << endl;
         double prop = (double)ents.second / num_ents[ents.first];
         cout << "PROP " << prop << endl;
         if (prop < GC_PROP  && prop > 0) {
@@ -815,9 +825,10 @@ garbage_collect() {
                 fclose(file_ap);
 
             }
-        } else {
-            int delete_stuff = prop == 0;
-            cout << "GARBAGE COLLECTING " << ents.first << endl;
+        }
+        int delete_stuff = prop == 0;
+        if (prop < GC_PROP) {
+            cout << "GARBAGE COLLECTING " << ents.first << " " << delete_stuff <<  endl;
             // trim path name to just base name
             char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));
             strcpy(b_name, ents.first.c_str());
@@ -829,7 +840,8 @@ garbage_collect() {
                 printf("ERROR WRITING, ERRNO? %s\n", strerror(errno));
             }
             fclose(log_file);
-            if (delete_stuff) {
+
+            if (delete_stuff && 0) {
                 /**
                  * now locally delete zip file and index, since its
                  * outdated!
@@ -840,14 +852,18 @@ garbage_collect() {
                 sprintf(command, "rm %s/%s.zip; rm %s/%s.idx", zip_dir_name, b_name, zip_dir_name, b_name);
                 system(command);
 
+
             }
         }
     }
+
+
     free(path_local_log);
 
     return 0;
 
 }
+
 
 /**
  * Reads bytes from the given file into the buffer, starting from an

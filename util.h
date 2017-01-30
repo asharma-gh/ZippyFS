@@ -1,13 +1,11 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <cstdint>
-#include <cstring>
-#include <cstdlib>
-#include <unistd.h>
+#include "includes.h"
 #include <sys/syscall.h>
-#include <string>
 #include <sys/time.h>
+#include <cstring>
+#include <iostream>
 #include <linux/random.h>
 
 class Util {
@@ -92,8 +90,11 @@ class Util {
         checksum_val = strtoull(checksum_cpy + 8, &endptr, 10);
         // make new checksum
         uint64_t new_checksum = crc64(contents_cpy);
-        if (new_checksum != checksum_val)
+        std::cout << "OLD CS " << checksum_val << " NEW " << new_checksum << std::endl;
+        if (new_checksum != checksum_val) {
+            std::cout << "SHIT DONT MATCH" << std::endl;
             return -1;
+        }
 
         return 0;
     }
