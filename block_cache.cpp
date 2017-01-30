@@ -188,6 +188,8 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
             return -1;
         }
 
+    } else {
+        meta_data_[path]->set_dirty();
     }
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size + offset, Block::get_logical_size());
@@ -263,7 +265,7 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::flush_to_shdw(int on_close) {
-
+    clear_shdw();
     cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE && on_close == 0)
         return -1;
@@ -344,7 +346,7 @@ BlockCache::flush_to_shdw(int on_close) {
     meta_data_.clear();
     size_ = 0;
     flush_dir();
-
+    clear_shdw();
     return 0;
 }
 

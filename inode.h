@@ -162,6 +162,9 @@ class Inode {
     /** is this inode dirty? */
     int is_dirty();
 
+    void set_dirty();
+
+
 
   private:
     /** the path of this inode **/

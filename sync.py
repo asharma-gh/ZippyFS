@@ -39,11 +39,6 @@ def init():
 
 def sync():
     #check rm log
-    #upload new contents to server
-    os.system("rsync --ignore-existing -r -a -v -e ssh ~/FileSystem/zipfs/o/dir/ arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/")
-    #download content from server
-    os.system("rsync --ignore-existing -r -a -v -e ssh arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/ ~/FileSystem/zipfs/o/dir/")
-
     #delete rm log'd files on server
     #PATH to rmlog in zip file directory will be passed in as a command line argument.
     path_to_log = sys.argv[1]
@@ -53,6 +48,14 @@ def sync():
         path_to_zip = "/home/arvinsharma/test/" + line.strip()[:len(line.strip()) - 4] + ".zip"
         os.system("ssh arvinsharma@login.ccs.neu.edu 'rm " + path_to_idx + " && rm " + path_to_zip + "'")
 
+
+
+    #upload new contents to server
+    os.system("rsync --ignore-existing -r -a -v -e ssh ~/FileSystem/zipfs/o/dir/ arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/")
+    #download content from server
+    os.system("rsync --ignore-existing -r -a -v -e ssh arvinsharma@login.ccs.neu.edu:/home/arvinsharma/test/ ~/FileSystem/zipfs/o/dir/")
+
+    ## TODO: check other rm logs and locally delete stuff ##
 
     # resync every 5 minutes
     time.sleep(10)

@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <alloca.h>
 #include <limits.h>
+#include <cmath>
 #include <signal.h>
 #include <dirent.h>
 #include <wordexp.h>
@@ -33,7 +34,7 @@
 #include "block_cache.h"
 #include "block.h"
 // proportion of outdated entries in idx file for deletion
-#define GC_PROP .8
+#define GC_PROP 2
 using namespace std;
 /**
  * TODO:
@@ -72,7 +73,12 @@ int
 load_to_shdw(const char* path) {
     return load_to_cache(path);
 }
+void
+clear_shdw() {
+    string cmd = "rm -rf " + (string)shadow_path + "*";
+    system(cmd.c_str());
 
+}
 /**
  * loads the dir specified in path to cache
  * does not overwrite files already cached.
@@ -82,12 +88,7 @@ load_to_shdw(const char* path) {
  */
 int
 load_to_cache(const char* path) {
-    // construct file path in cache
-    char shadow_file_path[strlen(path) + strlen(shadow_path)];
-    memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
-    strcat(shadow_file_path, shadow_path);
-    strcat(shadow_file_path, path+1);
-
+    //clear_shdw();
     // get latest archive name
     char archive_name[PATH_MAX] = {0};
     int is_dir = 0;
@@ -611,7 +612,7 @@ garbage_collect() {
     /****
      * (index path, list of valid entries)
      */
-    map<string, unordered_set<string>> valid_files;
+    map<string, unordered_set<string>> invalid_files;
 
     printf("GARBAGE COLLECTING . . .\n");
     // make path to rmlog
@@ -700,19 +701,17 @@ garbage_collect() {
                     // we have an updated entry
                     // decrease valid ents for an indx file
                     valid_ents[gc_table[token_path].indx_file]--;
-                    valid_files[gc_table[token_path].indx_file].erase(token_path);
+                    invalid_files[gc_table[token_path].indx_file].insert(token_path);
                     // add to hash table
                     ent_info ent;
                     ent.indx_file = path_to_indx;
                     ent.f_time = file_time;
                     gc_table[token_path] = ent;
                     valid_ents[path_to_indx]++;
-                    valid_files[path_to_indx].insert(token_path);
                 }
             } else {
                 // make entry for this item
                 valid_ents[path_to_indx]++;
-                valid_files[path_to_indx].insert(token_path);
                 ent_info ent;
                 ent.indx_file = path_to_indx;
                 ent.f_time = file_time;
@@ -725,15 +724,41 @@ garbage_collect() {
 
     for (auto ents : valid_ents) {
         cout << "NAME " << ents.first << endl;
+        double prop = (double)ents.second / num_ents[ents.first];
+        cout << "PROP " << prop << endl;
+        // if (ents.second < 1)
+        //  continue;
+        //if (prop < GC_PROP) {
 
-        if ((double)ents.second / num_ents[ents.first] < GC_PROP)
-            continue;
-        // else delete invalid files from archive
-        // make path to zip archive
-        // open with libzip
-        // delete all things not in valid files list
-        // remake indx file with all things not in file list
-        // ok now we're done
+        if (invalid_files.find(ents.first) != invalid_files.end()) {
+            // make path to zip archive
+            string zip_path = ents.first.substr(0, ents.first.length() - 4);
+            zip_path = zip_path + ".zip";
+            cout << "PATH TO ARCHIVE FROM IDX " << zip_path << endl;
+            struct zip* archive = zip_open(zip_path.c_str(), 0, 0);
+            vector<int64_t> invalid_zip_idx;
+
+            for (auto inv_name : invalid_files[ents.first]) {
+                cout << "IDX FILE " << inv_name << endl;
+                cout << "CHECKING " << inv_name << endl;
+                int64_t fidx = zip_name_locate(archive, inv_name.c_str() + 1, 0);
+                if (fidx == -1) {
+                    cout<< "ERROR FINDING FILE IN ZIP ARCHIVE" << endl;
+                    continue;
+                }
+                invalid_zip_idx.push_back(fidx);
+            }
+
+            for (auto idx : invalid_zip_idx) {
+                cout << "DELETING AT " << idx << endl;
+                zip_delete(archive, idx);
+            }
+            zip_close(archive);
+        }
+
+        // if (prop == 1)
+        return 0;
+
         cout << "GARBAGE COLLECTING " << ents.first << endl;
         // trim path name to just base name
         char* b_name = (char*)alloca(FILENAME_MAX * sizeof(char));

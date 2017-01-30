@@ -41,7 +41,6 @@ Inode::set_mode(uint32_t mode) {
         nlink_ = nlink_ < 2 ? 2 : nlink_;
     mode_ = mode;
     cout <<" MODE " << mode;
-    dirty_ = 1;
     ul_mtime_ = Util::get_time();
 
 }
@@ -79,7 +78,6 @@ Inode::has_block(uint64_t block_index) {
 shared_ptr<Block>
 Inode::get_block(uint64_t block_index) {
     ul_mtime_ = Util::get_time();
-    dirty_ = 1;
     return blocks_.find(block_index)->second;
 }
 
@@ -96,7 +94,6 @@ Inode::get_ull_mtime() {
 void
 Inode::set_size(unsigned long long size) {
     update_mtime();
-    dirty_ = 1;
     size_ = size;
 }
 
@@ -122,6 +119,10 @@ Inode::delete_inode() {
     dirty_ = 1;
     deleted_ = 1;
 
+}
+void
+Inode::set_dirty() {
+    dirty_ = 1;
 }
 uint64_t
 Inode::get_size() {
