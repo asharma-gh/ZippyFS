@@ -34,7 +34,7 @@
 #include "block_cache.h"
 #include "block.h"
 // proportion of valid entries in idx file for deletion
-#define GC_PROP .5
+#define GC_PROP .4
 using namespace std;
 /**
  * TODO:
@@ -144,12 +144,12 @@ zippyfs_init(const char* shdw, const char* zip_dir) {
 }
 
 /**
+ * once we know a files not in an index file, we shouldnt need to look again
  * Cache for each index file
+ * (idx file path, list-of file paths)
  * modified in get_latest_entry and garbage_collect
  */
-// mutex because idk if gcs and lookups can occur concurrently in multi threaded mode
-mutex map_lock;
-static map<string, string> entries_in_indx;
+static map<string, vector<string>> entries_in_indx;
 /**
  * gets the latest entry of path in the index file index
  * @param index is the path to the index file
@@ -178,6 +178,12 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     fclose(file);
 
     if (!in_cache) {
+        if (entries_in_indx.find(index) != entries_in_indx.end()) {
+            if (count(entries_in_indx[index].begin(), entries_in_indx[index].end(), path) == 0) {
+                printf("NOT IN INDEX, CHECKED MAP\n");
+                return -1;
+            }
+        }
         if (Util::verify_checksum(contents) == -1) {
             printf("BAD checksum\n");
             return -1;
@@ -195,6 +201,8 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     while (token != NULL) {
         char token_path[PATH_MAX];
         sscanf(token, "%s %*u %*f %*d", token_path);
+        if (!in_cache)
+            entries_in_indx[index].push_back(token_path);
         if (strcmp(token_path, path) == 0) {
             in_index = 1;
             memset(buf, 0, sizeof(buf) / sizeof(char));
@@ -372,7 +380,7 @@ flush_dir() {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-    // garbage_collect();
+    garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;
@@ -532,11 +540,9 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         unsigned long long token_time;
         int deleted;
         sscanf(curline.c_str(), "%s %*u %llu %d", token_path, &token_time, &deleted);
-        //  cout << "token path " << token_path << endl;
         char* temp = strdup(token_path);
         // find out of this entry is in the directory
         int in_path = strcmp(dirname(temp), path);
-        // cout << "in dir? " << in_path << endl;
         free(temp);
         if (in_path == 0) {
             cout << "token" << curline << endl;

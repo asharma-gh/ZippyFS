@@ -143,6 +143,6 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 10;
+    const uint64_t MAX_SIZE = 100;
 };
 #endif
