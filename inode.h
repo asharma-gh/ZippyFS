@@ -162,8 +162,15 @@ class Inode {
     /** is this inode dirty? */
     int is_dirty();
 
+    /**
+     * sets this inode as dirty
+     */
     void set_dirty();
 
+    /**
+     * if this inode is dirty, this undo's that
+     * useful if write was used to load a file to cache
+     */
     void undo_dirty();
 
 

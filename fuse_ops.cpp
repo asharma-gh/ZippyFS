@@ -185,7 +185,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     if (!in_cache) {
         if (entries_in_indx.find(index) != entries_in_indx.end()) {
             if (count(entries_in_indx[index].begin(), entries_in_indx[index].end(), path) == 0) {
-                printf("NOT IN INDEX, CHECKED MAP\n");
+                //  printf("NOT IN INDEX, CHECKED MAP\n");
                 return -1;
             }
         }
@@ -456,7 +456,6 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     struct dirent* entry;
     // find the paths to things in the given path
     while((entry = readdir(zip_dir)) != NULL) {
-
         const char* index_file_name = entry->d_name;
         if (strcmp(index_file_name, ".") == 0
                 || strcmp(index_file_name, "..") == 0
@@ -465,6 +464,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
             continue;
         }
+        cout << "index name " << index_file_name << endl;
 
         // make path to index file
         char path_to_indx[strlen(index_file_name) + strlen(zip_dir_name) + 1];
@@ -487,6 +487,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             printf("bad checksum\n");
             continue;
         }
+        cout << "good checksum" << endl;
 
         // now we need to find all of the entries which are in the given path
         // and update our hash table
@@ -505,6 +506,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             char* temp = strdup(token_path);
             // find out of this entry is in the directory
             int in_path = strcmp(dirname(temp), path);
+            cout << "token path" << token_path <<  endl;
             free(temp);
             if (in_path == 0) {
                 printf("%s is in path\n", token);
@@ -533,6 +535,8 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
                     added_names[token_path] = new_entry;
                 }
+            } else {
+                cout << "not in path" << endl;
             }
 
             token = strtok_r(NULL, delim, &saveptr);
@@ -740,7 +744,7 @@ garbage_collect() {
                     cout << "INV FILE CONTENTS -------------" << endl;
                     for (auto f : invalid_files) {
                         cout << "CHECKING " << f.first << endl;
-                        for (auto e : f.second) {
+                        for (auto& e : f.second) {
                             cout << e << endl;
                         }
                     }
@@ -758,7 +762,7 @@ garbage_collect() {
                     cout << "INV FILE CONTENTS -------------" << endl;
                     for (auto f : invalid_files) {
                         cout << "CHECKING " << f.first << endl;
-                        for (auto e : f.second) {
+                        for (auto& e : f.second) {
                             cout << e << endl;
                         }
                     }
