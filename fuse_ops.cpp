@@ -151,6 +151,7 @@ zippyfs_init(const char* shdw, const char* zip_dir) {
  * modified in get_latest_entry and garbage_collect
  */
 static unordered_map<string, unordered_set<string>> entries_in_indx;
+mutex idx_map_mtx;
 /**
  * gets the latest entry of path in the index file index
  * @param index is the path to the index file
@@ -202,8 +203,10 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
     while (token != NULL) {
         char token_path[PATH_MAX];
         sscanf(token, "%s %*u %*f %*d", token_path);
-        if (!in_cache)
+        if (!in_cache) {
+            lock_guard<mutex>lock(idx_map_mtx);
             entries_in_indx[index].insert(token_path);
+        }
         if (strcmp(token_path, path) == 0) {
             in_index = 1;
             memset(buf, 0, sizeof(buf) / sizeof(char));
@@ -790,6 +793,10 @@ garbage_collect() {
                 for (auto inv_name : invalid_files[ents.first]) {
                     cout << "IDX FILE " << ents.first << endl;
                     cout << "CHECKING " << inv_name << endl;
+                    idx_map_mtx.lock();
+                    entries_in_indx[ents.first].erase(inv_name);
+                    idx_map_mtx.unlock();
+
                     int64_t fidx = zip_name_locate(archive, inv_name.c_str() + 1, 0);
                     if (fidx == -1) {
                         cout<< "ERROR FINDING FILE IN ZIP ARCHIVE" << endl;

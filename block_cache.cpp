@@ -316,7 +316,6 @@ BlockCache::flush_to_shdw(int on_close) {
 
         // load file or parent to shdw
         int res = load_to_shdw(entry.first.c_str());
-        cout << "this was reached " << endl;
         if (res == -1) {
             char* dirpath = strdup(entry.first.c_str());
             cout << "dirp " << dirpath << endl;
@@ -324,11 +323,11 @@ BlockCache::flush_to_shdw(int on_close) {
             cout << "dirname " << dirpath << endl;
             if (strcmp(dirpath, "/") != 0) {
                 string file_path = path_to_shdw_ + (dirpath + 1);
-                if (access(file_path.c_str(), F_OK) != 0) {
-                    cout << "file path " << file_path << endl;
-                    auto parent = meta_data_.find(file_path);
+                cout << "file path " << file_path << endl;
+                auto parent = meta_data_.find(file_path);
+                if (parent != meta_data_.end())
                     mkdir(file_path.c_str(), parent->second->get_mode());
-                }
+
             }
             free(dirpath);
 

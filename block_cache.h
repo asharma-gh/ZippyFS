@@ -137,12 +137,12 @@ class BlockCache {
     std::mutex mutex_;
 
     /** represents meta data for files in cache */
-    std::unordered_map<std::string, std::shared_ptr<Inode>> meta_data_;
+    std::map<std::string, std::shared_ptr<Inode>> meta_data_;
 
     /* size of this block cache */
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 100;
+    const uint64_t MAX_SIZE = 250;
 };
 #endif
