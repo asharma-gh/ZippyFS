@@ -75,6 +75,7 @@ int load_to_shdw(const char* path);
 /** flushes shadow dir to storage */
 int flush_dir();
 
+/** clears the shadow directory */
 void clear_shdw();
 
 #ifdef __cplusplus

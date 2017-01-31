@@ -119,6 +119,10 @@ class BlockCache {
      */
     int load_to_cache(std::string path);
 
+    /**
+     * updates the mtime for the file
+     * @return 0 if the file exists and can be opened
+     */
     int open(std::string path);
 
     /**

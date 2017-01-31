@@ -74,6 +74,9 @@ int
 load_to_shdw(const char* path) {
     return load_to_cache(path);
 }
+/**
+ * clears this shadow directory
+ */
 void
 clear_shdw() {
     string cmd = "rm -rf " + (string)shadow_path + "*";
@@ -878,8 +881,6 @@ garbage_collect() {
             }
         }
     }
-
-
     free(path_local_log);
 
     return 0;

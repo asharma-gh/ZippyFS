@@ -1,4 +1,5 @@
 - swap to unsorted map in block cache, figure out how to flush parents first
+- this is most likely best solved when the shadow directory is removed
 - normalize block cache map
 - work on file backing normalized maps
 
