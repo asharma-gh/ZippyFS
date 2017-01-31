@@ -642,7 +642,7 @@ garbage_collect() {
     /**
      * (indx path, content in indx file, delimited by \n
      */
-    map<string, vector<string>> indx_content;
+    unordered_map<string, vector<string>> indx_content;
 
     printf("GARBAGE COLLECTING . . .\n");
     // make path to rmlog

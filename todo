@@ -1,5 +1,5 @@
-- make gc faster
+- swap to unsorted map in block cache, figure out how to flush parents first
 - normalize block cache map
 - work on file backing normalized maps
 
-- add cache to find latest archive
+

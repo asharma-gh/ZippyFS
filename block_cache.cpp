@@ -102,8 +102,6 @@ BlockCache::load_from_shdw(string path) {
     if ((res == -1 || res == 1) && in_cache(path) == -1) {
         cout << "could not find the thing " << endl;
         return -1;
-    } else if ((res == -1 || res == 1) && in_cache(path) == 0) {
-        cout << "already in cache" << endl;
     }
     // compare times of thing in cache and entry
     // if both exist
@@ -120,7 +118,7 @@ BlockCache::load_from_shdw(string path) {
             return 0;
         }
     }
-    if (res == -1 && in_cache(path) == 0) {
+    if ((res == -1 || res == 1) && in_cache(path) == 0) {
         cout << "this thing has been in cache ever" << endl;
         return 0;
     }
@@ -366,7 +364,6 @@ BlockCache::flush_to_shdw(int on_close) {
     meta_data_.clear();
     size_ = 0;
     flush_dir();
-    // clear_shdw();
     return 0;
 }
 
