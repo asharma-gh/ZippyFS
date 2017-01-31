@@ -30,6 +30,7 @@
 #include <map>
 #include <mutex>
 #include <fstream>
+#include <unordered_map>
 #include "util.h"
 #include "block_cache.h"
 #include "block.h"
@@ -149,7 +150,7 @@ zippyfs_init(const char* shdw, const char* zip_dir) {
  * (idx file path, list-of file paths)
  * modified in get_latest_entry and garbage_collect
  */
-static map<string, vector<string>> entries_in_indx;
+static unordered_map<string, unordered_set<string>> entries_in_indx;
 /**
  * gets the latest entry of path in the index file index
  * @param index is the path to the index file
@@ -202,7 +203,7 @@ get_latest_entry(const char* index, int in_cache, const char* path, char* buf) {
         char token_path[PATH_MAX];
         sscanf(token, "%s %*u %*f %*d", token_path);
         if (!in_cache)
-            entries_in_indx[index].push_back(token_path);
+            entries_in_indx[index].insert(token_path);
         if (strcmp(token_path, path) == 0) {
             in_index = 1;
             memset(buf, 0, sizeof(buf) / sizeof(char));
@@ -617,23 +618,23 @@ garbage_collect() {
         unsigned long long f_time;
         string indx_file;
     } ent_info;
-    map<string, ent_info> gc_table;
+    unordered_map<string, ent_info> gc_table;
     /*****
      * (index path, valid entries
      * contains the number of updated entries for the index file
      * if this value is 0, the files are garbage collected
      *****/
-    map<string, unsigned long long> valid_ents;
+    unordered_map<string, unsigned long long> valid_ents;
 
 
     /*****
      * (index path, num entries)
      */
-    map<string, unsigned long long> num_ents;
+    unordered_map<string, unsigned long long> num_ents;
     /****
      * (index path, list of invalid entries)
      */
-    map<string, unordered_set<string>> invalid_files;
+    unordered_map<string, unordered_set<string>> invalid_files;
 
     /**
      * (indx path, content in indx file, delimited by \n

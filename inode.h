@@ -203,7 +203,7 @@ class Inode {
     std::unordered_set<std::string> links_;
 
     /** list of blocks for this inode */
-    std::map<uint64_t, std::shared_ptr<Block>> blocks_;
+    std::unordered_map<uint64_t, std::shared_ptr<Block>> blocks_;
 
 
 

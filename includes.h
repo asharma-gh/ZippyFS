@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <unordered_map>
 #include <stdlib.h>
 #include <libgen.h>
 #include <cerrno>
