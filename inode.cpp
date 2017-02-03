@@ -14,6 +14,7 @@ Inode::Inode(string path)
     deleted_ = 0;
     dirty_ = 0;
     links_.insert(path);
+    inode_id_ = Util::generate_rand_hex_name();
 }
 
 Inode::Inode(string path, Inode that) {
@@ -33,6 +34,8 @@ Inode::Inode(string path, Inode that) {
     deleted_ = 0;
     dirty_ = 0;
     mode_ = that.get_mode();
+    inode_id_ = Util::generate_rand_hex_name();
+
 }
 
 void
@@ -81,12 +84,18 @@ Inode::get_block(uint64_t block_index) {
     return blocks_.find(block_index)->second;
 }
 
+shared_ptr<unordered_map<uint64_t, shared_ptr<Block>>>
+Inode::get_blocks_with_id() {
+    return shared_ptr<unordered_map<uint64_t, shared_ptr<Block>>>(&blocks_);
+}
+
 void
 Inode::update_mtime() {
     ul_mtime_ = Util::get_time();
     fill_time(&ts_mtime_);
     dirty_ = 1;
 }
+
 unsigned long long
 Inode::get_ull_mtime() {
     return ul_mtime_;
@@ -121,15 +130,18 @@ Inode::delete_inode() {
     deleted_ = 1;
 
 }
+
 void
 Inode::set_dirty() {
     dirty_ = 1;
 }
+
 void
 Inode::undo_dirty() {
     if (dirty_ == 1)
         dirty_ = 0;
 }
+
 uint64_t
 Inode::get_size() {
     return size_;
@@ -188,6 +200,7 @@ Inode::is_dir() {
     return S_ISDIR(mode_);
 }
 
+
 int
 Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "READING FROM INODE " << endl;
@@ -221,6 +234,11 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "DONE READING FROM INODE " << endl;
     cout << "READ BYTES: " << read_bytes << endl;
     return size;
+}
+
+string
+Inode::get_id() {
+    return inode_id_;
 }
 
 int

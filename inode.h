@@ -24,7 +24,6 @@ class Inode {
      */
     Inode(std::string path, Inode that);
 
-
     /**
      * sets the mode for this inode
      * @param mode is the mode for this inode
@@ -68,6 +67,7 @@ class Inode {
      * @return the mtime as ull
      */
     unsigned long long get_ull_mtime();
+
     /**
      * sets the size of this inode
      * @param size is the new size for this inode
@@ -89,6 +89,10 @@ class Inode {
      */
     std::vector<uint64_t> get_block_indx();
 
+    /**
+     * @return the mapping of blocks for this inode
+     */
+    std::shared_ptr<std::unordered_map<uint64_t, std::shared_ptr<Block>>> get_blocks_with_id();
 
     /**
      * @return a list of paths that refer to this inode
@@ -128,7 +132,6 @@ class Inode {
      */
     void set_st_time(struct timespec  mtim, struct timespec ctim);
 
-
     /**
      * fills the given timespec with current time
      * doing this because time is weird in c/c++
@@ -139,6 +142,9 @@ class Inode {
         clock_gettime(CLOCK_REALTIME, ts);
     }
 
+    /**
+     * read size data at the given offset into buf
+     */
     int read(uint8_t* buf, uint64_t size, uint64_t offset);
 
     /**
@@ -173,7 +179,10 @@ class Inode {
      */
     void undo_dirty();
 
-
+    /**
+     * returns the id for this inode
+     */
+    std::string get_id();
 
   private:
     /** the path of this inode **/
@@ -205,6 +214,9 @@ class Inode {
 
     /** has this inode been written to? */
     int dirty_;
+
+    /** id for this inode */
+    std::string inode_id_;
 
     /** the paths which have a reference to this inode */
     std::unordered_set<std::string> links_;

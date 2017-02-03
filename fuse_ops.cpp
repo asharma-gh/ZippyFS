@@ -424,6 +424,7 @@ flush_dir() {
  * @return 0 for normal exit status, non-zero otherwise.
  *
  */
+
 int
 zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info* fi) {
@@ -604,12 +605,6 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     return 0;
 }
 
-
-
-
-
-
-
 /**
  * removes fully updated zip archives
  * log is located in
@@ -629,6 +624,7 @@ garbage_collect() {
         string indx_file;
     } ent_info;
     unordered_map<string, ent_info> gc_table;
+
     /*****
      * (index path, valid entries
      * contains the number of updated entries for the index file
@@ -1115,6 +1111,7 @@ zippyfs_chmod(const char* path, mode_t  mode) {
     record_index(path, 0);
     return res;
 }
+
 /**
  * symlink
  */

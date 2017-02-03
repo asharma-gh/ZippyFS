@@ -47,7 +47,9 @@ def sync():
         path_to_idx = "/home/arvinsharma/test/" + line.strip()
         path_to_zip = "/home/arvinsharma/test/" + line.strip()[:len(line.strip()) - 4] + ".zip"
         os.system("ssh arvinsharma@login.ccs.neu.edu 'rm " + path_to_idx + " && rm " + path_to_zip + "'")
-
+    # clear contents of file
+    f = open(sys.argv[1], "w+")
+    f.close()
 
 
     #upload new contents to server

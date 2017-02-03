@@ -10,6 +10,7 @@
  */
 class BlockCache {
   public:
+
     /**
      * constructs a BlockCache that flushes to the given dir
      * @param path_to_shdw is the path of the shadow dir
@@ -68,6 +69,7 @@ class BlockCache {
      * @return list of names of things in path
      */
     std::vector<index_entry> readdir(std::string path);
+
     /**
      * returns the attributes of the thing in path
      * into st
@@ -100,7 +102,6 @@ class BlockCache {
     */
     int in_cache(std::string path);
 
-
     /**
      * flushes the contents of this block cache to
      * the shadow directory.
@@ -130,6 +131,14 @@ class BlockCache {
      */
     std::vector<std::string> get_refs(std::string path);
 
+    /**
+     * flushes normalized maps to zip directory
+     */
+    void flush_to_zip();
+
+    //TODO: implement ability to add/remove items from flushed files
+    // std::string get_id();
+    // std::shared_ptr<Inode> get_item();
 
 
   private:
@@ -137,8 +146,20 @@ class BlockCache {
     /** absolute path of shadow directory */
     std::string path_to_shdw_;
 
+    /** path to main zip directory */
+    std::string path_to_zip_dir_;
+
     /** for multithreaded mode potentially */
     std::mutex mutex_;
+
+    /** map of (path, inode idx) */
+    std::map<std::string, std::string> inode_idx_;
+
+    /** map of (inode idx, inode ptr) */
+    std::map<std::string, std::shared_ptr<Inode>> inode_ptrs_;
+
+    /** map of ((inode num, block num), block ptr) */
+    std::map<std::pair<std::string, uint64_t>, std::shared_ptr<Block>> blocks_;
 
     /** represents meta data for files in cache */
     std::map<std::string, std::shared_ptr<Inode>> meta_data_;

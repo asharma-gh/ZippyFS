@@ -10,13 +10,15 @@ BlockCache::BlockCache(string path_to_shdw)
 
 int
 BlockCache::remove(string path) {
-    if (meta_data_.find(path) == meta_data_.end())
+    if (in_cache(path))
         return -1;
+
     for (auto entry : meta_data_) {
         auto vec = entry.second->get_refs();
         if (find(vec.begin(), vec.end(), path) != vec.end())
             entry.second->dec_link(path);
     }
+
     meta_data_[path]->delete_inode();
     size_--;
     return 0;
@@ -78,7 +80,9 @@ BlockCache::make_file(string path, mode_t mode, bool dirty) {
     if (dirty)
         ptr->set_dirty();
     size_++;
-    //flush_to_shdw(0);
+    //inode_idx_[path] = ptr->get_id();
+    //inode_ptrs_[path] = ptr;
+    // blocks_[inode_idx[path]] = ptr->get_block_with_id();
     return 0;
 }
 
@@ -251,7 +255,7 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
 
 int
 BlockCache::truncate(string path, uint64_t size) {
-    if (meta_data_.find(path) == meta_data_.end())
+    if (in_cache(path) == -1)
         return -1;
     shared_ptr<Inode> ptr = meta_data_[path];
     ptr->set_size(size);
@@ -261,8 +265,10 @@ BlockCache::truncate(string path, uint64_t size) {
 int
 BlockCache::in_cache(string path) {
     (void)path;
-    return meta_data_.find(path) != meta_data_.end() || path.compare("/") == 0 ? 0 : -1;
+    return inode_idx_.find(path) != inode_idx_.end() ||
+           path.compare("/") == 0 ? 0 : -1;
 }
+
 int
 BlockCache::open(string path) {
     int res = load_from_shdw(path);
@@ -361,7 +367,17 @@ BlockCache::flush_to_shdw(int on_close) {
 
 vector<string>
 BlockCache::get_refs(string path) {
-    if(meta_data_.find(path) == meta_data_.end())
+    if(in_cache(path))
         throw domain_error("thing not here");
     return meta_data_.find(path)->second->get_refs();
+}
+
+void
+flush_to_zip() {
+
+    // iterate thru normalized maps
+    //
+    // flush data into files in some format
+    //
+    // close files
 }

@@ -97,6 +97,7 @@ class Util {
         return 0;
     }
 
+    static
     std::string
     generate_rand_hex_name() {
         // create archive name

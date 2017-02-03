@@ -52,7 +52,6 @@ class Block {
      */
     uint64_t get_actual_size();
 
-
     /**
      * @return the logical size of this block
      * - logical size is defined as the total size of this block
