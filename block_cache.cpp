@@ -10,7 +10,7 @@ BlockCache::BlockCache(string path_to_shdw)
 
 int
 BlockCache::remove(string path) {
-    if (in_cache(path))
+    if (in_cache(path) == -1)
         return -1;
 
     for (auto entry : meta_data_) {
@@ -367,7 +367,7 @@ BlockCache::flush_to_shdw(int on_close) {
 
 vector<string>
 BlockCache::get_refs(string path) {
-    if(in_cache(path))
+    if(in_cache(path) == -1)
         throw domain_error("thing not here");
     return meta_data_.find(path)->second->get_refs();
 }
