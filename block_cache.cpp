@@ -72,6 +72,7 @@ BlockCache::readlink(std::string path, uint8_t* buf, uint64_t size) {
     }
 
 }
+
 int
 BlockCache::make_file(string path, mode_t mode, bool dirty) {
     shared_ptr<Inode> ptr(new Inode(path));
@@ -265,7 +266,7 @@ BlockCache::truncate(string path, uint64_t size) {
 int
 BlockCache::in_cache(string path) {
     (void)path;
-    return inode_idx_.find(path) != inode_idx_.end() ||
+    return meta_data_.find(path) != meta_data_.end() ||
            path.compare("/") == 0 ? 0 : -1;
 }
 

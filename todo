@@ -1,9 +1,11 @@
-- swap to unsorted map in block cache, figure out how to flush parents first
-- this is most likely best solved when the shadow directory is removed
-- prune rmlog file
-- reduce delay between synchronizing changes
 - normalize block cache map
 - work on file backing normalized maps
 
+- speed up sync transfers
+
+what needs to be flushed for sync to be fast
+
+- at minimum: path, blocks, mtime
+- inode number for each process's btree
 
 

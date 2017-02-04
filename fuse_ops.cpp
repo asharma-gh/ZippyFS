@@ -507,11 +507,8 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             char* temp = strdup(token_path);
             // find out of this entry is in the directory
             int in_path = strcmp(dirname(temp), path);
-            cout << "token path" << token_path <<  endl;
             free(temp);
             if (in_path == 0) {
-                printf("%s is in path\n", token);
-                cout << "token " << token << endl;
                 BlockCache::index_entry val;
                 string old_name;
                 if (added_names.find(token_path) != added_names.end()) {
@@ -536,8 +533,6 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
                     added_names[token_path] = new_entry;
                 }
-            } else {
-                cout << "not in path" << endl;
             }
 
             token = strtok_r(NULL, delim, &saveptr);

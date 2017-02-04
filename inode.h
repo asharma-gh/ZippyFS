@@ -224,7 +224,5 @@ class Inode {
     /** list of blocks for this inode */
     std::unordered_map<uint64_t, std::shared_ptr<Block>> blocks_;
 
-
-
 };
 #endif
