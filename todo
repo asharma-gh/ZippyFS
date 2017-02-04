@@ -8,4 +8,11 @@ what needs to be flushed for sync to be fast
 - at minimum: path, blocks, mtime
 - inode number for each process's btree
 
+plan:
+- root files are named <rand hex>.root
+- each root file is in the format [(inode#, .node file)...], keys are inode#, values are .node files
+- create files with name <rand hex>.node
+- files start with a list of <inode#, offset into file>
+- at the given offset format: (stat info, blocks)
+
 
