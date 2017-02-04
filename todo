@@ -15,4 +15,16 @@ plan:
 - files start with a list of <inode#, offset into file>
 - at the given offset format: (stat info, blocks)
 
+on write:
+- add to root, if not, make new root
+- read paper on persistence to know what to do
 
+to find an inode:
+- for each root, follow ptrs until the inode# is found
+- with persistence, finding the root with the latest inode is weird, need to read paper
+- once the inode# is found, open the corresponding .node file and find its offset from the file,
+then read data into an inode object and add to map
+
+
+- will probably need to cache nodes / roots for efficiency,
+- on loads, cache entire .node file to avoid disk i/o
