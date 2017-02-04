@@ -20,6 +20,8 @@ BlockCache::remove(string path) {
     }
 
     meta_data_[path]->delete_inode();
+    inode_ptrs_[inode_idx_[path]]->delete_inode();
+    blocks_.erase(inode_idx_[path]);
     size_--;
     return 0;
 }
@@ -32,6 +34,7 @@ BlockCache::rmdir(string path) {
     meta_data_[path]->delete_inode();
     return 0;
 }
+
 int
 BlockCache::rename(string from, string to) {
     int res = 0;
@@ -81,9 +84,9 @@ BlockCache::make_file(string path, mode_t mode, bool dirty) {
     if (dirty)
         ptr->set_dirty();
     size_++;
-    //inode_idx_[path] = ptr->get_id();
-    //inode_ptrs_[path] = ptr;
-    // blocks_[inode_idx[path]] = ptr->get_block_with_id();
+    inode_idx_[path] = ptr->get_id();
+    inode_ptrs_[path] = ptr;
+    // grab blocks
     return 0;
 }
 

@@ -159,7 +159,7 @@ class BlockCache {
     std::map<std::string, std::shared_ptr<Inode>> inode_ptrs_;
 
     /** map of ((inode num, block num), block ptr) */
-    std::map<std::pair<std::string, uint64_t>, std::shared_ptr<Block>> blocks_;
+    std::map<std::string, std::map<uint64_t, std::shared_ptr<Block>>> blocks_;
 
     /** represents meta data for files in cache */
     std::map<std::string, std::shared_ptr<Inode>> meta_data_;

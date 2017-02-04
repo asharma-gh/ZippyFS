@@ -1,4 +1,7 @@
 - normalize block cache map
+- move away from meta_data_ into multiple maps
+    - data is separated to make loading / flushing easier
+- add a map for .node file contents
 - work on file backing normalized maps
 
 - speed up sync transfers
