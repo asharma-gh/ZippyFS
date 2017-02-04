@@ -1,5 +1,5 @@
 # "no"zippyfs
-distributed file system in fuse  
+distributed file system in fuse, early in development    
 Original version: branch distfs  
 
 Utilizes zip archives to compress written data and as a consistent format to distribute writes over the network  
