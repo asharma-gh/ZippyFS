@@ -298,8 +298,7 @@ BlockCache::truncate(string path, uint64_t size) {
 int
 BlockCache::in_cache(string path) {
     (void)path;
-    return (inode_idx_.find(path) != inode_idx_.end()
-            && get_inode_by_path(path)->is_deleted() == 0)
+    return inode_idx_.find(path) != inode_idx_.end()
            || path.compare("/") == 0 ? 0 : -1;
     //  return meta_data_.find(path) != meta_data_.end() ||
     //       path.compare("/") == 0 ? 0 : -1;
