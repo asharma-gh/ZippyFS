@@ -26,7 +26,7 @@ Inode::Inode(string path, Inode that) {
     fill_time(&ts_mtime_);
     fill_time(&ts_ctime_);
     fill_time(&ts_atime_);
-    size_ = get_size();
+    size_ = that.get_size();
     for (auto ent : that.get_refs())
         links_.insert(ent);
 
@@ -199,7 +199,7 @@ Inode::stat(struct stat* stbuf) {
     stbuf->st_mode = mode_;
     stbuf->st_nlink = nlink_;
     stbuf->st_blocks = blocks_.size();
-    stbuf->st_size = size_;
+    stbuf->st_size = get_size();
     stbuf->st_ctim = ts_ctime_;
     stbuf->st_mtim = ts_mtime_;
     stbuf->st_atim = ts_atime_;
