@@ -424,7 +424,6 @@ flush_dir() {
  * @return 0 for normal exit status, non-zero otherwise.
  *
  */
-
 int
 zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                 off_t offset, struct fuse_file_info* fi) {
@@ -732,32 +731,12 @@ garbage_collect() {
                     if (valid_ents[gc_table[token_path].indx_file] > 0)
                         valid_ents[gc_table[token_path].indx_file]--;
                     invalid_files[gc_table[token_path].indx_file].insert(token_path);
-                    cout << "INV FILE CONTENTS -------------" << endl;
-                    for (auto f : invalid_files) {
-                        cout << "CHECKING " << f.first << endl;
-                        for (auto& e : f.second) {
-                            cout << e << endl;
-                        }
-                    }
                     // add to hash table
                     ent_info ent;
                     ent.indx_file = path_to_indx;
                     ent.f_time = file_time;
                     gc_table[token_path] = ent;
                     valid_ents[path_to_indx]++;
-                } else {
-                    // this token is invalid!!
-                    if (valid_ents[path_to_indx] > 0)
-                        valid_ents[path_to_indx]--;
-                    invalid_files[path_to_indx].insert(token_path);
-                    cout << "INV FILE CONTENTS -------------" << endl;
-                    for (auto f : invalid_files) {
-                        cout << "CHECKING " << f.first << endl;
-                        for (auto& e : f.second) {
-                            cout << e << endl;
-                        }
-                    }
-
                 }
             } else {
                 // make entry for this item
