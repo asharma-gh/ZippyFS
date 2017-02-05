@@ -34,3 +34,9 @@ then read data into an inode object and add to map
 
 - will probably need to cache nodes / roots for efficiency,
 - on loads, cache entire .node file to avoid disk i/o
+
+
+known bugs:
+
+- if meta_data_ is unordered map, parents aren't loaded
+before children, this will be fixed by gutting shadow dir eventually

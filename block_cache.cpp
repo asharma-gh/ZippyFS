@@ -4,6 +4,7 @@
 #include "fuse_ops.h"
 #include "includes.h"
 using namespace std;
+
 // TODO: move away from meta_data_!!
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
@@ -13,15 +14,15 @@ BlockCache::remove(string path) {
     if (in_cache(path) == -1)
         return -1;
 
-    for (auto entry : meta_data_) {
+    for (auto entry : inode_ptrs_) {
         auto vec = entry.second->get_refs();
         if (find(vec.begin(), vec.end(), path) != vec.end())
             entry.second->dec_link(path);
     }
 
-    meta_data_[path]->delete_inode();
+    //  meta_data_[path]->delete_inode();
     // new!
-    inode_ptrs_[inode_idx_[path]]->delete_inode();
+    get_inode_by_path(path)->delete_inode();
     blocks_.erase(inode_idx_[path]);
     size_--;
     return 0;
@@ -32,7 +33,7 @@ BlockCache::rmdir(string path) {
 
     if (in_cache(path) == -1)
         return -1;
-    meta_data_[path]->delete_inode();
+    //  meta_data_[path]->delete_inode();
     inode_ptrs_[inode_idx_[path]]->delete_inode();
     return 0;
 }
@@ -51,11 +52,11 @@ BlockCache::rename(string from, string to) {
         res = load_from_shdw(to);
 
     if (res == -1)
-        make_file(to, meta_data_[from]->get_mode(), 1);
+        make_file(to, get_inode_by_path(from)->get_mode(), 1);
 
-    shared_ptr<Inode> to_inode(new Inode(to, *meta_data_.find(from)->second));
-    meta_data_[from]->delete_inode();
-    meta_data_[to] = to_inode;
+//    shared_ptr<Inode> to_inode(new Inode(to, *meta_data_.find(from)->second));
+    // meta_data_[from]->delete_inode();
+    //  meta_data_[to] = to_inode;
     // new!
     shared_ptr<Inode> nto_inode(new Inode(to, *get_inode_by_path(from)));
     get_inode_by_path(from)->delete_inode();
@@ -68,7 +69,7 @@ int
 BlockCache::symlink(string from, string to) {
     shared_ptr<Inode> ll(new Inode(from));
     ll->set_mode(S_IFLNK | S_IRUSR | S_IWUSR);
-    meta_data_[to] = ll;
+    //  meta_data_[to] = ll;
 
     // new!
     inode_idx_[to] = ll->get_id();
@@ -77,14 +78,16 @@ BlockCache::symlink(string from, string to) {
     return 0;
 }
 
+// new!
 int
 BlockCache::readlink(std::string path, uint8_t* buf, uint64_t size) {
     if (in_cache(path) == -1
-            || !S_ISLNK(meta_data_[path]->get_mode()))
+            || !S_ISLNK(get_inode_by_path(path)->get_mode()))
         return -ENOENT;
     else {
-        return meta_data_[path]->read(buf, size, 0);
+        return get_inode_by_path(path)->read(buf, size, 0);
     }
+
 
 }
 
@@ -97,12 +100,12 @@ int
 BlockCache::make_file(string path, mode_t mode, bool dirty) {
     shared_ptr<Inode> ptr(new Inode(path));
     ptr->set_mode(mode);
-    meta_data_[path] = ptr;
+    // meta_data_[path] = ptr;
     if (dirty)
         ptr->set_dirty();
     size_++;
     inode_idx_[path] = ptr->get_id();
-    inode_ptrs_[path] = ptr;
+    inode_ptrs_[ptr->get_id()] = ptr;
     // grab blocks
     return 0;
 }
@@ -127,7 +130,8 @@ BlockCache::load_from_shdw(string path) {
     stat(shdw_file_path.c_str(), &st);
 
     if (res == 0 && in_cache(path) == 0) {
-        meta_data_[path]->stat(&ino_st);
+        //  meta_data_[path]->stat(&ino_st);
+        get_inode_by_path(path)->stat(&ino_st);
         cout << "time dif " << to_string(difftime(st.st_mtim.tv_sec, ino_st.st_mtim.tv_sec)) << endl;
         if (difftime(st.st_mtim.tv_sec, ino_st.st_mtim.tv_sec) < 1) {
             cout << "UPDATED VERSION IS IN CACHE " << endl;
@@ -166,37 +170,38 @@ BlockCache::load_from_shdw(string path) {
     // add this file to cache
     make_file(path, st.st_mode, 0);
     write(path, (uint8_t*)contents, fsize, 0);
-    meta_data_[path]->set_st_time(shdw_st.st_mtim, shdw_st.st_ctim);
-    meta_data_[path]->undo_dirty();
+    // meta_data_[path]->set_st_time(shdw_st.st_mtim, shdw_st.st_ctim);
+    // meta_data_[path]->undo_dirty();
+    get_inode_by_path(path)->set_st_time(shdw_st.st_mtim, shdw_st.st_ctim);
+    get_inode_by_path(path)->undo_dirty();
     cout << "FLIPPED DIRTY " << endl;
     cout << "finished loading to shdw" << endl;
     return 0;
 }
 
+// new!
 int
 BlockCache::getattr(string path, struct stat* st) {
     if ((in_cache(path) == -1 && load_from_shdw(path) == -1)
-            || (in_cache(path) == 0 && meta_data_[path]->is_deleted()))
+            || (in_cache(path) == 0 && get_inode_by_path(path)->is_deleted()))
         return -ENOENT;
     else
-        return meta_data_[path]->stat(st);
+        return get_inode_by_path(path)->stat(st);
 }
 
 vector<BlockCache::index_entry>
 BlockCache::readdir(string path) {
     vector<BlockCache::index_entry> ents;
-    for (auto entry : meta_data_) {
-        if (entry.second->get_link() == 0)
-            continue;
+    for (auto entry : inode_idx_) {
         char* dirpath = strdup(entry.first.c_str());
         dirpath = dirname(dirpath);
         if (strcmp(dirpath, path.c_str()) == 0) {
             struct stat st;
-            entry.second->stat(&st);
+            get_inode_by_path(entry.first)->stat(&st);
             index_entry ent;
             ent.path = entry.first;
-            ent.deleted = entry.second->is_deleted();
-            ent.added_time = entry.second->get_ull_mtime();
+            ent.deleted = get_inode_by_path(entry.first)->is_deleted();
+            ent.added_time = get_inode_by_path(entry.first)->get_ull_mtime();
             ents.push_back(ent);
         }
         free(dirpath);
@@ -215,13 +220,15 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
         }
 
     } else {
-        meta_data_[path]->set_dirty();
+        get_inode_by_path(path)->set_dirty();
+        get_inode_by_path(path)->remake_inode();
+        // if file was deleted, now it ain't
     }
     // create blocks for buf
     uint64_t num_blocks = Util::ulong_ceil(size + offset, Block::get_logical_size());
     /*** create inode for write if needed ***/
     shared_ptr<Inode> inode;
-    inode = meta_data_.find(path)->second;
+    inode = get_inode_by_path(path);
     if (inode->get_size() < size + offset)
         inode->set_size(size + offset);
 
@@ -261,7 +268,7 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
 
     // record meta data to cache_data
     // get prev inode if it exists
-    meta_data_[path] = inode;
+    // meta_data_[path] = inode;
     return size;
 }
 
@@ -272,29 +279,30 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
         load_from_shdw(path);
     }
     //new!
-    // get_inode_by_path(path)->read(buf, size, offset);
-    return meta_data_[path]->read(buf, size, offset);
+    return get_inode_by_path(path)->read(buf, size, offset);
+    // return meta_data_[path]->read(buf, size, offset);
 }
 
 int
 BlockCache::truncate(string path, uint64_t size) {
     if (in_cache(path) == -1)
         return -1;
-    shared_ptr<Inode> ptr = meta_data_[path];
-    ptr->set_size(size);
+    // shared_ptr<Inode> ptr = meta_data_[path];
+    // ptr->set_size(size);
 
     //new!
-    // get_inode_by_path(path)->set_size(size);
+    get_inode_by_path(path)->set_size(size);
     return 0;
 }
 
 int
 BlockCache::in_cache(string path) {
     (void)path;
-    //return inode_idx_.find(path) != inode_idx_.end()
-    //  || path.compare("/") == 0 ? 0 : -1;
-    return meta_data_.find(path) != meta_data_.end() ||
-           path.compare("/") == 0 ? 0 : -1;
+    return (inode_idx_.find(path) != inode_idx_.end()
+            && get_inode_by_path(path)->is_deleted() == 0)
+           || path.compare("/") == 0 ? 0 : -1;
+    //  return meta_data_.find(path) != meta_data_.end() ||
+    //       path.compare("/") == 0 ? 0 : -1;
 }
 
 int
@@ -302,7 +310,7 @@ BlockCache::open(string path) {
     int res = load_from_shdw(path);
     cout << "open res " << res << endl;
     if (res == 0)
-        meta_data_[path]->update_mtime();
+        get_inode_by_path(path)->update_mtime();
 
     return 0;
 }
@@ -320,7 +328,7 @@ BlockCache::flush_to_shdw(int on_close) {
     cout << "PATH TO SHDW " << idx_path << endl;
 
     // create files for each item in cache
-    for (auto const& entry : meta_data_) {
+    for (auto const& entry : inode_ptrs_) {
         // load previous version to shadow director
         cout  << "NAME " << entry.first << endl;
         cout << "DIRTY? " << entry.second->is_dirty() << endl;
@@ -351,9 +359,9 @@ BlockCache::flush_to_shdw(int on_close) {
             if (strcmp(dirpath, "/") != 0) {
                 string file_path = path_to_shdw_ + (dirpath + 1);
                 cout << "file path " << file_path << endl;
-                auto parent = meta_data_.find(file_path);
-                if (parent != meta_data_.end())
-                    mkdir(file_path.c_str(), parent->second->get_mode());
+                //auto parent = meta_data_.find(file_path);
+                if (in_cache(file_path) == 0)
+                    mkdir(file_path.c_str(), get_inode_by_path(file_path)->get_mode());
 
             }
             free(dirpath);
@@ -390,7 +398,11 @@ BlockCache::flush_to_shdw(int on_close) {
             cout << "Errror closing indx fd ERRNO " << strerror(errno) << endl;
 
     }
-    meta_data_.clear();
+    //meta_data_.clear();
+    inode_idx_.clear();
+    inode_ptrs_.clear();
+    blocks_.clear();
+    // meta_data_.clear();
     size_ = 0;
     flush_dir();
     return 0;
@@ -400,7 +412,8 @@ vector<string>
 BlockCache::get_refs(string path) {
     if(in_cache(path) == -1)
         throw domain_error("thing not here");
-    return meta_data_.find(path)->second->get_refs();
+//    return meta_data_.find(path)->second->get_refs();
+    return get_inode_by_path(path)->get_refs();
 }
 
 void

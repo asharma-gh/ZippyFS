@@ -162,6 +162,9 @@ class Inode {
     /** deletes this inode */
     void delete_inode();
 
+    /** un-delete this inode */
+    void remake_inode();
+
     /** is this inode deleted */
     int is_deleted();
 

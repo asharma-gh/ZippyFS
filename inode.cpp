@@ -126,7 +126,8 @@ Inode::is_deleted() {
 
 void
 Inode::delete_inode() {
-    //links_.clear();
+    links_.clear();
+    nlink_ = 0;
     update_mtime();
     blocks_.clear();
     deleted_ = 1;
@@ -200,6 +201,11 @@ Inode::stat(struct stat* stbuf) {
 int
 Inode::is_dir() {
     return S_ISDIR(mode_);
+}
+
+void
+Inode::remake_inode() {
+    deleted_ = 0;
 }
 
 

@@ -465,7 +465,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
             continue;
         }
-        cout << "index name " << index_file_name << endl;
+        //   cout << "index name " << index_file_name << endl;
 
         // make path to index file
         char path_to_indx[strlen(index_file_name) + strlen(zip_dir_name) + 1];
@@ -488,7 +488,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
             printf("bad checksum\n");
             continue;
         }
-        cout << "good checksum" << endl;
+        //  cout << "good checksum" << endl;
 
         // now we need to find all of the entries which are in the given path
         // and update our hash table
