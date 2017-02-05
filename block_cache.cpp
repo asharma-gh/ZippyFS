@@ -66,7 +66,7 @@ BlockCache::symlink(string from, string to) {
 
     // new!
     inode_idx_[to] = ll->get_id();
-    inode_ptrs_[to] = ll;
+    inode_ptrs_[ll->get_id()] = ll;
 
     return 0;
 }
@@ -307,11 +307,12 @@ BlockCache::flush_to_shdw(int on_close) {
     cout << "PATH TO SHDW " << idx_path << endl;
 
     // create files for each item in cache
-    for (auto const& entry : inode_ptrs_) {
+    for (auto const& entry : inode_idx_) {
         // load previous version to shadow director
         cout  << "NAME " << entry.first << endl;
-        cout << "DIRTY? " << entry.second->is_dirty() << endl;
-        if (entry.second->is_dirty() == 0)
+        cout << "DIRTY? " << get_inode_by_path(entry.first)->is_dirty() << endl;
+        shared_ptr<Inode> ent = get_inode_by_path(entry.first);
+        if (ent->is_dirty() == 0)
             continue;
         cout << "IS NOT DIRTY" << endl;
 
@@ -320,8 +321,8 @@ BlockCache::flush_to_shdw(int on_close) {
         if (idx_fd == -1)
             perror("Open failed");
 
-        if (entry.second->is_deleted()) {
-            string record = entry.second->get_record();
+        if (ent->is_deleted()) {
+            string record = ent->get_record();
             ::write(idx_fd, record.c_str(), record.length());
             close(idx_fd);
             continue;
@@ -350,9 +351,9 @@ BlockCache::flush_to_shdw(int on_close) {
         string file_path = path_to_shdw_ + entry.first.substr(1);
         cout << "path to file " << file_path <<  endl;
 
-        if (entry.second->is_dir()) {
-            mkdir(file_path.c_str(), entry.second->get_mode());
-            string record = entry.second->get_record();
+        if (ent->is_dir()) {
+            mkdir(file_path.c_str(), ent->get_mode());
+            string record = ent->get_record();
             ::write(idx_fd, record.c_str(), record.length());
             if (close(idx_fd) == -1)
                 cout << "Error closing indx fd Errno " << strerror(errno) << endl;
@@ -360,15 +361,15 @@ BlockCache::flush_to_shdw(int on_close) {
         }
 
         // open previous version / make new one
-        int file_fd = ::open(file_path.c_str(), O_CREAT | O_WRONLY, entry.second->get_mode());
-        cout << "MODE " << entry.second->get_mode();
+        int file_fd = ::open(file_path.c_str(), O_CREAT | O_WRONLY, ent->get_mode());
+        //cout << "MODE " << ent->get_mode() << endl;
         if (file_fd == -1)
             cout << "error opening file ERRNO " << strerror(errno) << endl;
         cout << "initiating the flush" << endl;
-        entry.second->flush_to_fd(file_fd);
+        ent->flush_to_fd(file_fd);
         cout << "finished flush" << endl;
 
-        string record = entry.second->get_record();
+        string record = ent->get_record();
         ::write(idx_fd, record.c_str(), record.length());
         if (close(file_fd) == -1)
             cout << "Error closing file ERRNO " << strerror(errno) << endl;

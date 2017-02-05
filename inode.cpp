@@ -43,7 +43,7 @@ Inode::set_mode(uint32_t mode) {
     if (S_ISDIR(mode))
         nlink_ = nlink_ < 2 ? 2 : nlink_;
     mode_ = mode;
-    cout <<" MODE " << mode;
+    //cout <<" MODE " << mode;
     ul_mtime_ = Util::get_time();
 
 }
