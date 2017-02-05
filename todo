@@ -14,6 +14,12 @@ what needs to be flushed for sync to be fast
 - at minimum: path, blocks, mtime
 - inode number for each process's btree
 
+plan for flushing maps:
+files will consist of a header section and content body
+- header will have list of inode#,offsets and size
+- content body will have a second header for (inode stat,( block#, offset, size)) for each recorded block
+    - not all blocks of a file are recorded!!
+
 plan:
 - root files are named <rand hex>.root
 - each root file is in the format [(inode#, .node file)...], keys are inode#, values are .node files
