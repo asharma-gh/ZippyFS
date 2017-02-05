@@ -1,3 +1,6 @@
+- add blocks to block map
+
+
 - normalize block cache map
 - move away from meta_data_ into multiple maps
     - data is separated to make loading / flushing easier

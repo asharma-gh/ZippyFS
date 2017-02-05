@@ -32,6 +32,7 @@ BlockCache::rmdir(string path) {
     if (in_cache(path) == -1)
         return -1;
     meta_data_[path]->delete_inode();
+    inode_ptrs_[inode_idx_[path]]->delete_inode();
     return 0;
 }
 
@@ -54,6 +55,11 @@ BlockCache::rename(string from, string to) {
     shared_ptr<Inode> to_inode(new Inode(to, *meta_data_.find(from)->second));
     meta_data_[from]->delete_inode();
     meta_data_[to] = to_inode;
+    // new!
+    shared_ptr<Inode> nto_inode(new Inode(to, *inode_ptrs_.find(inode_idx_[from])->second));
+    inode_ptrs_[inode_idx_[from]]->delete_inode();
+    inode_idx_[to] = nto_inode->get_id();
+    inode_ptrs_[inode_idx_[to]] = nto_inode;
     return 0;
 }
 
@@ -269,6 +275,8 @@ BlockCache::truncate(string path, uint64_t size) {
 int
 BlockCache::in_cache(string path) {
     (void)path;
+    //return inode_idx_.find(path) != inode_idx_.end()
+    //  || path.compare("/") == 0 ? 0 : -1;
     return meta_data_.find(path) != meta_data_.end() ||
            path.compare("/") == 0 ? 0 : -1;
 }
