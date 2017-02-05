@@ -10,6 +10,7 @@ Inode::Inode(string path)
     ul_mtime_ = Util::get_time();
     fill_time(&ts_mtime_);
     fill_time(&ts_ctime_);
+    fill_time(&ts_atime_);
     size_ = 0;
     deleted_ = 0;
     dirty_ = 0;
@@ -24,6 +25,7 @@ Inode::Inode(string path, Inode that) {
     ul_mtime_ = Util::get_time();
     fill_time(&ts_mtime_);
     fill_time(&ts_ctime_);
+    fill_time(&ts_atime_);
     size_ = get_size();
     for (auto ent : that.get_refs())
         links_.insert(ent);
@@ -96,6 +98,11 @@ Inode::update_mtime() {
     ul_mtime_ = Util::get_time();
     fill_time(&ts_mtime_);
     dirty_ = 1;
+}
+
+void
+Inode::update_atime() {
+    fill_time(&ts_atime_);
 }
 
 unsigned long long
@@ -195,6 +202,7 @@ Inode::stat(struct stat* stbuf) {
     stbuf->st_size = size_;
     stbuf->st_ctim = ts_ctime_;
     stbuf->st_mtim = ts_mtime_;
+    stbuf->st_atim = ts_atime_;
     return 0;
 }
 

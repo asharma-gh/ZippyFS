@@ -64,6 +64,10 @@ class Inode {
     void update_mtime();
 
     /**
+     * updates access time
+     */
+    void update_atime();
+    /**
      * @return the mtime as ull
      */
     unsigned long long get_ull_mtime();
@@ -206,8 +210,11 @@ class Inode {
     /** modified time for this inode as time spec */
     struct timespec ts_mtime_;
 
-    /** creatio ntime for this inode as time spec */
+    /** creation time for this inode as time spec */
     struct timespec ts_ctime_;
+
+    /** access time for this inode as time spec */
+    struct timespec ts_atime_;
 
     /** size of this inode */
     uint64_t size_;

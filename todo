@@ -41,7 +41,4 @@ known bugs:
 - if meta_data_ is unordered map, parents aren't loaded
 before children, this will be fixed by gutting shadow dir eventually
 
-- only mtime is being logged persistently
-- this causes issues if files are just opened
 
-- fix is to record access time too!!

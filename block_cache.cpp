@@ -289,7 +289,7 @@ BlockCache::open(string path) {
     int res = load_from_shdw(path);
     cout << "open res " << res << endl;
     if (res == 0)
-        get_inode_by_path(path)->update_mtime();
+        get_inode_by_path(path)->update_atime();
 
     return 0;
 }
