@@ -4,7 +4,7 @@
 #include "fuse_ops.h"
 #include "includes.h"
 using namespace std;
-
+// TODO: move away from meta_data_!!
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
 
@@ -20,6 +20,7 @@ BlockCache::remove(string path) {
     }
 
     meta_data_[path]->delete_inode();
+    // new!
     inode_ptrs_[inode_idx_[path]]->delete_inode();
     blocks_.erase(inode_idx_[path]);
     size_--;
@@ -68,6 +69,11 @@ BlockCache::symlink(string from, string to) {
     shared_ptr<Inode> ll(new Inode(from));
     ll->set_mode(S_IFLNK | S_IRUSR | S_IWUSR);
     meta_data_[to] = ll;
+
+    // new!
+    inode_idx_[to] = ll->get_id();
+    inode_ptrs_[to] = ll;
+
     return 0;
 }
 
@@ -81,6 +87,7 @@ BlockCache::readlink(std::string path, uint8_t* buf, uint64_t size) {
     }
 
 }
+
 shared_ptr<Inode>
 BlockCache::get_inode_by_path(string path) {
     return inode_ptrs_[inode_idx_[path]];
@@ -264,6 +271,8 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
         cout << " READ: loading from shdw " << path << endl;
         load_from_shdw(path);
     }
+    //new!
+    // get_inode_by_path(path)->read(buf, size, offset);
     return meta_data_[path]->read(buf, size, offset);
 }
 
@@ -273,6 +282,9 @@ BlockCache::truncate(string path, uint64_t size) {
         return -1;
     shared_ptr<Inode> ptr = meta_data_[path];
     ptr->set_size(size);
+
+    //new!
+    // get_inode_by_path(path)->set_size(size);
     return 0;
 }
 
@@ -291,9 +303,12 @@ BlockCache::open(string path) {
     cout << "open res " << res << endl;
     if (res == 0)
         meta_data_[path]->update_mtime();
+
     return 0;
 }
-
+/**
+ * TODO: rework this so it works with normalized maps
+ */
 int
 BlockCache::flush_to_shdw(int on_close) {
     clear_shdw();
