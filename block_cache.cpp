@@ -56,8 +56,8 @@ BlockCache::rename(string from, string to) {
     meta_data_[from]->delete_inode();
     meta_data_[to] = to_inode;
     // new!
-    shared_ptr<Inode> nto_inode(new Inode(to, *inode_ptrs_.find(inode_idx_[from])->second));
-    inode_ptrs_[inode_idx_[from]]->delete_inode();
+    shared_ptr<Inode> nto_inode(new Inode(to, *get_inode_by_path(from)));
+    get_inode_by_path(from)->delete_inode();
     inode_idx_[to] = nto_inode->get_id();
     inode_ptrs_[inode_idx_[to]] = nto_inode;
     return 0;
@@ -80,6 +80,10 @@ BlockCache::readlink(std::string path, uint8_t* buf, uint64_t size) {
         return meta_data_[path]->read(buf, size, 0);
     }
 
+}
+shared_ptr<Inode>
+BlockCache::get_inode_by_path(string path) {
+    return inode_ptrs_[inode_idx_[path]];
 }
 
 int

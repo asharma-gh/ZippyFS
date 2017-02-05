@@ -136,9 +136,11 @@ class BlockCache {
      */
     void flush_to_zip();
 
-    //TODO: implement ability to add/remove items from flushed files
-    // std::string get_id();
-    // std::shared_ptr<Inode> get_item();
+    /**
+     * @return a pointer to the inode at the given path
+     */
+    std::shared_ptr<Inode> get_inode_by_path(std::string path);
+
 
 
   private:
