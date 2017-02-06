@@ -4,6 +4,7 @@
 #include "fuse_ops.h"
 #include "includes.h"
 using namespace std;
+
 // TODO: get rid of shadow directory
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
@@ -12,7 +13,6 @@ BlockCache::BlockCache(string path_to_disk, bool f) :
     path_to_disk_(path_to_disk) {
     (void)f;
 }
-
 
 int
 BlockCache::remove(string path) {
@@ -250,11 +250,15 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
             shared_ptr<Block> temp = inode->get_block(block_idx);
             temp->insert(buf, block_size, offset_amt);
             cout << "overrided block" << endl;
+            cout << "adding dirty block to map" << endl;
+            dirty_block_[inode_idx_[path]][block_idx] = temp;
 
         } else {
             shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
             // add newly formed block to the inode
             inode->add_block(block_idx, ptr);
+            cout << "adding dirty block to map" << endl;
+            dirty_block_[inode_idx_[path]][block_idx] = ptr;
         }
     }
     assert(curr_idx + block_size == size);

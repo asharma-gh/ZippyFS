@@ -35,12 +35,11 @@
 #include "block_cache.h"
 #include "block.h"
 // proportion of valid entries in idx file for deletion
-#define GC_PROP .25
+#define GC_PROP .4
 using namespace std;
 /**
  * TODO:
- * - clean up stuff
- * - rewrite gc
+ * - move away from zip archives
  */
 BlockCache* block_cache;
 
@@ -731,12 +730,17 @@ garbage_collect() {
                     if (valid_ents[gc_table[token_path].indx_file] > 0)
                         valid_ents[gc_table[token_path].indx_file]--;
                     invalid_files[gc_table[token_path].indx_file].insert(token_path);
+                    cout << gc_table[token_path].indx_file << " HAS AN INVALID FILE " << token_path << endl;
                     // add to hash table
                     ent_info ent;
                     ent.indx_file = path_to_indx;
                     ent.f_time = file_time;
                     gc_table[token_path] = ent;
                     valid_ents[path_to_indx]++;
+                } else {
+                    invalid_files[path_to_indx].insert(token_path);
+                    cout << path_to_indx << " HAS AN INVALID FILE " << token_path << endl;
+
                 }
             } else {
                 // make entry for this item
@@ -751,6 +755,9 @@ garbage_collect() {
         }
     }
     closedir(zip_dir);
+    for (auto meme : invalid_files) {
+        cout << "INV FILE NAME " << meme.first << endl;
+    }
     for (auto ents : valid_ents) {
         cout << "NAME " << ents.first << endl;
         cout << "NUM VALID " << ents.second << "TOTAL " << num_ents[ents.first]
@@ -758,8 +765,10 @@ garbage_collect() {
         double prop = (double)ents.second / num_ents[ents.first];
         cout << "PROP " << prop << endl;
         if (prop < GC_PROP  && prop > 0) {
-
+            cout << "STARTING DELETIONS " << endl;
+            cout << "IS IN? " << to_string(invalid_files.find(ents.first) != invalid_files.end()) << endl;
             if (invalid_files.find(ents.first) != invalid_files.end()) {
+                cout << "COULD NOT FIND THIS IDX? " << ents.first << endl;
                 // make path to zip archive
                 string zip_path = ents.first.substr(0, ents.first.length() - 4);
                 zip_path = zip_path + ".zip";
