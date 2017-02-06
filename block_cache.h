@@ -17,6 +17,8 @@ class BlockCache {
      */
     BlockCache(std::string path_to_shdw);
 
+    BlockCache(std::string path_to_disk, bool f = true);
+
     /**
      * creates a file with the given path and mode
      * @return 0 on success, -1 on failure
@@ -135,7 +137,9 @@ class BlockCache {
      * flushes normalized maps to zip directory
      * @return 0 on success, -1 otherwise
      */
-    int flush_to_zip();
+    int flush_to_disk();
+
+    int load_from_disk();
 
     /**
      * @return a pointer to the inode at the given path
@@ -147,8 +151,8 @@ class BlockCache {
     /** absolute path of shadow directory */
     std::string path_to_shdw_;
 
-    /** path to main zip directory */
-    std::string path_to_zip_dir_;
+    /** path to main disk dir */
+    std::string path_to_disk_;
 
     /** for multithreaded mode potentially */
     std::mutex mutex_;
@@ -158,6 +162,9 @@ class BlockCache {
 
     /** map of (inode idx, inode ptr) */
     std::map<std::string, std::shared_ptr<Inode>> inode_ptrs_;
+
+    /** map of ((inode idx, block idx), dirty block) for flushing */
+    std::map<std::string, std::map<uint64_t, std::shared_ptr<Block>>> dirty_block_;
 
     /* size of this block cache */
     uint64_t size_;

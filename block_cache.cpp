@@ -4,9 +4,15 @@
 #include "fuse_ops.h"
 #include "includes.h"
 using namespace std;
-
+// TODO: get rid of shadow directory
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
+
+BlockCache::BlockCache(string path_to_disk, bool f) :
+    path_to_disk_(path_to_disk) {
+    (void)f;
+}
+
 
 int
 BlockCache::remove(string path) {
@@ -387,12 +393,18 @@ BlockCache::get_refs(string path) {
 }
 
 int
-flush_to_zip() {
+BlockCache::flush_to_disk() {
 
     // iterate thru normalized maps
     //
     // flush data into files in some format
     //
     // close files
+    return 0;
+}
+
+int
+BlockCache::load_from_disk() {
+
     return 0;
 }
