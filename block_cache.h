@@ -17,7 +17,10 @@ class BlockCache {
      */
     BlockCache(std::string path_to_shdw);
 
-    BlockCache(std::string path_to_disk, bool f = true);
+    /**
+     * @param path_to_disk is the path to flush stuff to
+     */
+    BlockCache(std::string path_to_disk, bool f);
 
     /**
      * creates a file with the given path and mode
@@ -139,7 +142,10 @@ class BlockCache {
      */
     int flush_to_disk();
 
-    int load_from_disk();
+    /**
+     * loads the given file from disk to this cache
+     */
+    int load_from_disk(std::string path);
 
     /**
      * @return a pointer to the inode at the given path

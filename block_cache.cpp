@@ -404,7 +404,7 @@ BlockCache::flush_to_disk() {
 }
 
 int
-BlockCache::load_from_disk() {
+BlockCache::load_from_disk(std::string path) {
 
     return 0;
 }

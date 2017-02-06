@@ -24,6 +24,10 @@ Issue:
 - finding latest version of a file
 solution: check timestamps of each root file, take the latest one
 
+Issue:
+- finding old info for an inode in new root
+solution: copy old info over, append new .head file
+
 What this should look like:
 [list-of root], root is [list of (inode#, list of .head)]
 and a [list of .head + .node]
