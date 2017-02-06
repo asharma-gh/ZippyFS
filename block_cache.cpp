@@ -405,6 +405,15 @@ BlockCache::flush_to_disk() {
 
 int
 BlockCache::load_from_disk(std::string path) {
-
+    // find latest root with the given file
+    // pull each .head file
+    //
+    // if none exist return -1
+    //
+    // make an inode
+    // for each .head file open and read the corresponding data
+    // into inode
+    //
+    // add inode to map
     return 0;
 }
