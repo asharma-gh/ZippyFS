@@ -1,4 +1,3 @@
-- gc is broken lol
 - add blocks to block map
 
 
@@ -6,46 +5,30 @@
 - move away from meta_data_ into multiple maps
     - data is separated to make loading / flushing easier
 - add a map for .node file contents
-- work on file backing normalized maps
 
-- speed up sync transfers
-
-what needs to be flushed for sync to be fast
-
-- at minimum: path, blocks, mtime
-- inode number for each process's btree
-
-plan for flushing maps:
-files will consist of a header section and content body
-- header will have list of inode#,offsets and size
-- content body will have a second header for (inode stat,( block#, offset, size)) for each recorded block
-    - not all blocks of a file are recorded!!
-
-plan:
-- root files are named <rand hex>.root
-- each root file is in the format [(inode#, .node file)...], keys are inode#, values are .node files
-- create files with name <rand hex>.node
-- files start with a list of <inode#, offset into file>
-- at the given offset format: (stat info, blocks)
-
-on write:
-- add to root, if not, make new root
-- read paper on persistence to know what to do
-
-to find an inode:
-- for each root, follow ptrs until the inode# is found
-- with persistence, finding the root with the latest inode is weird, need to read paper
-- once the inode# is found, open the corresponding .node file and find its offset from the file,
-then read data into an inode object and add to map
+- store written blocks for flushing, avoid copying redundant blocks!
 
 
-- will probably need to cache nodes / roots for efficiency,
-- on loads, cache entire .node file to avoid disk i/o
+Initial Plan for data format (simulate zip archives, but without the zipping!!)
+- so by flushing the map, 2 files are created: .head and .node
+- the .head and .node files are named the same, and a .head file contains the offset# and size for inode information within the .node files
+(.head is == to .idx and .node == .zip)
+- each .node file contains the information for the flushed inodes: inode stat info, block#s and block contents
 
+Issue:
+- putting together a file with blocks spread across .node files
 
-known bugs:
+solution: maintain .root files which contain records (inode#, [list of .head files])
 
-- if meta_data_ is unordered map, parents aren't loaded
-before children, this will be fixed by gutting shadow dir eventually
+Issue:
+- finding latest version of a file
+solution: check timestamps of each root file, take the latest one
 
+What this should look like:
+[list-of root], root is [list of (inode#, list of .head)]
+and a [list of .head + .node]
+
+searching for a file is pretty slow, but moving from this to a tree shouldn't be that bad. Roots can be cached
+
+- remove garbage collection for now
 

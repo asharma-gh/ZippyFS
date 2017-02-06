@@ -5,7 +5,6 @@
 #include "includes.h"
 using namespace std;
 
-// TODO: move away from meta_data_!!
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {}
 
@@ -21,7 +20,6 @@ BlockCache::remove(string path) {
     }
     // new!
     get_inode_by_path(path)->delete_inode();
-    blocks_.erase(inode_idx_[path]);
     size_--;
     return 0;
 }
@@ -293,9 +291,7 @@ BlockCache::open(string path) {
 
     return 0;
 }
-/**
- * TODO: rework this so it works with normalized maps
- */
+
 int
 BlockCache::flush_to_shdw(int on_close) {
     clear_shdw();
@@ -344,7 +340,6 @@ BlockCache::flush_to_shdw(int on_close) {
 
             }
             free(dirpath);
-
         }
 
         // create path to file in shadow dir
@@ -379,7 +374,6 @@ BlockCache::flush_to_shdw(int on_close) {
     }
     inode_idx_.clear();
     inode_ptrs_.clear();
-    blocks_.clear();
     size_ = 0;
     flush_dir();
     return 0;
@@ -392,7 +386,7 @@ BlockCache::get_refs(string path) {
     return get_inode_by_path(path)->get_refs();
 }
 
-void
+int
 flush_to_zip() {
 
     // iterate thru normalized maps
@@ -400,4 +394,5 @@ flush_to_zip() {
     // flush data into files in some format
     //
     // close files
+    return 0;
 }

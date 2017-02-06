@@ -35,7 +35,7 @@
 #include "block_cache.h"
 #include "block.h"
 // proportion of valid entries in idx file for deletion
-#define GC_PROP .4
+#define GC_PROP .25
 using namespace std;
 /**
  * TODO:

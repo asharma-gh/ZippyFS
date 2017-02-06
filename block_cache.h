@@ -133,15 +133,14 @@ class BlockCache {
 
     /**
      * flushes normalized maps to zip directory
+     * @return 0 on success, -1 otherwise
      */
-    void flush_to_zip();
+    int flush_to_zip();
 
     /**
      * @return a pointer to the inode at the given path
      */
     std::shared_ptr<Inode> get_inode_by_path(std::string path);
-
-
 
   private:
 
@@ -159,9 +158,6 @@ class BlockCache {
 
     /** map of (inode idx, inode ptr) */
     std::map<std::string, std::shared_ptr<Inode>> inode_ptrs_;
-
-    /** map of ((inode num, block num), block ptr) */
-    std::map<std::string, std::map<uint64_t, std::shared_ptr<Block>>> blocks_;
 
     /* size of this block cache */
     uint64_t size_;
