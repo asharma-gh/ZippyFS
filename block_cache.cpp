@@ -384,6 +384,7 @@ BlockCache::flush_to_shdw(int on_close) {
     }
     inode_idx_.clear();
     inode_ptrs_.clear();
+    dirty_block_.clear();
     size_ = 0;
     flush_dir();
     return 0;
@@ -396,19 +397,68 @@ BlockCache::get_refs(string path) {
     return get_inode_by_path(path)->get_refs();
 }
 
+unordered_set<string>
+BlockCache::find_latest_node(string inode_idx, vector<uint64_t> block_idx) {
+    (void)inode_idx;
+    (void)block_idx;
+    unordered_set<string> nodes;
+
+    // iterate thru all roots and heads, log each .node file
+    return nodes;
+}
+
 int
 BlockCache::flush_to_disk() {
+    // create path to .head file
+    string fname = Util::generate_rand_hex_name();
+    string path_to_head = path_to_disk_ + fname + ".head";
+    // int headfd = ::open(path_to_head.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR);
 
-    // iterate thru normalized maps
+    // look for previous latest .head for the current file
+    // copy over those .node file names
+    // FORMAT:
+    // [inode idx] [list-of .node]
     //
-    // flush data into files in some format
+    for (auto ent : inode_idx_) {
+        // get idxs of dirty blocks
+        vector<uint64_t> keys;
+        for (auto db_ents : dirty_block_[ent.second])
+            keys.push_back(db_ents.first);
+
+        // find latest nodes for other blocks
+        /*
+        unordered_set<string> other_nodes = find_latest_node(ent.second, keys);
+        // construct record for .head
+        string record = ent.second;
+        for (auto node : other_nodes)
+            record += " " + node;
+        record += " " + fname + ".node";
+        */
+        // record data for .node files_
+        // calc size & offset
+        // size == size of stat info, block#s, and block contents
+
+        /*
+        shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
+        string inode_data = flushed_inode->get_flush_record();
+        uint64_t size_ = flushed_inode->get_size();
+
+        */
+    }
+    // write to header
+    // first we need to create a .head file
+    // and then the .node file
+    // the .head file will contain information for indexing into .node.
+    // format for .head [inode#, offset into .node, and size]
     //
-    // close files
+    // this will require computing the offset before the .node file is made
+    // uint64_t cur_size = 0;
     return 0;
 }
 
 int
-BlockCache::load_from_disk(std::string path) {
+BlockCache::load_from_disk(string path) {
+    (void)path;
     // find latest root with the given file
     // pull each .head file
     //

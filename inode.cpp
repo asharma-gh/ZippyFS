@@ -45,7 +45,6 @@ Inode::set_mode(uint32_t mode) {
     if (S_ISDIR(mode))
         nlink_ = nlink_ < 2 ? 2 : nlink_;
     mode_ = mode;
-    //cout <<" MODE " << mode;
     ul_mtime_ = Util::get_time();
 
 }
@@ -168,6 +167,10 @@ string
 Inode::get_record() {
     return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " " + to_string(deleted_) + "\n");
 }
+string
+Inode::get_flush_record() {
+    return "";
+}
 
 void
 Inode::add_block(uint64_t block_index, shared_ptr<Block> block) {
@@ -219,7 +222,7 @@ Inode::remake_inode() {
 
 int
 Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
-    cout << "READING FROM INODE " << endl;
+    cout << "READING FROM INODE SIZE " << size << endl;
     // get blocks
     uint64_t read_bytes = 0;
     bool offsetted = false;
@@ -236,8 +239,7 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
             offset_amt = offset < Block::get_logical_size() ? offset : (offset % Block::get_logical_size());
             offsetted = true;
         }
-        cout << "BLOCK SIZE " << block->get_actual_size()
-             << endl;
+        cout << "BLOCK SIZE " << block->get_actual_size() << endl;
         uint64_t blksz = block->get_actual_size();
         uint64_t ii = offset_amt;
         for (auto byte = block_data.begin() + offset_amt;
@@ -246,7 +248,6 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
             buf[read_bytes++] = *byte;
         }
     }
-    //assert(read_bytes == size);
     cout << "DONE READING FROM INODE " << endl;
     cout << "READ BYTES: " << read_bytes << endl;
     return size;
@@ -280,6 +281,5 @@ Inode::flush_to_fd(int fd) {
             perror("Error flushing block to file\n");
         free(buf);
     }
-
     return 0;
 }

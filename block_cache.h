@@ -177,5 +177,8 @@ class BlockCache {
 
     /* "big enough" size of this block cache */
     const uint64_t MAX_SIZE = 250;
+
+    /** finds the latest set of nodes for the given file with blocks indexes not in the given vector*/
+    std::unordered_set<std::string> find_latest_node(std::string inode_idx, std::vector<uint64_t> block_idx);
 };
 #endif

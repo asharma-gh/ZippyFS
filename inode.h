@@ -160,8 +160,16 @@ class Inode {
     /**
      * Returns the record of this inode
      * Format: path - mode - nlink - ul_mtime - ul_ctime - ts_mtime - ts_ctime - size - links - block_data
+     * TODO: DELETE THIS!
      */
     std::string get_record();
+
+    /**
+     * Returns the information needed for this inode
+     * for .node files
+     * Format is something like: [number] [stat info] [block data]
+     */
+    std::string get_flush_record();
 
     /** deletes this inode */
     void delete_inode();
