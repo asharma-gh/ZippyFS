@@ -113,13 +113,12 @@ main(int argc, char *argv[]) {
     }
 
     // construct root dir for nodes
-    // TODO: finish making root dir for nodes
-    /*
     char root_dir_path[strlen(zip_dir) + 10];
     memset(root_dir_path, 0, sizeof(root_dir_path) / sizeof(char));
     sprintf(root_dir_path, "%sroot", zip_dir);
-    */
-    // mkdir (root_dir_path, S_IRWXU);
+    if (mkdir(root_dir_path, S_IRWXU))
+        printf("error making dir of roots ERRNO%s\n", strerror(errno));
+
 
     // only do this once per machine
     if (made_dir) {

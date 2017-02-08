@@ -412,47 +412,35 @@ BlockCache::flush_to_disk() {
     // create path to .head file
     string fname = Util::generate_rand_hex_name();
     string path_to_head = path_to_disk_ + fname + ".head";
-    // int headfd = ::open(path_to_head.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR);
-
-    // look for previous latest .head for the current file
+    string path_to_node = path_to_disk_ + fname + ".node";
+    int headfd = ::open(path_to_head.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR);
+    int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR);
+    // TODO: look for previous latest .head for the current file
     // copy over those .node file names
     // FORMAT:
-    // [inode idx] [list-of .node]
+    // [inode idx] [list-of (.node, offset#)]
     //
+    // write to .node:
     for (auto ent : inode_idx_) {
         // get idxs of dirty blocks
-        vector<uint64_t> keys;
+        vector<uint64_t> db_idxs;
         for (auto db_ents : dirty_block_[ent.second])
-            keys.push_back(db_ents.first);
+            db_idxs.push_back(db_ents.first);
 
-        // find latest nodes for other blocks
-        /*
-        unordered_set<string> other_nodes = find_latest_node(ent.second, keys);
-        // construct record for .head
-        string record = ent.second;
-        for (auto node : other_nodes)
-            record += " " + node;
-        record += " " + fname + ".node";
-        */
+        uint64_t curr_offset = 0;
+
         // record data for .node files_
-        // calc size & offset
-        // size == size of stat info, block#s, and block contents
 
-        /*
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
-        uint64_t size_ = flushed_inode->get_size();
+        uint64_t size_ = inode_data.size();
+        uint64_t pos = curr_offset + size_;
 
-        */
+
+
     }
-    // write to header
-    // first we need to create a .head file
-    // and then the .node file
-    // the .head file will contain information for indexing into .node.
-    // format for .head [inode#, offset into .node, and size]
-    //
-    // this will require computing the offset before the .node file is made
-    // uint64_t cur_size = 0;
+    close(headfd);
+    close(nodefd);
     return 0;
 }
 
