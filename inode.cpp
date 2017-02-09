@@ -169,14 +169,17 @@ Inode::get_record() {
 }
 string
 Inode::get_flush_record() {
-    string rec = path_ + " " + to_string(mode_) + " "
-                 + to_string(nlink_) + " " + to_string(ul_mtime_) + " "
-                 + to_string(ul_ctime_) + " "
+    string rec = path_ + " "
+                 + to_string(mode_) + " "
+                 + to_string(nlink_)
+                 + " " + to_string(ul_mtime_)
+                 + " " + to_string(ul_ctime_) + " "
                  + " " + to_string(size_) + "\n";
 
     for (auto ent : links_) {
         rec += " " + ent;
     }
+
     rec += " ";
     for (auto ent : blocks_) {
         auto bl_data = ent.second->get_data();
@@ -188,6 +191,7 @@ Inode::get_flush_record() {
         }
         rec += "\n";
     }
+    cout << "RECORD FOR THIS INODE " << rec << endl;
     return rec;
 }
 

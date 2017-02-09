@@ -415,28 +415,27 @@ BlockCache::flush_to_disk() {
     string path_to_node = path_to_disk_ + fname + ".node";
     int headfd = ::open(path_to_head.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR);
     int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR);
+
     // TODO: look for previous latest .head for the current file
-    // copy over those .node file names
-    // FORMAT:
-    // [inode idx] [list-of (.node, offset#)]
+    //  - read each .head file, looking for this inode idx
+    //  - record each (.node, offset) pair
     //
-    // write to .node:
+    // ===FORMAT for .head===
+    // [inode idx] [list-of (.node, offset#)]
+
+    // create entry for .node file
+    uint64_t offset_into_node = 0;
     for (auto ent : inode_idx_) {
         // get idxs of dirty blocks
         vector<uint64_t> db_idxs;
         for (auto db_ents : dirty_block_[ent.second])
             db_idxs.push_back(db_ents.first);
 
-        uint64_t curr_offset = 0;
-
-        // record data for .node files_
-
+        // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
-        uint64_t size_ = inode_data.size();
-        uint64_t pos = curr_offset + size_;
-
-
+        uint64_t size = inode_data.size();
+        offset_into_node += size;
 
     }
     close(headfd);
