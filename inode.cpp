@@ -169,6 +169,11 @@ Inode::get_record() {
 }
 string
 Inode::get_flush_record() {
+    /** FORMAT:
+     * [path] [mode] [# links] [mtime] [ctime] [size] \n
+     * [block idx] [offset#]
+     * ...till end
+     */
     string rec = path_ + " "
                  + to_string(mode_) + " "
                  + to_string(nlink_)
@@ -176,23 +181,31 @@ Inode::get_flush_record() {
                  + " " + to_string(ul_ctime_) + " "
                  + to_string(size_) + "\n";
 
-    //TODO: flesh out how links will work
-    // for (auto ent : links_) {
-    //   rec += " " + ent;
-    // }
+    uint64_t curr_offset = rec.size();
+    /** map of (block idx, offset) for record */
+    unordered_map<uint64_t, uint64_t> offsets_for_blocks;
 
-    // TODO: add block indexes and offsets into file format!!
+    string block_rec;
     for (auto ent : blocks_) {
         auto bl_data = ent.second->get_data();
+        offsets_for_blocks[ent.first] = curr_offset;
+
+        curr_offset += to_string(ent.first).size();
+        curr_offset += ent.second->get_actual_size();
+
         // first print bl idx \n, then data
-        rec += to_string(ent.first);
-        rec += "\n";
+        block_rec += to_string(ent.first);
+        block_rec += "\n";
         for (auto blk : bl_data) {
-            rec += blk;
+            block_rec += blk;
         }
-        rec += "\n";
+        block_rec += "\n";
+        curr_offset += 2; // for \n's
     }
     cout << "RECORD FOR THIS INODE " << rec << endl;
+    for (auto ent : offsets_for_blocks) {
+        cout << "Block offset for: " << ent.first << " is " << ent.second <<  endl;
+    }
     return rec;
 }
 
