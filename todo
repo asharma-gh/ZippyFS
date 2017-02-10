@@ -28,6 +28,11 @@ Issue:
 - finding old info for an inode in new root
 solution: copy old info over, append new .head file
 
+Issue:
+- finding block data in a .node file efficiently
+solution: create a .data file containing the block data for the inode,
+            .node files contain a table of offsets into the .data file. Constant time yo
+
 What this should look like:
 [list-of root], root is [list of (inode#, list of .head)]
 and a [list of .head + .node]
