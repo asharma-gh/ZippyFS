@@ -322,6 +322,8 @@ BlockCache::flush_to_shdw(int on_close) {
             continue;
         cout << "IS NOT DIRTY" << endl;
 
+        cout << "==== PRINTING OUT FLUSH RECORD ====" << endl;
+        cout << ent->get_flush_record() << endl;
         // open index file
         int idx_fd = ::open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
         if (idx_fd == -1)

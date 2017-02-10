@@ -174,13 +174,14 @@ Inode::get_flush_record() {
                  + to_string(nlink_)
                  + " " + to_string(ul_mtime_)
                  + " " + to_string(ul_ctime_) + " "
-                 + " " + to_string(size_) + "\n";
+                 + to_string(size_) + "\n";
 
-    for (auto ent : links_) {
-        rec += " " + ent;
-    }
+    //TODO: flesh out how links will work
+    // for (auto ent : links_) {
+    //   rec += " " + ent;
+    // }
 
-    rec += " ";
+    // TODO: add block indexes and offsets into file format!!
     for (auto ent : blocks_) {
         auto bl_data = ent.second->get_data();
         // first print bl idx \n, then data
