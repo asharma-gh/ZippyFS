@@ -171,7 +171,7 @@ string
 Inode::get_flush_record() {
     /** FORMAT:
      * [path] [mode] [# links] [mtime] [ctime] [size] \n
-     * [block idx] [offset#]
+     * [block idx] [offset#]\n
      * ...till end
      */
     string rec = path_ + " "
