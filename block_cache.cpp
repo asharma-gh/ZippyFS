@@ -424,9 +424,6 @@ BlockCache::flush_to_disk() {
     uint64_t offset_into_data = 0;
     string header_input;
     uint64_t offset_into_node = 0;
-    /** map (inode idx, offset# into .node) */
-    map<string, uint64_t> offsets_into_node;
-
     /**
      * This loop writes to the .node and .data files
      * .head file is written to last.
@@ -456,16 +453,20 @@ BlockCache::flush_to_disk() {
                      + to_string(ent.second.second) + "\n";
         }
         offset_into_node += table.size();
-        offsets_into_node[ent.second] = offset_into_node;
-
         // write to .node
         if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
         // write to .data
         flushed_inode->flush_to_fd(datafd);
 
+        // write to .head
+        string head_entry = ent.second + " " + to_string(offset_into_node) + "\n";
+
+        if (pwrite(headfd, head_entry.c_str(), head_entry.size() * sizeof(char), 0) == -1)
+            cout << "ERROR writing to .head ERRNO: " << strerror(errno) << endl;
+
+
     }
-    // write to .head
     close(headfd);
     close(nodefd);
     close(datafd);
