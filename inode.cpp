@@ -171,7 +171,7 @@ string
 Inode::get_flush_record() {
     /** FORMAT:
      * [path] [mode] [# links] [mtime] [ctime] [size] \n
-     * [block offset table]
+     * [block offset table]  ==> (block#, offset into .data)\n
      */
     string rec = path_ + " "
                  + to_string(mode_) + " "
@@ -190,7 +190,7 @@ Inode::get_flush_record() {
 
         curr_offset += to_string(ent.first).size();
         curr_offset += ent.second->get_actual_size();
-        curr_offset += 2; // for \n's
+        curr_offset += 1;
     }
     for (auto ent : offsets_for_blocks) {
         cout << "Block # " << ent.first << " Offset # " << ent.second << endl;

@@ -13,7 +13,8 @@ Initial Plan for data format (simulate zip archives, but without the zipping!!)
 - so by flushing the map, 2 files are created: .head and .node
 - the .head and .node files are named the same, and a .head file contains the offset# and size for inode information within the .node files
 (.head is == to .idx and .node == .zip)
-- each .node file contains the information for the flushed inodes: inode stat info, block#s and block contents
+- each .node file contains the information for the flushed inodes: inode stat info, block#s, offsets into .data files
+- each .data file contains file data. .node files contain indexes into the .data files
 
 Issue:
 - putting together a file with blocks spread across .node files
@@ -35,7 +36,7 @@ solution: create a .data file containing the block data for the inode,
 
 What this should look like:
 [list-of root], root is [list of (inode#, list of .head)]
-and a [list of .head + .node]
+and a [list of .head + (.node, .data)]
 
 searching for a file is pretty slow, but moving from this to a tree shouldn't be that bad. Roots can be cached
 
