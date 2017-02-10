@@ -24,7 +24,6 @@ BlockCache::remove(string path) {
         if (find(vec.begin(), vec.end(), path) != vec.end())
             entry.second->dec_link(path);
     }
-    // new!
     get_inode_by_path(path)->delete_inode();
     size_--;
     return 0;
@@ -54,8 +53,6 @@ BlockCache::rename(string from, string to) {
 
     if (res == -1)
         make_file(to, get_inode_by_path(from)->get_mode(), 1);
-
-    // new!
     shared_ptr<Inode> nto_inode(new Inode(to, *get_inode_by_path(from)));
     get_inode_by_path(from)->delete_inode();
     inode_idx_[to] = nto_inode->get_id();
@@ -75,7 +72,6 @@ BlockCache::symlink(string from, string to) {
     return 0;
 }
 
-// new!
 int
 BlockCache::readlink(std::string path, uint8_t* buf, uint64_t size) {
     if (in_cache(path) == -1
@@ -172,7 +168,6 @@ BlockCache::load_from_shdw(string path) {
     return 0;
 }
 
-// new!
 int
 BlockCache::getattr(string path, struct stat* st) {
     if ((in_cache(path) == -1 && load_from_shdw(path) == -1)
@@ -271,7 +266,6 @@ BlockCache::read(string path, uint8_t* buf, uint64_t size, uint64_t offset) {
         cout << " READ: loading from shdw " << path << endl;
         load_from_shdw(path);
     }
-    //new!
     return get_inode_by_path(path)->read(buf, size, offset);
 }
 
@@ -280,7 +274,6 @@ BlockCache::truncate(string path, uint64_t size) {
     if (in_cache(path) == -1)
         return -1;
 
-    //new!
     get_inode_by_path(path)->set_size(size);
     return 0;
 }
@@ -415,8 +408,10 @@ BlockCache::flush_to_disk() {
     string fname = Util::generate_rand_hex_name();
     string path_to_head = path_to_disk_ + fname + ".head";
     string path_to_node = path_to_disk_ + fname + ".node";
-    int headfd = ::open(path_to_head.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR);
-    int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR);
+    string path_to_data = path_to_disk_ + fname + ".data";
+    int headfd = ::open(path_to_head.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+    int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+    int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
 
     // TODO: look for previous latest .head for the current file
     //  - read each .head file, looking for this inode idx
@@ -427,15 +422,26 @@ BlockCache::flush_to_disk() {
 
     // create entry for .node file
     uint64_t offset_into_data = 0;
+    string header_input;
+    uint64_t offset_into_node = 0;
+    /** map (inode idx, offset# into .node) */
+    map<string, uint64_t> offsets_into_node;
+
+    /**
+     * This loop writes to the .node and .data files
+     * .head file is written to last.
+     */
     for (auto ent : inode_idx_) {
         // get idxs of dirty blocks
+        /*
         vector<uint64_t> db_idxs;
         for (auto db_ents : dirty_block_[ent.second])
             db_idxs.push_back(db_ents.first);
-
+        */
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
+        offset_into_node += inode_data.size();
         // generate block offset table
         auto offst_mp = flushed_inode->get_offsets();
         unordered_map<uint64_t, pair<uint64_t,uint64_t>> updated_mp;
@@ -443,9 +449,26 @@ BlockCache::flush_to_disk() {
             updated_mp[ent.first] = pair<uint64_t, uint64_t>(ent.second.first + offset_into_data, ent.second.second);
         }
         offset_into_data += offst_mp.first;
+        string table;
+        for (auto ent : updated_mp) {
+            table += to_string(ent.first) + " "
+                     + to_string(ent.second.first) + " "
+                     + to_string(ent.second.second) + "\n";
+        }
+        offset_into_node += table.size();
+        offsets_into_node[ent.second] = offset_into_node;
+
+        // write to .node
+        if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
+            cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
+        // write to .data
+        flushed_inode->flush_to_fd(datafd);
+
     }
+    // write to .head
     close(headfd);
     close(nodefd);
+    close(datafd);
     return 0;
 }
 

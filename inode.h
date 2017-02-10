@@ -197,7 +197,8 @@ class Inode {
     /**
      * @return (total size of entry, map(blk#, (offset#, size)))
      */
-    std::pair<uint64_t, std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>>> get_offsets();
+    std::pair<uint64_t, std::map<uint64_t, std::pair<uint64_t, uint64_t>>> get_offsets();
+
 
     /**
      * returns the id for this inode
