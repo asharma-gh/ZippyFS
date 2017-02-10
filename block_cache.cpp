@@ -426,7 +426,7 @@ BlockCache::flush_to_disk() {
     // [inode idx] [list-of (.node, offset#)]
 
     // create entry for .node file
-    uint64_t offset_into_node = 0;
+    uint64_t offset_into_data = 0;
     for (auto ent : inode_idx_) {
         // get idxs of dirty blocks
         vector<uint64_t> db_idxs;
@@ -436,9 +436,13 @@ BlockCache::flush_to_disk() {
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
-        uint64_t size = inode_data.size();
-        offset_into_node += size;
-
+        // generate block offset table
+        auto offst_mp = flushed_inode->get_offsets();
+        unordered_map<uint64_t, uint64_t> updated_mp;
+        for (auto ent : offst_mp.second) {
+            updated_mp[ent.first] = ent.second + offset_into_data;
+        }
+        offset_into_data += offst_mp.first;
     }
     close(headfd);
     close(nodefd);

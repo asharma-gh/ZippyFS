@@ -194,6 +194,8 @@ class Inode {
      */
     void undo_dirty();
 
+    std::pair<uint64_t, std::unordered_map<uint64_t, uint64_t>> get_offsets();
+
     /**
      * returns the id for this inode
      */

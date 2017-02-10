@@ -180,6 +180,12 @@ Inode::get_flush_record() {
                  + " " + to_string(ul_ctime_) + " "
                  + to_string(size_) + "\n";
 
+    cout << "RECORD FOR THIS INODE " << rec << endl;
+
+    return rec;
+}
+pair<uint64_t, unordered_map<uint64_t, uint64_t>>
+Inode::get_offsets() {
     uint64_t curr_offset = 0;
     /** map of (block idx, offset) for record */
     unordered_map<uint64_t, uint64_t> offsets_for_blocks;
@@ -190,14 +196,13 @@ Inode::get_flush_record() {
 
         curr_offset += to_string(ent.first).size();
         curr_offset += ent.second->get_actual_size();
-        curr_offset += 1;
     }
     for (auto ent : offsets_for_blocks) {
         cout << "Block # " << ent.first << " Offset # " << ent.second << endl;
     }
-    cout << "RECORD FOR THIS INODE " << rec << endl;
 
-    return rec;
+    return pair<uint64_t, unordered_map<uint64_t, uint64_t>>(curr_offset, offsets_for_blocks);
+
 }
 
 void
