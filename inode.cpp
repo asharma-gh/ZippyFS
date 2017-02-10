@@ -184,24 +184,25 @@ Inode::get_flush_record() {
 
     return rec;
 }
-pair<uint64_t, unordered_map<uint64_t, uint64_t>>
+pair<uint64_t, unordered_map<uint64_t, pair<uint64_t, uint64_t>>>
 Inode::get_offsets() {
     uint64_t curr_offset = 0;
     /** map of (block idx, offset) for record */
-    unordered_map<uint64_t, uint64_t> offsets_for_blocks;
+    unordered_map<uint64_t, pair<uint64_t, uint64_t>> offsets_for_blocks;
 
     for (auto ent : blocks_) {
         auto bl_data = ent.second->get_data();
-        offsets_for_blocks[ent.first] = curr_offset;
+        offsets_for_blocks[ent.first] = pair<uint64_t, uint64_t>(curr_offset, ent.second->get_actual_size());
 
         curr_offset += to_string(ent.first).size();
         curr_offset += ent.second->get_actual_size();
+        curr_offset += 1; // for \n
     }
     for (auto ent : offsets_for_blocks) {
-        cout << "Block # " << ent.first << " Offset # " << ent.second << endl;
+        cout << "Block # " << ent.first << " Offset # " << ent.second.first << endl;
     }
 
-    return pair<uint64_t, unordered_map<uint64_t, uint64_t>>(curr_offset, offsets_for_blocks);
+    return pair<uint64_t, unordered_map<uint64_t, pair<uint64_t, uint64_t>>>(curr_offset, offsets_for_blocks);
 
 }
 

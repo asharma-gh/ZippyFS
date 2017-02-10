@@ -438,9 +438,9 @@ BlockCache::flush_to_disk() {
         string inode_data = flushed_inode->get_flush_record();
         // generate block offset table
         auto offst_mp = flushed_inode->get_offsets();
-        unordered_map<uint64_t, uint64_t> updated_mp;
+        unordered_map<uint64_t, pair<uint64_t,uint64_t>> updated_mp;
         for (auto ent : offst_mp.second) {
-            updated_mp[ent.first] = ent.second + offset_into_data;
+            updated_mp[ent.first] = pair<uint64_t, uint64_t>(ent.second.first + offset_into_data, ent.second.second);
         }
         offset_into_data += offst_mp.first;
     }
