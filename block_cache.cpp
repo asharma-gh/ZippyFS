@@ -301,10 +301,11 @@ BlockCache::open(string path) {
 int
 BlockCache::flush_to_shdw(int on_close) {
     clear_shdw();
-    flush_to_disk();
     cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE && on_close == 0)
         return -1;
+    flush_to_disk();
+
     // make index file for cache
     string idx_path = path_to_shdw_ + "index.idx";
     cout << "PATH TO SHDW " << idx_path << endl;
@@ -439,6 +440,8 @@ BlockCache::flush_to_disk() {
         for (auto db_ents : dirty_block_[ent.second])
             db_idxs.push_back(db_ents.first);
         */
+        // make .index entry
+        string index_entry = ent.first + " " + ent.second + " " + to_string(offset_into_node) + "\n";
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
@@ -466,8 +469,6 @@ BlockCache::flush_to_disk() {
         flushed_inode->flush_to_fd(datafd);
 
         // write to .index
-        string index_entry = ent.first + " " + ent.second + " " + to_string(offset_into_node) + "\n";
-
         if (pwrite(indexfd, index_entry.c_str(), index_entry.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .index ERRNO: " << strerror(errno) << endl;
 
