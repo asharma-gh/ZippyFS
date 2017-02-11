@@ -7,7 +7,10 @@ using namespace std;
 
 // TODO: get rid of shadow directory
 BlockCache::BlockCache(string path_to_shdw)
-    : path_to_shdw_(path_to_shdw) {}
+    : path_to_shdw_(path_to_shdw) {
+
+    path_to_disk_ = "/home/arvin/FileSystem/zipfs/o/dir/root/";
+}
 
 BlockCache::BlockCache(string path_to_disk, bool f) :
     path_to_disk_(path_to_disk) {
@@ -298,6 +301,7 @@ BlockCache::open(string path) {
 int
 BlockCache::flush_to_shdw(int on_close) {
     clear_shdw();
+    flush_to_disk();
     cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE && on_close == 0)
         return -1;
@@ -418,7 +422,7 @@ BlockCache::flush_to_disk() {
     //  - record each (.node, offset) pair
     //
     // ===FORMAT for .head===
-    // [inode idx] [list-of (.node, offset#)]
+    // [path] [inode idx] [list-of (.node, offset#)]
 
     // create entry for .node file
     uint64_t offset_into_data = 0;
@@ -456,11 +460,13 @@ BlockCache::flush_to_disk() {
         // write to .node
         if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
+        if (pwrite(nodefd, table.c_str(), table.size() * sizeof(char), 0) == -1)
+            cout << "ERROR writing TABLE to .node ERRNO: " << strerror(errno);
         // write to .data
         flushed_inode->flush_to_fd(datafd);
 
         // write to .head
-        string head_entry = ent.second + " " + to_string(offset_into_node) + "\n";
+        string head_entry = ent.first + " " + ent.second + " " + to_string(offset_into_node) + "\n";
 
         if (pwrite(headfd, head_entry.c_str(), head_entry.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .head ERRNO: " << strerror(errno) << endl;
