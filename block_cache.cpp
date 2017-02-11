@@ -410,18 +410,18 @@ int
 BlockCache::flush_to_disk() {
     // create path to .head file
     string fname = Util::generate_rand_hex_name();
-    string path_to_head = path_to_disk_ + fname + ".head";
+    string path_to_index = path_to_disk_ + fname + ".index";
     string path_to_node = path_to_disk_ + fname + ".node";
     string path_to_data = path_to_disk_ + fname + ".data";
-    int headfd = ::open(path_to_head.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+    int indexfd = ::open(path_to_index.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
 
-    // TODO: look for previous latest .head for the current file
+    // TODO: look for previous latest .index for the current file
     //  - read each .head file, looking for this inode idx
     //  - record each (.node, offset) pair
     //
-    // ===FORMAT for .head===
+    // ===FORMAT for .index===
     // [path] [inode idx] [list-of (.node, offset#)]
 
     // create entry for .node file
@@ -465,15 +465,15 @@ BlockCache::flush_to_disk() {
         // write to .data
         flushed_inode->flush_to_fd(datafd);
 
-        // write to .head
-        string head_entry = ent.first + " " + ent.second + " " + to_string(offset_into_node) + "\n";
+        // write to .index
+        string index_entry = ent.first + " " + ent.second + " " + to_string(offset_into_node) + "\n";
 
-        if (pwrite(headfd, head_entry.c_str(), head_entry.size() * sizeof(char), 0) == -1)
-            cout << "ERROR writing to .head ERRNO: " << strerror(errno) << endl;
+        if (pwrite(indexfd, index_entry.c_str(), index_entry.size() * sizeof(char), 0) == -1)
+            cout << "ERROR writing to .index ERRNO: " << strerror(errno) << endl;
 
 
     }
-    close(headfd);
+    close(indexfd);
     close(nodefd);
     close(datafd);
     return 0;
