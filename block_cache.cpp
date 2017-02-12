@@ -441,14 +441,23 @@ BlockCache::flush_to_disk() {
         for (auto db_ents : dirty_block_[ent.second])
             db_idxs.push_back(db_ents.first);
         */
-        // make .index entry
-        string index_entry = ent.first + " " + ent.second + " " + to_string(offset_into_node) + "\n";
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
         offset_into_node += inode_data.size();
-        // generate block offset table
+        // get offset map
         auto offst_mp = flushed_inode->get_offsets();
+        // make .index entry
+        struct stat st;
+        flushed_inode->stat(&st);
+        string index_entry = ent.first + " " + ent.second + " " + to_string(st.st_mtime) + " [";
+        for (auto ent : offst_mp.second) {
+            index_entry += " " + to_string(ent.first);
+        }
+        index_entry += " ] " + to_string(offset_into_node) + "\n";
+
+        // generate block offset table
+
         unordered_map<uint64_t, pair<uint64_t,uint64_t>> updated_mp;
         for (auto ent : offst_mp.second) {
             updated_mp[ent.first] = pair<uint64_t, uint64_t>(ent.second.first + offset_into_data, ent.second.second);
