@@ -68,7 +68,6 @@ BlockCache::symlink(string from, string to) {
     shared_ptr<Inode> ll(new Inode(from));
     ll->set_mode(S_IFLNK | S_IRUSR | S_IWUSR);
 
-    // new!
     inode_idx_[to] = ll->get_id();
     inode_ptrs_[ll->get_id()] = ll;
 
@@ -422,8 +421,10 @@ BlockCache::flush_to_disk() {
     //  - read each .head file, looking for this inode idx
     //  - record each (.node, offset) pair
     //
+    //  - add checksums for each files
+    //
     // ===FORMAT for .index===
-    // [path] [inode idx] [list-of (.node, offset#)]
+    // [path] [inode idx] [inode mtime]  [list-of (.node, offset#)]
 
     // create entry for .node file
     uint64_t offset_into_data = 0;
@@ -471,9 +472,8 @@ BlockCache::flush_to_disk() {
         // write to .index
         if (pwrite(indexfd, index_entry.c_str(), index_entry.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .index ERRNO: " << strerror(errno) << endl;
-
-
     }
+    // TODO: stuff with the .root files
     close(indexfd);
     close(nodefd);
     close(datafd);

@@ -169,7 +169,8 @@ Inode::get_record() {
 }
 string
 Inode::get_flush_record() {
-    /** FORMAT:
+    /**
+     * FORMAT:
      * [path] [mode] [# links] [mtime] [ctime] [size] \n
      * [block offset table]  ==> (block#, offset into .data)\n
      */

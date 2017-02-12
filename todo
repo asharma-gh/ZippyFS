@@ -34,6 +34,11 @@ Issue:
 solution: create a .data file containing the block data for the inode,
             .node files contain a table of offsets into the .data file. Constant time yo
 
+Issue:
+- finding latest version of a block
+solution: time stamp each header file. Put the list of blocks the inode has in the header file.
+- when looking for a particular block, scan the .root file, then scan each .header file.
+
 What this should look like:
 [list-of root], root is [list of (inode#, list of .head)]
 and a [list of .head + (.node, .data)]
