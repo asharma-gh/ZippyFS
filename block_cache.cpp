@@ -100,7 +100,6 @@ BlockCache::make_file(string path, mode_t mode, bool dirty) {
     size_++;
     inode_idx_[path] = ptr->get_id();
     inode_ptrs_[ptr->get_id()] = ptr;
-    // grab blocks
     return 0;
 }
 
@@ -413,9 +412,12 @@ BlockCache::flush_to_disk() {
     string path_to_index = path_to_disk_ + fname + ".index";
     string path_to_node = path_to_disk_ + fname + ".node";
     string path_to_data = path_to_disk_ + fname + ".data";
+    string path_to_root = path_to_disk_ + fname + ".root";
+
     int indexfd = ::open(path_to_index.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+    int rootfd = ::open(path_to_root.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
 
     // TODO: look for previous latest .index for the current file
     //  - read each .head file, looking for this inode idx
@@ -430,6 +432,13 @@ BlockCache::flush_to_disk() {
     uint64_t offset_into_data = 0;
     string header_input;
     uint64_t offset_into_node = 0;
+
+    /** the input for the .root file.
+     * Every "flush" constructs a new root
+     * TODO: have this root contain previous .index / .nodes
+     */
+    string root_input;
+
     /**
      * This loop writes to the .node and .data files
      * .head file is written to last.
@@ -481,11 +490,22 @@ BlockCache::flush_to_disk() {
         // write to .index
         if (pwrite(indexfd, index_entry.c_str(), index_entry.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .index ERRNO: " << strerror(errno) << endl;
+
+        // finally, construct input for .root
+        // TODO: redo the format. For now:
+        // [path] [path to index]
+        root_input += ent.first + " " + path_to_index + "\n";
     }
     // TODO: stuff with the .root files
+    // pull prev. root, copy all .head
+    // write to root
+    if (pwrite(rootfd, root_input.c_str(), root_input.size() * sizeof(char), 0) == -1)
+        cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
+
     close(indexfd);
     close(nodefd);
     close(datafd);
+    close(rootfd);
     return 0;
 }
 
