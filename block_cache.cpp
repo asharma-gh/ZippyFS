@@ -535,3 +535,10 @@ BlockCache::load_from_disk(string path) {
     // add inode to map
     return 0;
 }
+
+vector<string>
+find_entry_in_root(int rootfd, string path) {
+    // iterate thru each line in root file
+    // if path is in the line, collect headers in vector
+    // return vector
+}

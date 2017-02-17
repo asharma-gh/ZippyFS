@@ -180,5 +180,13 @@ class BlockCache {
 
     /** finds the latest set of nodes for the given file with blocks indexes not in the given vector*/
     std::unordered_set<std::string> find_latest_node(std::string inode_idx, std::vector<uint64_t> block_idx);
+
+    /**
+     * @param rootfd is the file descriptor for the root file
+     * @param path is the path of the file to find
+     * @returns the list of headers for the given path entry in the given .root file
+     * If this list is empty, then the path entry did not exist
+     */
+    std::vector<std::string> find_entry_in_root(int rootfd, std::string path);
 };
 #endif
