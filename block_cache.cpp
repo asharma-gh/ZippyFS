@@ -513,6 +513,17 @@ int
 BlockCache::load_from_disk(string path) {
     (void)path;
     // find latest root with the given file
+
+    // open directory of roots
+    // iterate thru each file
+    // if we find a root, open it and get the entry of this file if it exists
+    // open the corresponding header files
+    // open the corresponding .node files
+    // open the corresponding .data files
+    // load blocksx
+
+
+
     // pull each .head file
     //
     // if none exist return -1
