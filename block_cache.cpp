@@ -547,8 +547,17 @@ BlockCache::load_from_disk(string path) {
         //
         // open the index files
         for (string index : index_files) {
-            // open the header file
+            // find entry in index
+            string ent = find_entry_in_index(index, path);
+            if (ent.size() == 0) {
+                cout << "ERROR GETTING ENTRY IN INDEX" << endl;
+                return -1;
+            }
             // extract offsets
+            char offset_list[ent.size()];
+            unsigned long long offset_into_node, node_ent_size, ent_mtime = 0;
+            sscanf(ent.c_str(), "%*s %*s %llu %[^]] %llu %llu", &ent_mtime, offset_list, &offset_into_node, &node_ent_size);
+            cout << "EXTRACTED " << offset_list << " FROM THE ENT" << endl;
             // find the .node
             // open the .node, offset into it
             // make inode for it
@@ -563,10 +572,10 @@ BlockCache::load_from_disk(string path) {
 }
 
 vector<string>
-BlockCache::find_entry_in_root(string root_path, string path) {
+BlockCache::find_entry_in_root(string root_name, string path) {
     vector<string> index_files;
     (void)path;
-    string ab_root_path = path_to_disk_ + root_path;
+    string ab_root_path = path_to_disk_ + root_name;
     // iterate thru each entry in this root file
     ifstream in_file(ab_root_path);
     string curline;
@@ -581,4 +590,19 @@ BlockCache::find_entry_in_root(string root_path, string path) {
     // add all headers to vector
     // return vector
     return index_files;
+}
+
+string
+BlockCache::find_entry_in_index(string index_name, string path) {
+    string path_to_index = path_to_disk_ + index_name;
+    ifstream in_file(path_to_index);
+    string curline;
+    while (getline(in_file, curline)) {
+        char cur_path[PATH_MAX];
+        sscanf(curline.c_str(), "%s %*s", cur_path);
+        if (strcmp(cur_path, path.c_str()) == 0)
+            return curline;
+
+    }
+    return "";
 }

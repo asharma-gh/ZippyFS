@@ -188,5 +188,13 @@ class BlockCache {
      * If this list is empty, then the path entry did not exist
      */
     std::vector<std::string> find_entry_in_root(std::string root_name, std::string path);
+
+    /**
+     * finds the given entry in the given index file
+     * @param index_name is the name of the index file
+     * @param path is the file to find
+     * @return the entry for the given file in the given index
+     */
+    std::string find_entry_in_index(std::string index_name, std::string path);
 };
 #endif
