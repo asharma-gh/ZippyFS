@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <stdlib.h>
 #include <libgen.h>
+#include <dirent.h>
 #include <cerrno>
 #include <mutex>
 #include <algorithm>

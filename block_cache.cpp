@@ -515,30 +515,48 @@ BlockCache::load_from_disk(string path) {
     // find latest root with the given file
 
     // open directory of roots
-    // iterate thru each file
-    // if we find a root, open it and get the entry of this file if it exists
-    // open the corresponding header files
-    // open the corresponding .node files
-    // open the corresponding .data files
-    // load blocksx
+    DIR* root_dir = opendir(path_to_disk_.c_str());
+    if (root_dir == NULL) {
+        cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
+        return -1;
+    }
 
 
+    struct dirent* entry;
+    string entry_name;
+    // iterate thru each entry in root
+    while ((entry = ::readdir(root_dir)) != NULL) {
+        entry_name = entry->d_name;
 
-    // pull each .head file
-    //
-    // if none exist return -1
-    //
-    // make an inode
-    // for each .head file open and read the corresponding data
-    // into inode
-    //
-    // add inode to map
+        // if this file is a .root
+        // check if it contains this path
+        //
+        // if it does, collect the headers for it
+        //
+        // open the header files
+        //
+        // open .node files
+        // make inode with the inode info
+        //
+        // open .data files
+        //
+        // load corresponding blocks to memory
+        //
+        // and we're done!
+    }
     return 0;
+
 }
 
 vector<string>
-find_entry_in_root(int rootfd, string path) {
-    // iterate thru each line in root file
-    // if path is in the line, collect headers in vector
+BlockCache::find_entry_in_root(int rootfd, string path) {
+    vector<string> header_files;
+    (void)rootfd;
+    (void)path;
+
+    // iterate thru each entry in this root file
+    // if we find an entry with this path
+    // add all headers to vector
     // return vector
+    return header_files;
 }
