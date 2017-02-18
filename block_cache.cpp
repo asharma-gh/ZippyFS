@@ -426,7 +426,7 @@ BlockCache::flush_to_disk() {
     //  - add checksums for each files
     //
     // ===FORMAT for .index===
-    // [path] [inode idx] [inode mtime]  [list-of (.node, offset#)]
+    // [path] [inode idx] [inode mtime]  [block #s] [offset] [size]
 
     // create entry for .node file
     uint64_t offset_into_data = 0;
@@ -453,7 +453,6 @@ BlockCache::flush_to_disk() {
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
-        offset_into_node += inode_data.size();
         // get offset map
         auto offst_mp = flushed_inode->get_offsets();
         // make .index entry
@@ -463,7 +462,7 @@ BlockCache::flush_to_disk() {
         for (auto ent : offst_mp.second) {
             index_entry += " " + to_string(ent.first);
         }
-        index_entry += " ] " + to_string(offset_into_node) + "\n";
+        index_entry += " ] " + to_string(offset_into_node);
 
         // generate block offset table
 
@@ -478,7 +477,13 @@ BlockCache::flush_to_disk() {
                      + to_string(ent.second.first) + " "
                      + to_string(ent.second.second) + "\n";
         }
-        offset_into_node += table.size();
+        //compute offset into node, node entry size
+        uint64_t node_ent_size = table.size() + inode_data.size();
+        offset_into_node += node_ent_size;
+
+        // write node entry size to index entry
+        index_entry += + " " + to_string(node_ent_size) + "\n";
+
         // write to .node
         if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
@@ -545,7 +550,10 @@ BlockCache::load_from_disk(string path) {
         //
         // open the index files
         for (string index : index_files) {
-            // open the .node
+            // open the header file
+            // extract offsets
+            // find the .node
+            // open the .node, offset into it
             // make inode for it
             //
             // open .data
