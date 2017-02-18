@@ -456,9 +456,7 @@ BlockCache::flush_to_disk() {
         // get offset map
         auto offst_mp = flushed_inode->get_offsets();
         // make .index entry
-        struct stat st;
-        flushed_inode->stat(&st);
-        string index_entry = ent.first + " " + ent.second + " " + to_string(st.st_mtime) + " [";
+        string index_entry = ent.first + " " + ent.second + " " + to_string(flushed_inode->get_ull_mtime()) + " [";
         for (auto ent : offst_mp.second) {
             index_entry += " " + to_string(ent.first);
         }
