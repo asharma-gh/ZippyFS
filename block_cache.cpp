@@ -498,8 +498,8 @@ BlockCache::flush_to_disk() {
 
         // finally, construct input for .root
         // TODO: redo the format. For now:
-        // [path] [path to index]
-        root_input += ent.first + " " + path_to_index + "\n";
+        // [path] [index name]
+        root_input += ent.first + " " + fname + ".index" + "\n";
     }
     // TODO: stuff with the .root files
     // pull prev. root, copy all .head
@@ -526,7 +526,6 @@ BlockCache::load_from_disk(string path) {
         return -1;
     }
 
-
     struct dirent* entry;
     const char* entry_name;
     // iterate thru each entry in root
@@ -540,9 +539,7 @@ BlockCache::load_from_disk(string path) {
 
         // we have a .root file
         // check if it contains this path
-        string path_to_root = path_to_disk_ + entry_name;
-        int rootfd = ::open(path_to_root.c_str(), O_WRONLY);
-        vector<string> index_files = find_entry_in_root(rootfd, path);
+        vector<string> index_files = find_entry_in_root(entry_name, path);
         if (index_files.size() == 0)
             // then it is not in this root file, skip it
             continue;
@@ -566,14 +563,22 @@ BlockCache::load_from_disk(string path) {
 }
 
 vector<string>
-BlockCache::find_entry_in_root(int rootfd, string path) {
-    vector<string> header_files;
-    (void)rootfd;
+BlockCache::find_entry_in_root(string root_path, string path) {
+    vector<string> index_files;
     (void)path;
-
+    string ab_root_path = path_to_disk_ + root_path;
     // iterate thru each entry in this root file
+    ifstream in_file(ab_root_path);
+    string curline;
+    while (getline(in_file, curline)) {
+        char cur_path[PATH_MAX];
+        char index_ent[FILENAME_MAX];
+        sscanf(curline.c_str(), "%s %s", cur_path, index_ent);
+        if (strcmp(cur_path, path.c_str()) == 0)
+            index_files.push_back((string)index_ent);
+    }
     // if we find an entry with this path
     // add all headers to vector
     // return vector
-    return header_files;
+    return index_files;
 }
