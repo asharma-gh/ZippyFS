@@ -523,26 +523,35 @@ BlockCache::load_from_disk(string path) {
 
 
     struct dirent* entry;
-    string entry_name;
+    const char* entry_name;
     // iterate thru each entry in root
     while ((entry = ::readdir(root_dir)) != NULL) {
         entry_name = entry->d_name;
 
-        // if this file is a .root
+        // if this file is not a .root, skip it
+        if (strlen(entry_name) < 4
+                || strcmp(entry_name + (strlen(entry_name) - 4), ".root") != 0)
+            continue;
+
+        // we have a .root file
         // check if it contains this path
+        string path_to_root = path_to_disk_ + entry_name;
+        int rootfd = ::open(path_to_root.c_str(), O_WRONLY);
+        vector<string> index_files = find_entry_in_root(rootfd, path);
+        if (index_files.size() == 0)
+            // then it is not in this root file, skip it
+            continue;
+        // if it does, collect the index files for it
         //
-        // if it does, collect the headers for it
-        //
-        // open the header files
-        //
-        // open .node files
-        // make inode with the inode info
-        //
-        // open .data files
-        //
-        // load corresponding blocks to memory
-        //
-        // and we're done!
+        // open the index files
+        for (string index : index_files) {
+            // open the .node
+            // make inode for it
+            //
+            // open .data
+            //
+            // load blocks to memory
+        }
     }
     return 0;
 
