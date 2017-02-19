@@ -439,12 +439,14 @@ BlockCache::flush_to_disk() {
      */
     string root_input;
 
+    string random;
+
     /**
      * This loop writes to the .node and .data files
      * .head file is written to last.
      */
     for (auto ent : inode_idx_) {
-
+        random = ent.first;
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
@@ -504,12 +506,15 @@ BlockCache::flush_to_disk() {
     close(nodefd);
     close(datafd);
     close(rootfd);
+
+    load_from_disk(random);
     return 0;
 }
 
 int
 BlockCache::load_from_disk(string path) {
     (void)path;
+    cout << "LOADING FROM DISK" << endl;
     // find latest root with the given file
     //uint64_t latest_time = 0;
     //string latest_file;
@@ -552,30 +557,30 @@ BlockCache::load_from_disk(string path) {
                 cout << "ERROR GETTING ENTRY IN INDEX" << endl;
                 return -1;
             }
+            cout << "ENTRY " << ent << endl;
             // extract offsets
             char offset_list[ent.size()];
             unsigned long long offset_into_node, node_ent_size, ent_mtime = 0;
-            sscanf(ent.c_str(), "%*s %*s %llu %[^]] %llu %llu", &ent_mtime, offset_list, &offset_into_node, &node_ent_size);
-            cout << "EXTRACTED " << offset_list << " FROM THE ENT" << endl;
+            sscanf(ent.c_str(), "%*s %*s %llu %[^]]] %llu %llu", &ent_mtime, offset_list, &offset_into_node, &node_ent_size);
+            cout << "EXTRACTED " << offset_list << " MTIME " << to_string(ent_mtime)
+                 << " OFFSET " << to_string(offset_into_node) << " SIZE " << to_string(node_ent_size) << "  FROM THE ENT" << endl;
 
             // find the .node
-            string path_to_node = path_to_disk_ + ent.substr(0, ent.size() -  6) + ".node";
+            string path_to_node = path_to_disk_ + index.substr(0, index.size() -  6) + ".node";
             cout << "PATH TO NODE " << path_to_node << endl;
 
             // open the .node, offset into it
-            int nodefd = ::open(path_to_node.c_str(), O_WRONLY);
+            int nodefd = ::open(path_to_node.c_str(), O_RDONLY);
             if (nodefd == -1)
                 cout << "ERROR opening .node file at " << path_to_node << " ERRNO " << strerror(errno) << endl;
-
             char buf[node_ent_size];
-
+            cout << "NODE ENT SIZE " << to_string(node_ent_size) << " OFFSET " << to_string(offset_into_node) << endl;
             if (pread(nodefd, buf, node_ent_size, offset_into_node) == -1)
                 cout << "ERROR reading .node entry ERRNO " << strerror(errno) << endl;
+            cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
 
-            if (close(nodefd) == -1)
-                cout << "ERROR closing .node file ERRNO " << strerror(errno) << endl;
             string node_contents = (string)buf;
-
+            cout << "CONTENTS " << node_contents << endl;
             // interpret node entry
             istringstream sstream(node_contents);
             string inode_info;
@@ -600,6 +605,8 @@ BlockCache::load_from_disk(string path) {
             for (auto ent : data_table) {
                 cout << "BLOCK NUM " << to_string(ent.first) << " OFFSET# " << to_string(ent.second.first) << " SIZE# " << to_string(ent.second.second) << endl;
             }
+            if (close(nodefd) == -1)
+                cout << "ERROR closing .node file ERRNO " << strerror(errno) << endl;
 
             // we now have the entire inode entry
             // record inode data
@@ -647,9 +654,10 @@ BlockCache::find_entry_in_index(string index_name, string path) {
     while (getline(in_file, curline)) {
         char cur_path[PATH_MAX];
         sscanf(curline.c_str(), "%s %*s", cur_path);
-        if (strcmp(cur_path, path.c_str()) == 0)
+        if (strcmp(cur_path, path.c_str()) == 0) {
+            in_file.close();
             return curline;
-
+        }
     }
     return "";
 }
