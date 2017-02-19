@@ -24,6 +24,7 @@
 #include <libgen.h>
 #include <fstream>
 #include <dirent.h>
+#include <inttypes.h>
 #include <cerrno>
 #include <mutex>
 #include <sstream>
