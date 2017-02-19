@@ -444,12 +444,7 @@ BlockCache::flush_to_disk() {
      * .head file is written to last.
      */
     for (auto ent : inode_idx_) {
-        // get idxs of dirty blocks
-        /*
-        vector<uint64_t> db_idxs;
-        for (auto db_ents : dirty_block_[ent.second])
-            db_idxs.push_back(db_ents.first);
-        */
+
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
@@ -477,10 +472,10 @@ BlockCache::flush_to_disk() {
         }
         //compute offset into node, node entry size
         uint64_t node_ent_size = table.size() + inode_data.size();
-        offset_into_node += node_ent_size;
+        offset_into_node += table.size() + inode_data.size();
 
         // write node entry size to index entry
-        index_entry += + " " + to_string(node_ent_size) + "\n";
+        index_entry += " " + to_string(node_ent_size) + "\n";
 
         // write to .node
         if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
@@ -556,16 +551,49 @@ BlockCache::load_from_disk(string path) {
             unsigned long long offset_into_node, node_ent_size, ent_mtime = 0;
             sscanf(ent.c_str(), "%*s %*s %llu %[^]] %llu %llu", &ent_mtime, offset_list, &offset_into_node, &node_ent_size);
             cout << "EXTRACTED " << offset_list << " FROM THE ENT" << endl;
+
             // find the .node
             string path_to_node = path_to_disk_ + ent.substr(0, ent.size() -  6) + ".node";
             cout << "PATH TO NODE " << path_to_node << endl;
+
             // open the .node, offset into it
             int nodefd = ::open(path_to_node.c_str(), O_WRONLY);
             if (nodefd == -1)
                 cout << "ERROR opening .node file at " << path_to_node << " ERRNO " << strerror(errno) << endl;
+
             char buf[node_ent_size];
+
             if (pread(nodefd, buf, node_ent_size, offset_into_node) == -1)
                 cout << "ERROR reading .node entry ERRNO " << strerror(errno) << endl;
+
+            if (close(nodefd) == -1)
+                cout << "ERROR closing .node file ERRNO " << strerror(errno) << endl;
+            string node_contents = (string)buf;
+
+            // interpret node entry
+            istringstream sstream(node_contents);
+            string inode_info;
+            // first line is always inode info
+            getline(sstream, inode_info);
+
+            string table_ent;
+
+            /** map of (block#, (offset into data, size)) */
+            map<uint64_t, pair<uint64_t, uint64_t>> data_table;
+
+            // build table
+            while (getline(sstream, table_ent)) {
+                unsigned long long  blockidx, data_offset, block_size = 0;
+
+                sscanf(table_ent.c_str(), "%llu %llu %llu", &blockidx, &data_offset, &block_size);
+
+                data_table[blockidx] = make_pair(data_offset, block_size);
+            }
+            cout << "FINISHED BUILDING THE FOLLOWING TABLE" << endl;
+
+            for (auto ent : data_table) {
+                cout << "BLOCK NUM " << to_string(ent.first) << " OFFSET# " << to_string(ent.second.first) << " SIZE# " << to_string(ent.second.second) << endl;
+            }
 
             // we now have the entire inode entry
             // record inode data
@@ -579,6 +607,7 @@ BlockCache::load_from_disk(string path) {
             //
         }
     }
+    closedir(root_dir);
     return 0;
 
 }

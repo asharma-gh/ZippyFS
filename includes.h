@@ -26,5 +26,6 @@
 #include <dirent.h>
 #include <cerrno>
 #include <mutex>
+#include <sstream>
 #include <algorithm>
 #endif
