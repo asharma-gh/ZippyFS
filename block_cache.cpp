@@ -532,7 +532,7 @@ BlockCache::load_from_disk(string path) {
 
         // if this file is not a .root, skip it
         if (strlen(entry_name) < 4
-                || strcmp(entry_name + (strlen(entry_name) - 4), ".root") != 0)
+                || strcmp(entry_name + (strlen(entry_name) - 5), ".root") != 0)
             continue;
 
         // we have a .root file
@@ -557,12 +557,26 @@ BlockCache::load_from_disk(string path) {
             sscanf(ent.c_str(), "%*s %*s %llu %[^]] %llu %llu", &ent_mtime, offset_list, &offset_into_node, &node_ent_size);
             cout << "EXTRACTED " << offset_list << " FROM THE ENT" << endl;
             // find the .node
+            string path_to_node = path_to_disk_ + ent.substr(0, ent.size() -  6) + ".node";
+            cout << "PATH TO NODE " << path_to_node << endl;
             // open the .node, offset into it
-            // make inode for it
+            int nodefd = ::open(path_to_node.c_str(), O_WRONLY);
+            if (nodefd == -1)
+                cout << "ERROR opening .node file at " << path_to_node << " ERRNO " << strerror(errno) << endl;
+            char buf[node_ent_size];
+            if (pread(nodefd, buf, node_ent_size, offset_into_node) == -1)
+                cout << "ERROR reading .node entry ERRNO " << strerror(errno) << endl;
+
+            // we now have the entire inode entry
+            // record inode data
+            //
+            // make inode
+            //
+            // recreate (block#, offset into .data) table
             //
             // open .data
+            // read blocks
             //
-            // load blocks to memory
         }
     }
     return 0;
