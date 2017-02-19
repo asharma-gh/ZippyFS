@@ -472,7 +472,7 @@ BlockCache::flush_to_disk() {
         }
         //compute offset into node, node entry size
         uint64_t node_ent_size = table.size() + inode_data.size();
-        offset_into_node += table.size() + inode_data.size();
+        offset_into_node += node_ent_size;
 
         // write node entry size to index entry
         index_entry += " " + to_string(node_ent_size) + "\n";
@@ -511,7 +511,8 @@ int
 BlockCache::load_from_disk(string path) {
     (void)path;
     // find latest root with the given file
-
+    //uint64_t latest_time = 0;
+    //string latest_file;
     // open directory of roots
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
@@ -539,6 +540,11 @@ BlockCache::load_from_disk(string path) {
         // if it does, collect the index files for it
         //
         // open the index files
+        /***
+         * GOAL AT THE END OF THIS LOOP:
+         * - construct an inode in memory based on the latest .index file
+         * - extract all of the valid blocks and add them to this inode
+         */
         for (string index : index_files) {
             // find entry in index
             string ent = find_entry_in_index(index, path);
