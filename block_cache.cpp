@@ -513,7 +513,6 @@ BlockCache::flush_to_disk() {
 
 int
 BlockCache::load_from_disk(string path) {
-    (void)path;
     cout << "LOADING FROM DISK" << endl;
 
     // find latest root with the given file
