@@ -1,3 +1,12 @@
+- now we have 4 files, but I don't believe .index is necessary
+as offset and size into node can be in .root files
+
+- we should now move away from .index files since it adds unnecessary
+overhead
+
+
+
+
 - add blocks to block map
 
 

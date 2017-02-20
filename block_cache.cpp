@@ -495,6 +495,7 @@ BlockCache::flush_to_disk() {
         // finally, construct input for .root
         // TODO: redo the format. For now:
         // [path] [index name]
+        // new! adding [offset into .index] into this, so it will be [list-of (index name, offset)]
         root_input += ent.first + " " + fname + ".index" + "\n";
     }
     // TODO: stuff with the .root files
