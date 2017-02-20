@@ -565,8 +565,9 @@ BlockCache::load_from_disk(string path) {
             // extract offsets
             char offset_list[ent.size()];
             char inode_id[128];
-            uint64_t offset_into_node, node_ent_size, ent_mtime = 0;
-            sscanf(ent.c_str(), "%*s %s %" SCNd64 " %[^]]] %" SCNd64 " %" SCNd64, inode_id, &ent_mtime, offset_list, &offset_into_node, &node_ent_size);
+            uint64_t offset_into_node, node_ent_size, ent_mtime;
+            int is_deleted = 0;
+            sscanf(ent.c_str(), "%*s %s %" SCNd64 " %[^]]] %" SCNd64 " %" SCNd64 "%d", inode_id, &ent_mtime, offset_list, &offset_into_node, &node_ent_size, &is_deleted);
             cout << "EXTRACTED " << offset_list << " MTIME " << to_string(ent_mtime)
                  << " OFFSET " << to_string(offset_into_node) << " SIZE " << to_string(node_ent_size) << "  FROM THE ENT" << endl;
 
@@ -631,13 +632,19 @@ BlockCache::load_from_disk(string path) {
             // make inode if this is a later version
             if (mtime > latest_mtime) {
                 latest_inode = shared_ptr<Inode>(new Inode(path));
-                latest_inode->set_id(inode_id);
+                latest_inode->set_id((string)inode_id);
                 latest_inode->set_size(size);
                 latest_inode->set_mode(mode);
                 latest_inode->set_nlink(nlinks);
                 latest_inode->set_mtime(mtime);
                 latest_inode->set_ctime(ctime);
+                if (is_deleted) {
+                    latest_inode->delete_inode();
+                    // if this entry was a deletion, then there is no data to read
+                    continue;
+                }
             }
+
             // find the .data, open it
             string path_to_data = path_to_disk_ + index.substr(0, index.size() -  6) + ".data";
             cout << "PATH TO DATA " << path_to_data << endl;
