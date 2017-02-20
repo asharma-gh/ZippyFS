@@ -105,6 +105,9 @@ BlockCache::make_file(string path, mode_t mode, bool dirty) {
 
 int
 BlockCache::load_from_shdw(string path) {
+    // TESTING
+    int resu = load_from_disk(path);
+    return resu;
     cout << "loading to cache from shdw " << path << endl;
     int res = load_to_shdw(path.c_str());
     // construct path to shdw
@@ -416,8 +419,9 @@ BlockCache::flush_to_disk() {
 
     int indexfd = ::open(path_to_index.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-    int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int rootfd = ::open(path_to_root.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+    int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
+
 
     // TODO: look for previous latest .index for the current file
     //  - read each .head file, looking for this inode idx
@@ -439,14 +443,11 @@ BlockCache::flush_to_disk() {
      */
     string root_input;
 
-    string random;
-
     /**
      * This loop writes to the .node and .data files
      * .head file is written to last.
      */
     for (auto ent : inode_idx_) {
-        random = ent.first;
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
@@ -507,13 +508,12 @@ BlockCache::flush_to_disk() {
     close(datafd);
     close(rootfd);
 
-    load_from_disk(random);
     return 0;
 }
 
 int
 BlockCache::load_from_disk(string path) {
-    cout << "LOADING FROM DISK" << endl;
+    cout << "LOADING " << path << " FROM DISK" << endl;
 
     // find latest root with the given file
     //uint64_t latest_time = 0;
@@ -630,6 +630,7 @@ BlockCache::load_from_disk(string path) {
 
             // make inode if this is a later version
             if (mtime > latest_mtime) {
+                latest_mtime = mtime;
                 latest_inode = shared_ptr<Inode>(new Inode(path));
                 latest_inode->set_id((string)inode_id);
                 latest_inode->set_size(size);
@@ -670,8 +671,10 @@ BlockCache::load_from_disk(string path) {
     closedir(root_dir);
 
     // if latest_mtime is still 0, then we could not find an inode for this path
-    if (latest_mtime == 0)
+    if (latest_mtime == 0) {
+        cout << "Time didn't change!" << endl;
         return -1;
+    }
 
     // add data to the latest inode
     for (auto ent : inode_blocks) {
