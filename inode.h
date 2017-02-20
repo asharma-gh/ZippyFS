@@ -49,6 +49,21 @@ class Inode {
     void dec_link(std::string ref);
 
     /**
+     * sets the number of links to the given one
+     */
+    void set_nlink(uint32_t nlink);
+
+    /**
+     * sets the mtime to the given one.
+     */
+    void set_ul_mtime(unsigned long long mtime);
+
+    /**
+     * sets the ctime to the given one.
+     */
+    void set_ul_ctime(unsigned long long ctime);
+
+    /**
      * checks if ref links to this inode
      */
     int is_link(std::string ref);

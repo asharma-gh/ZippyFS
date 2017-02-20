@@ -515,6 +515,7 @@ int
 BlockCache::load_from_disk(string path) {
     (void)path;
     cout << "LOADING FROM DISK" << endl;
+
     // find latest root with the given file
     //uint64_t latest_time = 0;
     //string latest_file;
@@ -616,7 +617,12 @@ BlockCache::load_from_disk(string path) {
             // record inode data
             //
             // interpret inode_info
-            //
+            char inode_path[PATH_MAX];
+            uint32_t mode, nlinks = 0;
+            unsigned long long mtime, ctime = 0;
+            uint64_t size = 0;
+            sscanf(inode_info.c_str(), "%s %" SCNd32 " %" SCNd32 " %llu %llu %" SCNd64,
+                   inode_path, &mode, &nlinks, &mtime, &ctime, &size);
             // make inode
             //
             // recreate (block#, offset into .data) table

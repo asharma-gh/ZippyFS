@@ -161,8 +161,19 @@ Inode::get_refs() {
     vector<string> t (links_.begin(), links_.end());
     return t;
 }
+void
+Inode::set_nlink(uint32_t nlink) {
+    nlink_= nlink;
+}
 
-
+void
+Inode::set_ul_mtime(unsigned long long mtime) {
+    ul_mtime_ = mtime;
+}
+void
+Inode::set_ul_ctime(unsigned long long ctime) {
+    ul_ctime_ = ctime;
+}
 string
 Inode::get_record() {
     return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " " + to_string(deleted_) + "\n");
