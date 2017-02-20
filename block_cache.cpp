@@ -451,7 +451,7 @@ BlockCache::flush_to_disk() {
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
         // get offset map
-        auto offst_mp = flushed_inode->get_offsets();
+        auto offst_mp = get_offsets(ent.second);
         // make .index entry
         string index_entry = ent.first + " " + ent.second + " " + to_string(flushed_inode->get_ull_mtime()) + " [";
         for (auto ent : offst_mp.second) {
@@ -720,4 +720,25 @@ BlockCache::find_entry_in_index(string index_name, string path) {
 
     }
     return "";
+}
+
+
+pair<uint64_t, map<uint64_t, pair<uint64_t, uint64_t>>>
+BlockCache::get_offsets(string inode_idx) {
+    uint64_t curr_offset = 0;
+    /** map of (block idx, offset into data) for record */
+    map<uint64_t, pair<uint64_t, uint64_t>> offsets_for_blocks;
+
+    for (auto ent : dirty_block_[inode_idx]) {
+        auto bl_data = ent.second->get_data();
+        offsets_for_blocks[ent.first] = pair<uint64_t, uint64_t>(curr_offset, ent.second->get_actual_size());
+
+        curr_offset += ent.second->get_actual_size();
+    }
+    for (auto ent : offsets_for_blocks) {
+        cout << "Block # " << ent.first << " Offset # " << ent.second.first << endl;
+    }
+
+    return pair<uint64_t, map<uint64_t, pair<uint64_t, uint64_t>>>(curr_offset, offsets_for_blocks);
+
 }

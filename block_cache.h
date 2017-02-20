@@ -196,5 +196,13 @@ class BlockCache {
      * @return the entry for the given file in the given index
      */
     std::string find_entry_in_index(std::string index_name, std::string path);
+
+    /**
+     * Generates the table of dirty blocks and offset positions for use in .data files
+     * this is because inodes do not keep track of which blocks are dirty
+     * @param inode_idx is the id of the inode to do this on
+     * map(total block size, map(block#, (offset#, block size)))
+     */
+    std::pair<uint64_t, std::map<uint64_t, std::pair<uint64_t, uint64_t>>> get_offsets(std::string inode_idx);
 };
 #endif

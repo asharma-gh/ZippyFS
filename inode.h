@@ -215,12 +215,6 @@ class Inode {
     void undo_dirty();
 
     /**
-     * @return (total size of entry, map(blk#, (offset#, size)))
-     */
-    std::pair<uint64_t, std::map<uint64_t, std::pair<uint64_t, uint64_t>>> get_offsets();
-
-
-    /**
      * returns the id for this inode
      */
     std::string get_id();
