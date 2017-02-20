@@ -103,7 +103,7 @@ class Inode {
      */
     uint64_t get_size();
 
-    /**
+    /*
      * gets the block at block_index
      */
     std::shared_ptr<Block> get_block(uint64_t block_index);

@@ -284,7 +284,7 @@ BlockCache::truncate(string path, uint64_t size) {
 
 int
 BlockCache::in_cache(string path) {
-    (void)path;
+
     return inode_idx_.find(path) != inode_idx_.end()
            || path.compare("/") == 0 ? 0 : -1;
 }
@@ -645,9 +645,6 @@ BlockCache::load_from_disk(string path) {
                     // if this entry was a deletion, then there is no data to read
                     continue;
                 }
-
-                // if we have a later version, update our block table!
-
             }
 
             // find the .data, open it
@@ -691,9 +688,15 @@ BlockCache::load_from_disk(string path) {
     for (auto ent : inode_blocks) {
         latest_inode->add_block(ent.first, ent.second);
     }
-    // add to cache
-    inode_idx_[path] = latest_inode->get_id();
-    inode_ptrs_[latest_inode->get_id()] = latest_inode;
+
+    // add to cache if this one is a later version than the current one, if there is a current one
+    bool is_updated = (in_cache(path) == 0) && get_inode_by_path(path)->get_ull_mtime() > latest_mtime;
+
+    if (!is_updated) {
+        cout <<" UPDATED THING " << endl;
+        inode_idx_[path] = latest_inode->get_id();
+        inode_ptrs_[latest_inode->get_id()] = latest_inode;
+    }
 
     return 0;
 
