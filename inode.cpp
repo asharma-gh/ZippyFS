@@ -199,7 +199,7 @@ Inode::get_flush_record() {
                  + to_string(nlink_)
                  + " " + to_string(ul_mtime_)
                  + " " + to_string(ul_ctime_) + " "
-                 + to_string(size_) + to_string(deleted_) + "\n";
+                 + to_string(size_) + " " + to_string(deleted_) + "\n";
 
     cout << "RECORD FOR THIS INODE " << rec << endl;
 
