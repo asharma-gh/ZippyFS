@@ -155,6 +155,10 @@ uint64_t
 Inode::get_size() {
     return size_;
 }
+void
+Inode::set_id(string id) {
+    inode_id_ = id;
+}
 
 vector<string>
 Inode::get_refs() {

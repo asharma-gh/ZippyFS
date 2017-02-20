@@ -94,6 +94,11 @@ class Inode {
     void set_size(unsigned long long size);
 
     /**
+     * sets this inode id to the given one
+     */
+    void set_id(std::string id);
+
+    /**
      * @returns the size of this inode;
      */
     uint64_t get_size();

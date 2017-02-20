@@ -548,14 +548,12 @@ BlockCache::load_from_disk(string path) {
         if (index_files.size() == 0)
             // then it is not in this root file, skip it
             continue;
-        // if it does, collect the index files for it
-        //
-        // open the index files
         /***
+         * index_files has all of the extracted index files for this path and root
          * GOAL AT THE END OF THIS LOOP:
          * - construct an inode in memory based on the latest .index file
          * - extract all of the valid blocks
-         */
+         ***/
         for (string index : index_files) {
             // find entry in index
             string ent = find_entry_in_index(index, path);
@@ -566,8 +564,9 @@ BlockCache::load_from_disk(string path) {
             cout << "ENTRY " << ent << endl;
             // extract offsets
             char offset_list[ent.size()];
+            char inode_id[128];
             uint64_t offset_into_node, node_ent_size, ent_mtime = 0;
-            sscanf(ent.c_str(), "%*s %*s %" SCNd64 " %[^]]] %" SCNd64 " %" SCNd64, &ent_mtime, offset_list, &offset_into_node, &node_ent_size);
+            sscanf(ent.c_str(), "%*s %s %" SCNd64 " %[^]]] %" SCNd64 " %" SCNd64, inode_id, &ent_mtime, offset_list, &offset_into_node, &node_ent_size);
             cout << "EXTRACTED " << offset_list << " MTIME " << to_string(ent_mtime)
                  << " OFFSET " << to_string(offset_into_node) << " SIZE " << to_string(node_ent_size) << "  FROM THE ENT" << endl;
 
@@ -632,6 +631,7 @@ BlockCache::load_from_disk(string path) {
             // make inode if this is a later version
             if (mtime > latest_mtime) {
                 latest_inode = shared_ptr<Inode>(new Inode(path));
+                latest_inode->set_id(inode_id);
                 latest_inode->set_size(size);
                 latest_inode->set_mode(mode);
                 latest_inode->set_nlink(nlinks);
@@ -646,8 +646,19 @@ BlockCache::load_from_disk(string path) {
             int datafd = ::open(path_to_data.c_str(), O_RDONLY);
             if (datafd == -1)
                 cout << "ERROR OPENING .data file ERRNO " << strerror(errno) << endl;
-            // using the data table generated earlier
-            // load up the blocks to the map of inode blocks
+            for (auto ent : data_table) {
+                // ent.first is the block#, ent.second.first is offset#, ent.second.second is size#
+                uint64_t offset_into_data = ent.second.first;
+                uint64_t size_of_data_ent = ent.second.second;
+                uint8_t data_buf[size_of_data_ent];
+                // read data, add to map
+                if (pread(datafd, data_buf, size_of_data_ent, offset_into_data) == -1)
+                    cout << "ERROR reading data in data file ERRNO " << strerror(errno) << endl;
+                inode_blocks[ent.first] = shared_ptr<Block>(new Block(data_buf, size_of_data_ent));
+
+            }
+            if (close(datafd) == -1)
+                cout << "ERROR closing data file ERRNO " << strerror(errno) << endl;
         }
     }
     closedir(root_dir);
@@ -655,6 +666,14 @@ BlockCache::load_from_disk(string path) {
     // if latest_mtime is still 0, then we could not find an inode for this path
     if (latest_mtime == 0)
         return -1;
+
+    // add data to the latest inode
+    for (auto ent : inode_blocks) {
+        latest_inode->add_block(ent.first, ent.second);
+    }
+    // add to cache
+    inode_idx_[path] = latest_inode->get_id();
+    inode_ptrs_[latest_inode->get_id()] = latest_inode;
 
     return 0;
 
