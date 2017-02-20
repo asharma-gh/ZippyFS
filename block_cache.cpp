@@ -525,6 +525,12 @@ BlockCache::load_from_disk(string path) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
         return -1;
     }
+    std::shared_ptr<Inode> latest_inode;
+
+    /** map (block idx, block) for this inode */
+    map<uint64_t, shared_ptr<Block>> inode_blocks;
+
+    unsigned long long latest_mtime = 0;
     struct dirent* entry;
     const char* entry_name;
     // iterate thru each entry in root
@@ -622,7 +628,16 @@ BlockCache::load_from_disk(string path) {
             uint64_t size = 0;
             sscanf(inode_info.c_str(), "%s %" SCNd32 " %" SCNd32 " %llu %llu %" SCNd64,
                    inode_path, &mode, &nlinks, &mtime, &ctime, &size);
+
             // make inode if this is a later version
+            if (mtime > latest_mtime) {
+                latest_inode = shared_ptr<Inode>(new Inode(path));
+                latest_inode->set_size(size);
+                latest_inode->set_mode(mode);
+                latest_inode->set_nlink(nlinks);
+                latest_inode->set_mtime(mtime);
+                latest_inode->set_ctime(ctime);
+            }
             //
             // recreate (block#, offset into .data) table
             //
@@ -632,6 +647,11 @@ BlockCache::load_from_disk(string path) {
         }
     }
     closedir(root_dir);
+
+    // if latest_mtime is still 0, then we could not find an inode for this path
+    if (latest_mtime == 0)
+        return -1;
+
     return 0;
 
 }
