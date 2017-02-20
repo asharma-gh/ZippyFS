@@ -56,12 +56,12 @@ class Inode {
     /**
      * sets the mtime to the given one.
      */
-    void set_ul_mtime(unsigned long long mtime);
+    void set_mtime(unsigned long long mtime);
 
     /**
      * sets the ctime to the given one.
      */
-    void set_ul_ctime(unsigned long long ctime);
+    void set_ctime(unsigned long long ctime);
 
     /**
      * checks if ref links to this inode

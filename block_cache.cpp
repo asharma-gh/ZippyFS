@@ -525,7 +525,6 @@ BlockCache::load_from_disk(string path) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
         return -1;
     }
-
     struct dirent* entry;
     const char* entry_name;
     // iterate thru each entry in root
@@ -623,7 +622,7 @@ BlockCache::load_from_disk(string path) {
             uint64_t size = 0;
             sscanf(inode_info.c_str(), "%s %" SCNd32 " %" SCNd32 " %llu %llu %" SCNd64,
                    inode_path, &mode, &nlinks, &mtime, &ctime, &size);
-            // make inode
+            // make inode if this is a later version
             //
             // recreate (block#, offset into .data) table
             //

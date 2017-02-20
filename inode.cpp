@@ -167,12 +167,17 @@ Inode::set_nlink(uint32_t nlink) {
 }
 
 void
-Inode::set_ul_mtime(unsigned long long mtime) {
+Inode::set_mtime(unsigned long long mtime) {
     ul_mtime_ = mtime;
+    ts_mtime_.tv_sec = mtime / 1000;
+    ts_mtime_.tv_nsec = (mtime % 1000) * 1000000;
 }
 void
-Inode::set_ul_ctime(unsigned long long ctime) {
+Inode::set_ctime(unsigned long long ctime) {
     ul_ctime_ = ctime;
+    ts_ctime_.tv_sec = ctime / 1000;
+    ts_ctime_.tv_nsec = (ctime % 1000) * 1000000;
+
 }
 string
 Inode::get_record() {
