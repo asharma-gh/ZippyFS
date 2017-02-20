@@ -554,7 +554,7 @@ BlockCache::load_from_disk(string path) {
         /***
          * GOAL AT THE END OF THIS LOOP:
          * - construct an inode in memory based on the latest .index file
-         * - extract all of the valid blocks and add them to this inode
+         * - extract all of the valid blocks
          */
         for (string index : index_files) {
             // find entry in index
@@ -638,12 +638,16 @@ BlockCache::load_from_disk(string path) {
                 latest_inode->set_mtime(mtime);
                 latest_inode->set_ctime(ctime);
             }
-            //
-            // recreate (block#, offset into .data) table
-            //
-            // open .data
-            // read blocks
-            //
+            // find the .data, open it
+            string path_to_data = path_to_disk_ + index.substr(0, index.size() -  6) + ".data";
+            cout << "PATH TO DATA " << path_to_data << endl;
+
+            // open the .data, offset and read it
+            int datafd = ::open(path_to_data.c_str(), O_RDONLY);
+            if (datafd == -1)
+                cout << "ERROR OPENING .data file ERRNO " << strerror(errno) << endl;
+            // using the data table generated earlier
+            // load up the blocks to the map of inode blocks
         }
     }
     closedir(root_dir);
