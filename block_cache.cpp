@@ -694,24 +694,3 @@ BlockCache::find_entry_in_root(string root_name, string path) {
     cout << "NUMBER OF NODE FILES " << to_string(node_files.size()) << endl;
     return node_files;
 }
-
-
-pair<uint64_t, map<uint64_t, pair<uint64_t, uint64_t>>>
-BlockCache::get_offsets(string inode_idx) {
-    uint64_t curr_offset = 0;
-    /** map of (block idx, offset into data) for record */
-    map<uint64_t, pair<uint64_t, uint64_t>> offsets_for_blocks;
-
-    for (auto ent : dirty_block_[inode_idx]) {
-        auto bl_data = ent.second->get_data();
-        offsets_for_blocks[ent.first] = pair<uint64_t, uint64_t>(curr_offset, ent.second->get_actual_size());
-
-        curr_offset += ent.second->get_actual_size();
-    }
-    for (auto ent : offsets_for_blocks) {
-        cout << "Block # " << ent.first << " Offset # " << ent.second.first << endl;
-    }
-
-    return pair<uint64_t, map<uint64_t, pair<uint64_t, uint64_t>>>(curr_offset, offsets_for_blocks);
-
-}

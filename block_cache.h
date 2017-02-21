@@ -185,13 +185,5 @@ class BlockCache {
      * If this list is empty, then the path entry did not exist
      */
     std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>> find_entry_in_root(std::string root_name, std::string path);
-
-    /**
-     * Generates the table of dirty blocks and offset positions for use in .data files
-     * this is because inodes do not keep track of which blocks are dirty
-     * @param inode_idx is the id of the inode to do this on
-     * (total block size, map(block#, (offset#, block size)))
-     */
-    std::pair<uint64_t, std::map<uint64_t, std::pair<uint64_t, uint64_t>>> get_offsets(std::string inode_idx);
 };
 #endif
