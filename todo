@@ -5,7 +5,15 @@ as offset and size into node can be in .root files
 overhead
 
 
+===
+New design
+- each .root file contains the path, inode id, and a [list-of (.node, offset, sizeof ent)]
+- each .node file contains path, mode, links, mtime, ctime, size, deleted and a [list of (block#, offset into data, size of block)]
+- each .data file contains the file data, which is retrieved with the information in the .node files
 
+TODO:
+ - make looking for a particular inode id / path faster than linear time, using a tree like structure
+===
 
 - add blocks to block map
 
