@@ -620,6 +620,11 @@ BlockCache::load_from_disk(string path) {
             if (datafd == -1)
                 cout << "ERROR OPENING .data file ERRNO " << strerror(errno) << endl;
             for (auto ent : data_table) {
+                // if this isn't an updated inode and we already have a block, then don't add it!
+                // else we either have an updated inode or do not have the inode block, so we add it.
+                if (!updated && inode_blocks.find(ent.first) != inode_blocks.end())
+                    continue;
+
                 // ent.first is the block#, ent.second.first is offset#, ent.second.second is size#
                 uint64_t offset_into_data = ent.second.first;
                 uint64_t size_of_data_ent = ent.second.second;
@@ -627,12 +632,9 @@ BlockCache::load_from_disk(string path) {
                 // read data, add to map
                 if (pread(datafd, data_buf, size_of_data_ent, offset_into_data) == -1)
                     cout << "ERROR reading data in data file ERRNO " << strerror(errno) << endl;
-                // if this isn't an updated inode and we already have a block, then don't add it!
-                // else we either have an updated inode or do not have the inode block, so we add it.
-                if (!updated && inode_blocks.find(ent.first) != inode_blocks.end())
-                    continue;
-                else
-                    inode_blocks[ent.first] = shared_ptr<Block>(new Block(data_buf, size_of_data_ent));
+
+                // add block to map for inode
+                inode_blocks[ent.first] = shared_ptr<Block>(new Block(data_buf, size_of_data_ent));
 
 
             }
@@ -705,5 +707,10 @@ BlockCache::get_offsets(string inode_idx) {
     }
 
     return pair<uint64_t, map<uint64_t, pair<uint64_t, uint64_t>>>(curr_offset, offsets_for_blocks);
+
+}
+
+void
+BlockCache::flush_dirty_blocks(int datafd) {
 
 }
