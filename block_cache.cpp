@@ -412,12 +412,10 @@ int
 BlockCache::flush_to_disk() {
     // create path to .head file
     string fname = Util::generate_rand_hex_name();
-    string path_to_index = path_to_disk_ + fname + ".index";
     string path_to_node = path_to_disk_ + fname + ".node";
     string path_to_data = path_to_disk_ + fname + ".data";
     string path_to_root = path_to_disk_ + fname + ".root";
 
-    int indexfd = ::open(path_to_index.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int rootfd = ::open(path_to_root.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
@@ -428,20 +426,16 @@ BlockCache::flush_to_disk() {
     //  - record each (.node, offset) pair
     //
     //  - add checksums for each files
-    //
-    // ===FORMAT for .index===
-    // [path] [inode idx] [inode mtime]  [block #s] [offset] [size]
 
     // create entry for .node file
     uint64_t offset_into_data = 0;
-    string header_input;
     uint64_t offset_into_node = 0;
 
     /** the input for the .root file.
      * Every "flush" constructs a new root
      * TODO: have this root contain previous .index / .nodes
      */
-    string root_input;
+
 
     /**
      * This loop writes to the .node and .data files
@@ -453,13 +447,10 @@ BlockCache::flush_to_disk() {
         string inode_data = flushed_inode->get_flush_record();
         // get offset map
         auto offst_mp = get_offsets(ent.second);
-        // make .index entry
-        string index_entry = ent.first + " " + ent.second + " " + to_string(flushed_inode->get_ull_mtime()) + " [";
-        for (auto ent : offst_mp.second) {
-            index_entry += " " + to_string(ent.first);
-        }
-        index_entry += " ] " + to_string(offset_into_node);
 
+        string root_input;
+        // [path] [inode id] [.node name] [offset into .node] [size-of .node] entry
+        root_input += ent.first + " " + flushed_inode->get_id() + " " + fname + ".node" + " " + to_string(offset_into_node);
         // generate block offset table
 
         unordered_map<uint64_t, pair<uint64_t,uint64_t>> updated_mp;
@@ -477,8 +468,8 @@ BlockCache::flush_to_disk() {
         uint64_t node_ent_size = table.size() + inode_data.size();
         offset_into_node += node_ent_size;
 
-        // write node entry size to index entry
-        index_entry += " " + to_string(node_ent_size) + "\n";
+        // write to root
+        root_input += " " + to_string(node_ent_size) + "\n";
 
         // write to .node
         if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
@@ -488,23 +479,12 @@ BlockCache::flush_to_disk() {
         // write to .data
         flushed_inode->flush_to_fd(datafd);
 
-        // write to .index
-        if (pwrite(indexfd, index_entry.c_str(), index_entry.size() * sizeof(char), 0) == -1)
+        // write to .root
+        if (pwrite(rootfd, root_input.c_str(), root_input.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .index ERRNO: " << strerror(errno) << endl;
 
-        // finally, construct input for .root
-        // TODO: redo the format. For now:
-        // [path] [index name]
-        // new! adding [offset into .index] into this, so it will be [list-of (index name, offset)]
-        root_input += ent.first + " " + fname + ".index" + "\n";
     }
-    // TODO: stuff with the .root files
-    // pull prev. root, copy all .head
-    // write to root
-    if (pwrite(rootfd, root_input.c_str(), root_input.size() * sizeof(char), 0) == -1)
-        cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
 
-    close(indexfd);
     close(nodefd);
     close(datafd);
     close(rootfd);
@@ -544,47 +524,37 @@ BlockCache::load_from_disk(string path) {
 
         // we have a .root file
         // check if it contains this path
-        vector<string> index_files = find_entry_in_root(entry_name, path);
-        if (index_files.size() == 0)
+        auto node_files = find_entry_in_root(entry_name, path);
+        if (node_files.size() == 0)
             // then it is not in this root file, skip it
             continue;
         /***
-         * index_files has all of the extracted index files for this path and root
+         * node_files has all of the extracted node files for this path and root
          * GOAL AT THE END OF THIS LOOP:
-         * - construct an inode in memory based on the latest .index file
-         * - extract all of the valid blocks
+         * - construct an inode in memory based on the latest .node file
+         * - extract all of the valid blocks contained in each .node file's .data file
+         * node_ent is (node_name, inode id, offset, size)
          ***/
-        for (string index : index_files) {
-            // find entry in index
-            string ent = find_entry_in_index(index, path);
-            if (ent.size() == 0) {
-                cout << "ERROR GETTING ENTRY IN INDEX" << endl;
-                return -1;
-            }
-            cout << "ENTRY " << ent << endl;
-            // extract offsets
-            char offset_list[ent.size()];
-            char inode_id[128];
-            uint64_t offset_into_node, node_ent_size, ent_mtime;
-            int is_deleted = 0;
-            sscanf(ent.c_str(), "%*s %s %" SCNd64 " %[^]]] %" SCNd64 " %" SCNd64 "%d", inode_id, &ent_mtime, offset_list, &offset_into_node, &node_ent_size, &is_deleted);
-            cout << "EXTRACTED " << offset_list << " MTIME " << to_string(ent_mtime)
-                 << " OFFSET " << to_string(offset_into_node) << " SIZE " << to_string(node_ent_size) << "  FROM THE ENT" << endl;
+        for (auto node_ent : node_files) {
 
             //TODO: stuff with the data in the .head file
             //probably need to keep track of blocks so we only load one if it is a later version
 
             // find the .node
-            string path_to_node = path_to_disk_ + index.substr(0, index.size() -  6) + ".node";
+            string node_name = get<0>(node_ent);
+            string path_to_node = path_to_disk_ + node_name;
             cout << "PATH TO NODE " << path_to_node << endl;
 
             // open the .node, offset and read it
             int nodefd = ::open(path_to_node.c_str(), O_RDONLY);
             if (nodefd == -1)
                 cout << "ERROR opening .node file at " << path_to_node << " ERRNO " << strerror(errno) << endl;
-            char buf[node_ent_size];
-            cout << "NODE ENT SIZE " << to_string(node_ent_size) << " OFFSET " << to_string(offset_into_node) << endl;
-            if (pread(nodefd, buf, node_ent_size, offset_into_node) == -1)
+            string inode_id = get<1>(node_ent);
+            uint64_t node_offset = get<2>(node_ent);
+            uint64_t node_size = get<3>(node_ent);
+            char buf[node_size + 1] = {0};
+            cout << "NODE ENT SIZE " << to_string(node_size) << " OFFSET " << to_string(node_offset) << endl;
+            if (pread(nodefd, buf, node_size, node_offset) == -1)
                 cout << "ERROR reading .node entry ERRNO " << strerror(errno) << endl;
             cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
 
@@ -607,7 +577,7 @@ BlockCache::load_from_disk(string path) {
             // build table
             while (getline(sstream, table_ent)) {
                 uint64_t blockidx, data_offset, block_size = 0;
-
+                cout << "TABLE ENTRY "  << table_ent << endl;
                 sscanf(table_ent.c_str(), "%" SCNd64" %" SCNd64" %" SCNd64, &blockidx, &data_offset, &block_size);
 
                 data_table[blockidx] = make_pair(data_offset, block_size);
@@ -626,8 +596,9 @@ BlockCache::load_from_disk(string path) {
             uint32_t mode, nlinks = 0;
             unsigned long long mtime, ctime = 0;
             uint64_t size = 0;
-            sscanf(inode_info.c_str(), "%s %" SCNd32 " %" SCNd32 " %llu %llu %" SCNd64,
-                   inode_path, &mode, &nlinks, &mtime, &ctime, &size);
+            int is_deleted = 0;
+            sscanf(inode_info.c_str(), "%s %" SCNd32 " %" SCNd32 " %llu %llu %" SCNd64 "%d",
+                   inode_path, &mode, &nlinks, &mtime, &ctime, &size, &is_deleted);
 
             // make inode if this is a later version
             bool updated = false;
@@ -649,7 +620,7 @@ BlockCache::load_from_disk(string path) {
             }
 
             // find the .data, open it
-            string path_to_data = path_to_disk_ + index.substr(0, index.size() -  6) + ".data";
+            string path_to_data = path_to_disk_ + node_name.substr(0, node_name.size() -  5) + ".data";
             cout << "PATH TO DATA " << path_to_data << endl;
 
             // open the .data, offset and read it
@@ -660,7 +631,7 @@ BlockCache::load_from_disk(string path) {
                 // ent.first is the block#, ent.second.first is offset#, ent.second.second is size#
                 uint64_t offset_into_data = ent.second.first;
                 uint64_t size_of_data_ent = ent.second.second;
-                uint8_t data_buf[size_of_data_ent];
+                uint8_t data_buf[size_of_data_ent] = {0};
                 // read data, add to map
                 if (pread(datafd, data_buf, size_of_data_ent, offset_into_data) == -1)
                     cout << "ERROR reading data in data file ERRNO " << strerror(errno) << endl;
@@ -703,40 +674,25 @@ BlockCache::load_from_disk(string path) {
 
 }
 
-vector<string>
+vector<tuple<string, string, uint64_t, uint64_t>>
 BlockCache::find_entry_in_root(string root_name, string path) {
-    vector<string> index_files;
-    (void)path;
+    vector<tuple<string, string, uint64_t, uint64_t>> node_files;
     string ab_root_path = path_to_disk_ + root_name;
     // iterate thru each entry in this root file
     ifstream in_file(ab_root_path);
     string curline;
     while (getline(in_file, curline)) {
         char cur_path[PATH_MAX];
-        char index_ent[FILENAME_MAX];
-        sscanf(curline.c_str(), "%s %s", cur_path, index_ent);
-        if (strcmp(cur_path, path.c_str()) == 0)
-            index_files.push_back((string)index_ent);
+        char node_ent[FILENAME_MAX];
+        char inode_id[FILENAME_MAX];
+        uint64_t offset, size = 0;
+        sscanf(curline.c_str(), "%s %s %s %" SCNd64 " %" SCNd64, cur_path, inode_id, node_ent, &offset, &size);
+        if (strcmp(cur_path, path.c_str()) == 0) {
+            node_files.push_back(make_tuple((string)node_ent, (string)inode_id, offset, size));
+        }
     }
-    // if we find an entry with this path
-    // add all headers to vector
-    // return vector
-    return index_files;
-}
-
-string
-BlockCache::find_entry_in_index(string index_name, string path) {
-    string path_to_index = path_to_disk_ + index_name;
-    ifstream in_file(path_to_index);
-    string curline;
-    while (getline(in_file, curline)) {
-        char cur_path[PATH_MAX];
-        sscanf(curline.c_str(), "%s %*s", cur_path);
-        if (strcmp(cur_path, path.c_str()) == 0)
-            return curline;
-
-    }
-    return "";
+    cout << "NUMBER OF NODE FILES " << to_string(node_files.size()) << endl;
+    return node_files;
 }
 
 

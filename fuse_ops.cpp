@@ -331,7 +331,7 @@ flush_dir() {
     printf("Checking %s\n", path_to_indx);
     if (access(path_to_indx, F_OK) == -1) {
         printf("no index, no writes, exiting..\n");
-        garbage_collect();
+        //garbage_collect();
         return -1;
     }
     FILE* file  = fopen(path_to_indx, "r");
@@ -386,7 +386,7 @@ flush_dir() {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-    garbage_collect();
+    //garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;

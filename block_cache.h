@@ -184,10 +184,10 @@ class BlockCache {
     /**
      * @param root_name is the name of the root file
      * @param path is the path of the file to find
-     * @returns the list of headers for the given path entry in the given .root file
+     * @returns [list of (node name, inode id, offset ,size)]
      * If this list is empty, then the path entry did not exist
      */
-    std::vector<std::string> find_entry_in_root(std::string root_name, std::string path);
+    std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>> find_entry_in_root(std::string root_name, std::string path);
 
     /**
      * finds the given entry in the given index file
