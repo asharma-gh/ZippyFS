@@ -178,9 +178,6 @@ class BlockCache {
     /* "big enough" size of this block cache */
     const uint64_t MAX_SIZE = 250;
 
-    /** finds the latest set of nodes for the given file with blocks indexes not in the given vector*/
-    std::unordered_set<std::string> find_latest_node(std::string inode_idx, std::vector<uint64_t> block_idx);
-
     /**
      * @param root_name is the name of the root file
      * @param path is the path of the file to find
@@ -190,19 +187,17 @@ class BlockCache {
     std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>> find_entry_in_root(std::string root_name, std::string path);
 
     /**
-     * finds the given entry in the given index file
-     * @param index_name is the name of the index file
-     * @param path is the file to find
-     * @return the entry for the given file in the given index
-     */
-    std::string find_entry_in_index(std::string index_name, std::string path);
-
-    /**
      * Generates the table of dirty blocks and offset positions for use in .data files
      * this is because inodes do not keep track of which blocks are dirty
      * @param inode_idx is the id of the inode to do this on
      * map(total block size, map(block#, (offset#, block size)))
      */
     std::pair<uint64_t, std::map<uint64_t, std::pair<uint64_t, uint64_t>>> get_offsets(std::string inode_idx);
+
+    /**
+     * Flushes the dirty blocks in this block cache to the file at the given file descriptor
+     * The ordering, size and offset of these blocks is found by get_offsets()
+     */
+    void flush_dirty_blocks(int fd);
 };
 #endif

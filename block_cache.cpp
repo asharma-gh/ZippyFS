@@ -398,16 +398,6 @@ BlockCache::get_refs(string path) {
     return get_inode_by_path(path)->get_refs();
 }
 
-unordered_set<string>
-BlockCache::find_latest_node(string inode_idx, vector<uint64_t> block_idx) {
-    (void)inode_idx;
-    (void)block_idx;
-    unordered_set<string> nodes;
-
-    // iterate thru all roots and heads, log each .node file
-    return nodes;
-}
-
 int
 BlockCache::flush_to_disk() {
     // create path to .head file
