@@ -477,6 +477,8 @@ BlockCache::flush_to_disk() {
         if (pwrite(nodefd, table.c_str(), table.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing TABLE to .node ERRNO: " << strerror(errno);
         // write to .data
+        // TODO: move away from this! Only flush dirty blocks, partition off the data file for each
+        // inode to avoid data corruption, which will occur using this!
         flushed_inode->flush_to_fd(datafd);
 
         // write to .root
