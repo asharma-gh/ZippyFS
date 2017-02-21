@@ -411,10 +411,7 @@ BlockCache::flush_to_disk() {
     int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
 
 
-    // TODO: look for previous latest .index for the current file
-    //  - read each .head file, looking for this inode idx
-    //  - record each (.node, offset) pair
-    //
+    // TODO:
     //  - add checksums for each files
 
     // create entry for .node file
@@ -425,7 +422,6 @@ BlockCache::flush_to_disk() {
      * Every "flush" constructs a new root
      * TODO: have this root contain previous .index / .nodes
      */
-
 
     /**
      * This loop writes to the .node and .data files
@@ -450,15 +446,13 @@ BlockCache::flush_to_disk() {
             auto block = blk.second;
             uint64_t block_sz = block->get_actual_size();
             auto block_data = block->get_data();
-            // auto block_offset = Block::get_physical_size() * blk.first;
             char buf[block_sz] = {0};
             for (uint64_t ii = 0; ii < block_sz; ii++) {
                 buf[ii] = block_data[ii];
             }
             if (pwrite(datafd, buf, block_sz * sizeof(char), curr_flush_offset) == -1)
                 cout << "Error flushing block to a file ERRNO " << strerror(errno) << endl;
-            // TODO:
-            // generate block offset table here
+
             node_table += to_string(blk.first) + " "
                           + to_string(curr_flush_offset) + " "
                           + to_string (block_sz) + "\n";
@@ -468,7 +462,7 @@ BlockCache::flush_to_disk() {
         }
         uint64_t node_ent_size = node_table.size() + inode_data.size();
         offset_into_node += node_ent_size;
-        // write to root
+
         root_input += " " + to_string(node_ent_size) + "\n";
 
         // write to .node
@@ -494,9 +488,6 @@ int
 BlockCache::load_from_disk(string path) {
     cout << "LOADING " << path << " FROM DISK" << endl;
 
-    // find latest root with the given file
-    //uint64_t latest_time = 0;
-    //string latest_file;
     // open directory of roots
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
@@ -641,7 +632,6 @@ BlockCache::load_from_disk(string path) {
 
                 // add block to map for inode
                 inode_blocks[ent.first] = shared_ptr<Block>(new Block(data_buf, size_of_data_ent));
-
 
             }
             if (close(datafd) == -1)
