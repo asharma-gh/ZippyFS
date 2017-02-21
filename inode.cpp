@@ -284,6 +284,7 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     }
     cout << "DONE READING FROM INODE " << endl;
     cout << "READ BYTES: " << read_bytes << endl;
+    cout << "Bytes: " << buf << endl;
     return size;
 }
 

@@ -193,11 +193,5 @@ class BlockCache {
      * (total block size, map(block#, (offset#, block size)))
      */
     std::pair<uint64_t, std::map<uint64_t, std::pair<uint64_t, uint64_t>>> get_offsets(std::string inode_idx);
-
-    /**
-     * Flushes the dirty blocks in this block cache to the file at the given file descriptor
-     * The ordering, size and offset of these blocks is found by get_offsets()
-     */
-    void flush_dirty_blocks(int datafd);
 };
 #endif

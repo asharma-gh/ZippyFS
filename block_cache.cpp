@@ -418,8 +418,8 @@ BlockCache::flush_to_disk() {
     //  - add checksums for each files
 
     // create entry for .node file
-    uint64_t offset_into_data = 0;
     uint64_t offset_into_node = 0;
+    uint64_t curr_flush_offset = 0;
 
     /** the input for the .root file.
      * Every "flush" constructs a new root
@@ -435,41 +435,47 @@ BlockCache::flush_to_disk() {
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         string inode_data = flushed_inode->get_flush_record();
-        // get offset map
-        auto offst_mp = get_offsets(ent.second);
+
+        string inode_idx = ent.second;
 
         string root_input;
         // [path] [inode id] [.node name] [offset into .node] [size-of .node] entry
         root_input += ent.first + " " + flushed_inode->get_id() + " " + fname + ".node" + " " + to_string(offset_into_node);
         // generate block offset table
 
-        unordered_map<uint64_t, pair<uint64_t,uint64_t>> updated_mp;
-        for (auto ent : offst_mp.second) {
-            updated_mp[ent.first] = pair<uint64_t, uint64_t>(ent.second.first + offset_into_data, ent.second.second);
-        }
-        offset_into_data += offst_mp.first;
-        string table;
-        for (auto ent : updated_mp) {
-            table += to_string(ent.first) + " "
-                     + to_string(ent.second.first) + " "
-                     + to_string(ent.second.second) + "\n";
-        }
-        //compute offset into node, node entry size
-        uint64_t node_ent_size = table.size() + inode_data.size();
-        offset_into_node += node_ent_size;
+        string node_table;
+        // write to .data
+        for (auto blk : dirty_block_[inode_idx]) {
+            cout << "WRITING DIRTY BLOCK" << endl;
+            auto block = blk.second;
+            uint64_t block_sz = block->get_actual_size();
+            auto block_data = block->get_data();
+            // auto block_offset = Block::get_physical_size() * blk.first;
+            char buf[block_sz] = {0};
+            for (uint64_t ii = 0; ii < block_sz; ii++) {
+                buf[ii] = block_data[ii];
+            }
+            if (pwrite(datafd, buf, block_sz * sizeof(char), curr_flush_offset) == -1)
+                cout << "Error flushing block to a file ERRNO " << strerror(errno) << endl;
+            // TODO:
+            // generate block offset table here
+            node_table += to_string(blk.first) + " "
+                          + to_string(curr_flush_offset) + " "
+                          + to_string (block_sz) + "\n";
+            curr_flush_offset += block_sz;
+            cout << "NEW FLUSH OFFSET " << curr_flush_offset << endl;
 
+        }
+        uint64_t node_ent_size = node_table.size() + inode_data.size();
+        offset_into_node += node_ent_size;
         // write to root
         root_input += " " + to_string(node_ent_size) + "\n";
 
         // write to .node
         if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
-        if (pwrite(nodefd, table.c_str(), table.size() * sizeof(char), 0) == -1)
+        if (pwrite(nodefd, node_table.c_str(), node_table.size() * sizeof(char), 0) == -1)
             cout << "ERROR writing TABLE to .node ERRNO: " << strerror(errno);
-        // write to .data
-        // TODO: move away from this! Only flush dirty blocks, partition off the data file for each
-        // inode to avoid data corruption, which will occur using this!
-        flushed_inode->flush_to_fd(datafd);
 
         // write to .root
         if (pwrite(rootfd, root_input.c_str(), root_input.size() * sizeof(char), 0) == -1)
@@ -708,11 +714,4 @@ BlockCache::get_offsets(string inode_idx) {
 
     return pair<uint64_t, map<uint64_t, pair<uint64_t, uint64_t>>>(curr_offset, offsets_for_blocks);
 
-}
-
-void
-BlockCache::flush_dirty_blocks(int datafd) {
-    (void)datafd;
-    // iterate thru each dirty block
-    // write at block idx * logical size
 }
