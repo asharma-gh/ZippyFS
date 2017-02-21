@@ -262,7 +262,7 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     bool offsetted = false;
     auto num_blocks = blocks_.size();
     cout << "SIZE " << size << " OFFSET " << offset << " DATA SIZE " << num_blocks << endl;
-    for (unsigned int block_idx = offset / Block::get_logical_size(); block_idx < num_blocks && read_bytes < size; block_idx++) {
+    for (unsigned int block_idx = offset / Block::get_physical_size(); block_idx < num_blocks && read_bytes < size; block_idx++) {
         // we can read this block, find the data
         auto block = blocks_.find(block_idx)->second;
         auto block_data = block->get_data();
@@ -270,7 +270,7 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
         // should only offset once
         auto offset_amt = 0;
         if (offsetted == false) {
-            offset_amt = offset < Block::get_logical_size() ? offset : (offset % Block::get_logical_size());
+            offset_amt = offset < Block::get_physical_size() ? offset : (offset % Block::get_physical_size());
             offsetted = true;
         }
         cout << "BLOCK SIZE " << block->get_actual_size() << endl;
@@ -311,7 +311,7 @@ Inode::flush_to_fd(int fd) {
         }
         cout << "writing... " << endl;
         // do a write to file, offsetted based on block idx
-        if (pwrite(fd, buf, block_size * sizeof(char), block_idx * Block::get_logical_size()) == -1)
+        if (pwrite(fd, buf, block_size * sizeof(char), block_idx * Block::get_physical_size()) == -1)
             perror("Error flushing block to file\n");
         free(buf);
     }

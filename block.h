@@ -56,7 +56,7 @@ class Block {
      * @return the logical size of this block
      * - logical size is defined as the total size of this block
      */
-    static uint64_t get_logical_size() {
+    static uint64_t get_physical_size() {
         return SIZE_;
     }
 
