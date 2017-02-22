@@ -4,6 +4,7 @@
 #include "includes.h"
 #include "block.h"
 #include "inode.h"
+#include "meta_data_cache.h"
 /**
  * represents an in-memory Block Cache
  * @author Arvin Sharma
@@ -171,6 +172,9 @@ class BlockCache {
 
     /** map of ((inode idx, block idx), dirty block) for flushing */
     std::map<std::string, std::map<uint64_t, std::shared_ptr<Block>>> dirty_block_;
+
+    /** cache for .root files */
+    MetadataCache root_cache_;
 
     /* size of this block cache */
     uint64_t size_;

@@ -30,7 +30,7 @@ class MetadataCache {
 
   private:
     /** number of files this cache can store */
-    const uint64_t SIZE_ = 64;
+    const uint64_t SIZE_ = 256;
 
     /**
      * map (path,map(root, path entries))

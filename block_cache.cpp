@@ -674,6 +674,14 @@ BlockCache::load_from_disk(string path) {
 
 vector<tuple<string, string, uint64_t, uint64_t>>
 BlockCache::find_entry_in_root(string root_name, string path) {
+    // check cache first
+    auto cached_vec = root_cache_.get_entry(path, root_name);
+    if (cached_vec.size() > 0) {
+        cout << "GOT ENTRIES FROM ROOT CACHE" << endl;
+        return cached_vec;
+    }
+
+    // else compute it, add to cache
     vector<tuple<string, string, uint64_t, uint64_t>> node_files;
     string ab_root_path = path_to_disk_ + root_name;
     // iterate thru each entry in this root file
@@ -690,5 +698,6 @@ BlockCache::find_entry_in_root(string root_name, string path) {
         }
     }
     cout << "NUMBER OF NODE FILES " << to_string(node_files.size()) << endl;
+    root_cache_.add_entry(path, root_name, node_files);
     return node_files;
 }

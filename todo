@@ -1,10 +1,5 @@
 TODO:
-- cache .root, .node, .data files
-- cache should support a finite number of files
-- probably should be in its own class for simplicity, separate
-it from block_cache
-
-- eviction scheme LRU
+remove zip archives for good, by modifying readdir!
 
 Issue:
 - cache consistency when garbage collection occurs
