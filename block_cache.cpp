@@ -699,6 +699,7 @@ BlockCache::find_entry_in_root(string root_name, string path) {
     vector<tuple<string, string, uint64_t, uint64_t>> node_files;
 
     string curline;
+    string root_content;
     while (getline(*in_file, curline)) {
         char cur_path[PATH_MAX];
         char node_ent[FILENAME_MAX];
@@ -708,9 +709,11 @@ BlockCache::find_entry_in_root(string root_name, string path) {
         if (strcmp(cur_path, path.c_str()) == 0) {
             node_files.push_back(make_tuple((string)node_ent, (string)inode_id, offset, size));
         }
+        root_content += curline + "\n";
     }
     cout << "NUMBER OF NODE FILES " << to_string(node_files.size()) << endl;
     root_cache_.add_entry(path, root_name, node_files);
+    root_cache_.add_root_file(root_name, root_content);
     if (file_opened)
         ((ifstream*)in_file)->close();
     return node_files;

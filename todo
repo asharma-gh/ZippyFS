@@ -5,6 +5,7 @@ remove zip archives for good, by modifying readdir!
 - there are instances where people work on different blocks,
 and currently only the later write will get noticed!
 
+- when a new .root is made for a file with previous .root entries, copy those over to the new .root!
 Issue:
 - cache consistency when garbage collection occurs
 solution: implement function in block_cache to "update" its file cache
