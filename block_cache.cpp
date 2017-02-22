@@ -550,6 +550,8 @@ BlockCache::load_from_disk(string path) {
             int nodefd = ::open(path_to_node.c_str(), O_RDONLY);
             if (nodefd == -1)
                 cout << "ERROR opening .node file at " << path_to_node << " ERRNO " << strerror(errno) << endl;
+            // TODO: cache entire .node file
+            // then read using sstream
             string inode_id = get<1>(node_ent);
             uint64_t node_offset = get<2>(node_ent);
             uint64_t node_size = get<3>(node_ent);
