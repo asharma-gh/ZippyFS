@@ -180,7 +180,7 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 64;
+    const uint64_t MAX_SIZE = 128;
 
     /**
      * @param root_name is the name of the root file

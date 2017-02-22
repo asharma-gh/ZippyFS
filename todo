@@ -1,4 +1,9 @@
 TODO:
+- cache .node and .data entries for path
+- figure out what operation is primary bottleneck
+
+
+
 remove zip archives for good, by modifying readdir!
 
 - add modified time for INDIVIDUAL BLOCKS
