@@ -13,6 +13,7 @@ MetadataCache::add_entry(string path, string root, vector<tuple<string, string, 
     }
     //  root_lru_times_[path] = ULLONG_MAX;
     root_entry_cache_[path][root] = entry;
+    cout << "ADDED ENTRY " << root << "TO CACHE" << endl;
 }
 
 
@@ -38,7 +39,7 @@ MetadataCache::root_content_in_cache(string root_name) {
 
 void
 MetadataCache::add_root_file(string root_file, string contents) {
-    add_content(shared_ptr<unordered_map<string, string>>(&root_content_cache_), root_file, contents);
+    add_content(root_content_cache_, root_file, contents);
 }
 
 string
@@ -50,54 +51,54 @@ MetadataCache::get_root_file_contents(string root_file) {
 }
 
 void
-MetadataCache::add_content(std::shared_ptr<unordered_map<string, string>> cache, string key, string value) {
-    if (cache->size() == SIZE_) {
-        cache->clear();
+MetadataCache::add_content(unordered_map<string, string> cache, string key, string value) {
+    if (cache.size() == SIZE_) {
+        cache.clear();
     }
 
-    (*cache)[key] = value;
+    cache[key] = value;
 }
 
 string
-MetadataCache::get_content(std::shared_ptr<unordered_map<string, string>> cache, string key) {
+MetadataCache::get_content(unordered_map<string, string> cache, string key) {
     if (in_given_cache(cache, key)) {
-        return (*cache)[key];
+        return cache[key];
     }
     return "";
 }
 
 bool
-MetadataCache::in_given_cache(std::shared_ptr<unordered_map<string, string>> cache, string key) {
-    return cache->find(key) != cache->end();
+MetadataCache::in_given_cache(unordered_map<string, string> cache, string key) {
+    return cache.find(key) != cache.end();
 }
 
 string
 MetadataCache::get_node_file(string node_file) {
-    return get_content(shared_ptr<unordered_map<string, string>>(&node_content_cache_), node_file);
+    return get_content(node_content_cache_, node_file);
 }
 
 string
 MetadataCache::get_data_file(string data_file) {
-    return get_content(shared_ptr<unordered_map<string, string>>(&data_content_cache_), data_file);
+    return get_content(data_content_cache_, data_file);
 
 }
 
 void
 MetadataCache::add_node_file(string node_file, string content) {
-    add_content(shared_ptr<unordered_map<string, string>>(&node_content_cache_), node_file, content);
+    add_content(node_content_cache_, node_file, content);
 }
 
 void
 MetadataCache::add_data_file(string data_file, string content) {
-    add_content(shared_ptr<unordered_map<string, string>>(&data_content_cache_), data_file, content);
+    add_content(data_content_cache_, data_file, content);
 }
 
 bool
 MetadataCache::node_content_in_cache(string node_file) {
-    return in_given_cache(shared_ptr<unordered_map<string, string>>(&node_content_cache_), node_file);
+    return in_given_cache(node_content_cache_, node_file);
 }
 
 bool
 MetadataCache::data_content_in_cache(string data_file) {
-    return in_given_cache(shared_ptr<unordered_map<string, string>>(&data_content_cache_), data_file);
+    return in_given_cache(data_content_cache_, data_file);
 }

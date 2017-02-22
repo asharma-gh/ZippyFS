@@ -87,7 +87,7 @@ class MetadataCache {
 
   private:
     /** number of files this cache can store */
-    const uint64_t SIZE_ = 64;
+    const uint64_t SIZE_ = 128;
 
     /**
      * map (path,map(root, path entries))
@@ -124,11 +124,11 @@ class MetadataCache {
     std::unordered_map<std::string, std::string> data_content_cache_;
 
 
-    void add_content(std::shared_ptr<std::unordered_map<std::string, std::string>> cache, std::string key, std::string value);
+    void add_content(std::unordered_map<std::string, std::string> cache, std::string key, std::string value);
 
-    std::string get_content(std::shared_ptr<std::unordered_map<std::string, std::string>> cache, std::string key);
+    std::string get_content(std::unordered_map<std::string, std::string> cache, std::string key);
 
-    bool in_given_cache(std::shared_ptr<std::unordered_map<std::string, std::string>> cache, std::string key);
+    bool in_given_cache(std::unordered_map<std::string, std::string> cache, std::string key);
 
 
 };

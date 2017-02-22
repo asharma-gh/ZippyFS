@@ -180,7 +180,13 @@ BlockCache::getattr(string path, struct stat* st) {
     else
         return get_inode_by_path(path)->stat(st);
 }
-
+/****
+ * TODO:
+ * fully implement readdir here instead of fuse_ops
+ * - iterate thru each root / node file, add every single ent
+ * - if it is an updated version
+ * - if the latest version is a deletion, it dne
+ */
 vector<BlockCache::index_entry>
 BlockCache::readdir(string path) {
     vector<BlockCache::index_entry> ents;
@@ -529,6 +535,7 @@ BlockCache::load_from_disk(string path) {
         if (node_files.size() == 0)
             // then it is not in this root file, skip it
             continue;
+
         /***
          * node_files has all of the extracted node files for this path and root
          * GOAL AT THE END OF THIS LOOP:
@@ -550,6 +557,8 @@ BlockCache::load_from_disk(string path) {
                 // to "pread" from
                 cached_content = meta_cache_.get_node_file(node_name);
                 in_cache = true;
+
+                cout << "NODE IS IN CACHE" << endl;
             }
             string path_to_node = path_to_disk_ + node_name;
             cout << "PATH TO NODE " << path_to_node << endl;
@@ -566,21 +575,20 @@ BlockCache::load_from_disk(string path) {
 
             } else {
                 // cache entire .node file, then read from cache
-
+                cout << "READING FILE INTO CACHE" << endl;
                 FILE* file  = fopen(path_to_node.c_str(), "r");
                 // get file size
                 fseek(file, 0, SEEK_END);
                 long fsize = ftell(file);
                 rewind(file);
-                char* contents = (char*)alloca(fsize + 1);
-                memset(contents, 0, sizeof(contents) / sizeof(char));
+                char contents[fsize + 1] = {'\0'};
                 fread(contents, fsize, 1, file);
-                contents[fsize] = '\0';
                 // add node to cache
                 meta_cache_.add_node_file(node_name, (string)contents);
                 // do this only if the file is not in cache
                 memcpy(buf, contents + node_offset, node_size);
                 cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
+                fclose(file);
 
             }
 
@@ -643,13 +651,35 @@ BlockCache::load_from_disk(string path) {
             }
 
             // find the .data, open it
-            string path_to_data = path_to_disk_ + node_name.substr(0, node_name.size() -  5) + ".data";
+            string data_name =  node_name.substr(0, node_name.size() -  5) + ".data";
+
+            string path_to_data = path_to_disk_ + data_name;
             cout << "PATH TO DATA " << path_to_data << endl;
 
+            // cache entire data file if it isn't already
+            string data_content;
+            if (meta_cache_.data_content_in_cache(data_name)) {
+                data_content = meta_cache_.get_data_file(data_name);
+            } else {
+                // cache entire .data file, then read from cache
+                cout << "WRITING DATA FILE INTO CACHE" << endl;
+                FILE* file  = fopen(path_to_data.c_str(), "r");
+                // get file size
+                fseek(file, 0, SEEK_END);
+                long fsize = ftell(file);
+                rewind(file);
+                char contents[fsize + 1] = {'\0'};
+                fread(contents, fsize, 1, file);
+                // add node to cache
+                meta_cache_.add_node_file(node_name, (string)contents);
+                fclose(file);
+                data_content = contents;
+            }
+
             // open the .data, offset and read it
-            int datafd = ::open(path_to_data.c_str(), O_RDONLY);
-            if (datafd == -1)
-                cout << "ERROR OPENING .data file ERRNO " << strerror(errno) << endl;
+            //  int datafd = ::open(path_to_data.c_str(), O_RDONLY);
+            //   if (datafd == -1)
+            //     cout << "ERROR OPENING .data file ERRNO " << strerror(errno) << endl;
             for (auto ent : data_table) {
                 // if this isn't an updated inode and we already have a block, then don't add it!
                 // else we either have an updated inode or do not have the inode block, so we add it.
@@ -661,15 +691,18 @@ BlockCache::load_from_disk(string path) {
                 uint64_t size_of_data_ent = ent.second.second;
                 uint8_t data_buf[size_of_data_ent] = {0};
                 // read data, add to map
+                memcpy(data_buf, data_content.c_str() + offset_into_data, size_of_data_ent);
+                /*
                 if (pread(datafd, data_buf, size_of_data_ent, offset_into_data) == -1)
                     cout << "ERROR reading data in data file ERRNO " << strerror(errno) << endl;
+                    */
 
                 // add block to map for inode
                 inode_blocks[ent.first] = shared_ptr<Block>(new Block(data_buf, size_of_data_ent));
 
             }
-            if (close(datafd) == -1)
-                cout << "ERROR closing data file ERRNO " << strerror(errno) << endl;
+            //if (close(datafd) == -1)
+            //  cout << "ERROR closing data file ERRNO " << strerror(errno) << endl;
         }
     }
     closedir(root_dir);
@@ -736,6 +769,7 @@ BlockCache::find_entry_in_root(string root_name, string path) {
     cout << "NUMBER OF NODE FILES " << to_string(node_files.size()) << endl;
     meta_cache_.add_entry(path, root_name, node_files);
     meta_cache_.add_root_file(root_name, root_content);
+    cout << "ADDED ROOT TO CACHE" << endl;
     if (file_opened)
         ((ifstream*)in_file)->close();
     return node_files;
