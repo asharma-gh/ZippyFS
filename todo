@@ -1,6 +1,10 @@
 TODO:
 remove zip archives for good, by modifying readdir!
 
+- add modified time for INDIVIDUAL BLOCKS
+- there are instances where people work on different blocks,
+and currently only the later write will get noticed!
+
 Issue:
 - cache consistency when garbage collection occurs
 solution: implement function in block_cache to "update" its file cache

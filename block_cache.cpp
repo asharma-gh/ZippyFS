@@ -305,7 +305,7 @@ BlockCache::flush_to_shdw(int on_close) {
     cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE && on_close == 0)
         return -1;
-    flush_to_disk();
+    return flush_to_disk();
 
     // make index file for cache
     string idx_path = path_to_shdw_ + "index.idx";
@@ -481,13 +481,17 @@ BlockCache::flush_to_disk() {
 
         // write to .root
         if (pwrite(rootfd, root_input.c_str(), root_input.size() * sizeof(char), 0) == -1)
-            cout << "ERROR writing to .index ERRNO: " << strerror(errno) << endl;
+            cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
 
     }
 
     close(nodefd);
     close(datafd);
     close(rootfd);
+    inode_idx_.clear();
+    inode_ptrs_.clear();
+    dirty_block_.clear();
+    size_ = 0;
 
     return 0;
 }
@@ -662,7 +666,7 @@ BlockCache::load_from_disk(string path) {
     // add to cache if this one is a later version than the current one, if there is a current one
     bool is_updated = (in_cache(path) == 0) && get_inode_by_path(path)->get_ull_mtime() > latest_mtime;
 
-    if (!is_updated) {
+    if (!is_updated || in_cache(path) == -1) {
         cout <<" UPDATED THING " << endl;
         inode_idx_[path] = latest_inode->get_id();
         inode_ptrs_[latest_inode->get_id()] = latest_inode;
@@ -675,19 +679,27 @@ BlockCache::load_from_disk(string path) {
 vector<tuple<string, string, uint64_t, uint64_t>>
 BlockCache::find_entry_in_root(string root_name, string path) {
     // check cache first
-    auto cached_vec = root_cache_.get_entry(path, root_name);
-    if (cached_vec.size() > 0) {
+    if (root_cache_.in_cache(path, root_name)) {
         cout << "GOT ENTRIES FROM ROOT CACHE" << endl;
-        return cached_vec;
+        return root_cache_.get_entry(path, root_name);
     }
-
-    // else compute it, add to cache
+    istream* in_file;
+    /** istream has no way of closing files! so I use safe-casting to close it */
+    bool file_opened = false;
+    // if root content is in cache
+    if (root_cache_.root_content_in_cache(root_name)) {
+        cout << "GOT ROOT CONTENT FROM ROOT CACHE!"  << endl;
+        in_file = new stringstream(root_cache_.get_root_file_contents(root_name));
+    } else {
+        // else we need to read this root file
+        string ab_root_path = path_to_disk_ + root_name;
+        in_file = new ifstream(ab_root_path);
+        file_opened = true;
+    }
     vector<tuple<string, string, uint64_t, uint64_t>> node_files;
-    string ab_root_path = path_to_disk_ + root_name;
-    // iterate thru each entry in this root file
-    ifstream in_file(ab_root_path);
+
     string curline;
-    while (getline(in_file, curline)) {
+    while (getline(*in_file, curline)) {
         char cur_path[PATH_MAX];
         char node_ent[FILENAME_MAX];
         char inode_id[FILENAME_MAX];
@@ -699,5 +711,7 @@ BlockCache::find_entry_in_root(string root_name, string path) {
     }
     cout << "NUMBER OF NODE FILES " << to_string(node_files.size()) << endl;
     root_cache_.add_entry(path, root_name, node_files);
+    if (file_opened)
+        ((ifstream*)in_file)->close();
     return node_files;
 }
