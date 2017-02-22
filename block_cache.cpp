@@ -543,13 +543,16 @@ BlockCache::load_from_disk(string path) {
 
             // find the .node
             string node_name = get<0>(node_ent);
+            string cached_content;
+            bool in_cache = false;
+            if (meta_cache_.node_content_in_cache(node_name)) {
+                // don't need to open, load content into buf
+                // to "pread" from
+                cached_content = meta_cache_.get_node_file(node_name);
+                in_cache = true;
+            }
             string path_to_node = path_to_disk_ + node_name;
             cout << "PATH TO NODE " << path_to_node << endl;
-
-            // open the .node, offset and read it
-            int nodefd = ::open(path_to_node.c_str(), O_RDONLY);
-            if (nodefd == -1)
-                cout << "ERROR opening .node file at " << path_to_node << " ERRNO " << strerror(errno) << endl;
             // TODO: cache entire .node file
             // then read using sstream
             string inode_id = get<1>(node_ent);
@@ -557,12 +560,29 @@ BlockCache::load_from_disk(string path) {
             uint64_t node_size = get<3>(node_ent);
             char buf[node_size + 1] = {0};
             cout << "NODE ENT SIZE " << to_string(node_size) << " OFFSET " << to_string(node_offset) << endl;
-            if (pread(nodefd, buf, node_size, node_offset) == -1)
-                cout << "ERROR reading .node entry ERRNO " << strerror(errno) << endl;
-            cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
+            if (in_cache) {
+                // read entry into buf
+                memcpy(buf, cached_content.c_str() + node_offset, node_size);
 
-            if (close(nodefd) == -1)
-                cout << "ERROR closing .node file ERRNO " << strerror(errno) << endl;
+            } else {
+                // cache entire .node file, then read from cache
+
+                FILE* file  = fopen(path_to_node.c_str(), "r");
+                // get file size
+                fseek(file, 0, SEEK_END);
+                long fsize = ftell(file);
+                rewind(file);
+                char* contents = (char*)alloca(fsize + 1);
+                memset(contents, 0, sizeof(contents) / sizeof(char));
+                fread(contents, fsize, 1, file);
+                contents[fsize] = '\0';
+                // add node to cache
+                meta_cache_.add_node_file(node_name, (string)contents);
+                // do this only if the file is not in cache
+                memcpy(buf, contents + node_offset, node_size);
+                cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
+
+            }
 
             string node_contents = (string)buf;
             cout << "CONTENTS " << node_contents << endl;
@@ -681,17 +701,17 @@ BlockCache::load_from_disk(string path) {
 vector<tuple<string, string, uint64_t, uint64_t>>
 BlockCache::find_entry_in_root(string root_name, string path) {
     // check cache first
-    if (root_cache_.in_cache(path, root_name)) {
+    if (meta_cache_.in_cache(path, root_name)) {
         cout << "GOT ENTRIES FROM ROOT CACHE" << endl;
-        return root_cache_.get_entry(path, root_name);
+        return meta_cache_.get_entry(path, root_name);
     }
     istream* in_file;
     /** istream has no way of closing files! so I use safe-casting to close it */
     bool file_opened = false;
     // if root content is in cache
-    if (root_cache_.root_content_in_cache(root_name)) {
+    if (meta_cache_.root_content_in_cache(root_name)) {
         cout << "GOT ROOT CONTENT FROM ROOT CACHE!"  << endl;
-        in_file = new stringstream(root_cache_.get_root_file_contents(root_name));
+        in_file = new stringstream(meta_cache_.get_root_file_contents(root_name));
     } else {
         // else we need to read this root file
         string ab_root_path = path_to_disk_ + root_name;
@@ -714,8 +734,8 @@ BlockCache::find_entry_in_root(string root_name, string path) {
         root_content += curline + "\n";
     }
     cout << "NUMBER OF NODE FILES " << to_string(node_files.size()) << endl;
-    root_cache_.add_entry(path, root_name, node_files);
-    root_cache_.add_root_file(root_name, root_content);
+    meta_cache_.add_entry(path, root_name, node_files);
+    meta_cache_.add_root_file(root_name, root_content);
     if (file_opened)
         ((ifstream*)in_file)->close();
     return node_files;

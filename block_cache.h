@@ -173,8 +173,8 @@ class BlockCache {
     /** map of ((inode idx, block idx), dirty block) for flushing */
     std::map<std::string, std::map<uint64_t, std::shared_ptr<Block>>> dirty_block_;
 
-    /** cache for .root files */
-    MetadataCache root_cache_;
+    /** cache for .root/.node/.data files */
+    MetadataCache meta_cache_;
 
     /* size of this block cache */
     uint64_t size_;
