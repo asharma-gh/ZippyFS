@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <stdlib.h>
+#include <limits.h>
 #include <libgen.h>
 #include <fstream>
 #include <dirent.h>

@@ -42,7 +42,7 @@ class MetadataCache {
      * map (path, latest time)
      * on eviction, the path with the min(latest_time) is deleted
      */
-    std::unordered_map <std::string, uint64_t> lru_times_;
+    std::unordered_map <std::string, unsigned long long> lru_times_;
 
 
 };
