@@ -399,6 +399,8 @@ BlockCache::get_refs(string path) {
 
 int
 BlockCache::flush_to_disk() {
+    if (dirty_block_.size() == 0)
+        return -1;
     // create path to .head file
     string fname = Util::generate_rand_hex_name();
     string path_to_node = path_to_disk_ + fname + ".node";
@@ -427,8 +429,15 @@ BlockCache::flush_to_disk() {
      * .head file is written to last.
      */
     for (auto ent : inode_idx_) {
+        // if nothing was written to this inode, don't flush it
+        // TODO: chmod / other ways to modify files aren't gonna
+        // be recorded right now, future change!
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
+        if (dirty_block_.find(ent.second) == dirty_block_.end()
+                && flushed_inode->is_dir() == 0)
+            continue;
+
         string inode_data = flushed_inode->get_flush_record();
 
         string inode_idx = ent.second;

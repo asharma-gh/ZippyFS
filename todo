@@ -1,9 +1,16 @@
-- now we have 4 files, but I don't believe .index is necessary
-as offset and size into node can be in .root files
+TODO:
+- cache .root, .node, .data files
+- cache should support a finite number of files
+- probably should be in its own class for simplicity, separate
+it from block_cache
 
-- we should now move away from .index files since it adds unnecessary
-overhead
+- eviction scheme LRU
 
+Issue:
+- cache consistency when garbage collection occurs
+solution: implement function in block_cache to "update" its file cache
+when gc occurs, if gc is implemented in fuse_ops. Alternatively,
+gc should be implemented in the block_cache
 
 ===
 New design
