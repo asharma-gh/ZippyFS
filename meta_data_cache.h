@@ -96,19 +96,6 @@ class MetadataCache {
         std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>>> root_entry_cache_;
 
     /**
-     * map (path, latest time)
-     * on eviction, the path with the min(latest_time) is deleted
-     */
-    //  std::unordered_map <std::string, unsigned long long> lru_times_;
-
-    /**
-     * map (root, latest_time)
-     * on eviction, the root with the min(latest_time) is deleted
-     */
-    //  std::unordered_map <std::string, unsigned long long> root_lru_times_;
-
-
-    /**
      * map (root name, root contents)
      */
     std::unordered_map<std::string, std::string> root_content_cache_;
@@ -123,11 +110,13 @@ class MetadataCache {
      */
     std::unordered_map<std::string, std::string> data_content_cache_;
 
-
+    /** adds the given key and value to the map */
     void add_content(std::unordered_map<std::string, std::string> cache, std::string key, std::string value);
 
+    /** gets the content for the given key and map */
     std::string get_content(std::unordered_map<std::string, std::string> cache, std::string key);
 
+    /** checks if the given key has an entry in this cache */
     bool in_given_cache(std::unordered_map<std::string, std::string> cache, std::string key);
 
 

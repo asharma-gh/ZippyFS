@@ -189,6 +189,34 @@ BlockCache::getattr(string path, struct stat* st) {
  */
 vector<BlockCache::index_entry>
 BlockCache::readdir(string path) {
+    // map (path, index ent)
+    map<string, BlockCache::index_entry> added_names;
+
+    oots
+    DIR* root_dir = opendir(path_to_disk_.c_str());
+    if (root_dir == NULL) {
+        cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
+    }
+    struct dirent* entry;
+    const char* entry_name;
+    // iterate thru each entry in root
+    while ((entry = ::readdir(root_dir)) != NULL) {
+        entry_name = entry->d_name;
+        // check if this is a root file
+        //
+        //
+        // if it is, check if its in cache, if not, add it
+        //
+        // for each thing, make a list-of [path, node]
+        //
+        // get latest .node for the path
+        //
+        // make an entry and add it
+        //
+
+    }
+    // then check the cache, add stuff that's updated (checking for deletions)
+
     vector<BlockCache::index_entry> ents;
     for (auto entry : inode_idx_) {
         char* dirpath = strdup(entry.first.c_str());
@@ -677,9 +705,6 @@ BlockCache::load_from_disk(string path) {
             }
 
             // open the .data, offset and read it
-            //  int datafd = ::open(path_to_data.c_str(), O_RDONLY);
-            //   if (datafd == -1)
-            //     cout << "ERROR OPENING .data file ERRNO " << strerror(errno) << endl;
             for (auto ent : data_table) {
                 // if this isn't an updated inode and we already have a block, then don't add it!
                 // else we either have an updated inode or do not have the inode block, so we add it.
@@ -692,17 +717,11 @@ BlockCache::load_from_disk(string path) {
                 uint8_t data_buf[size_of_data_ent] = {0};
                 // read data, add to map
                 memcpy(data_buf, data_content.c_str() + offset_into_data, size_of_data_ent);
-                /*
-                if (pread(datafd, data_buf, size_of_data_ent, offset_into_data) == -1)
-                    cout << "ERROR reading data in data file ERRNO " << strerror(errno) << endl;
-                    */
 
                 // add block to map for inode
                 inode_blocks[ent.first] = shared_ptr<Block>(new Block(data_buf, size_of_data_ent));
 
             }
-            //if (close(datafd) == -1)
-            //  cout << "ERROR closing data file ERRNO " << strerror(errno) << endl;
         }
     }
     closedir(root_dir);
