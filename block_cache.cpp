@@ -192,21 +192,24 @@ BlockCache::readdir(string path) {
     // map (path, index ent)
     map<string, BlockCache::index_entry> added_names;
 
-    oots
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
     }
     struct dirent* entry;
-    const char* entry_name;
+    const char* root_name;
     // iterate thru each entry in root
     while ((entry = ::readdir(root_dir)) != NULL) {
-        entry_name = entry->d_name;
-        // check if this is a root file
-        //
-        //
-        // if it is, check if its in cache, if not, add it
-        //
+        root_name = entry->d_name;
+        // if this file is not a .root, skip it
+        if (strlen(root_name) < 4
+                || strcmp(root_name + (strlen(root_name) - 5), ".root") != 0)
+            continue;
+        // it is a root, check if its in cache, if not, add it
+        string root_content;
+        if (meta_cache_.root_content_in_cache(root_name)) {
+            root_content = meta_cache_.get_root_file_contents(root_name);
+        }
         // for each thing, make a list-of [path, node]
         //
         // get latest .node for the path
@@ -477,7 +480,8 @@ BlockCache::flush_to_disk() {
         string inode_idx = ent.second;
 
         string root_input;
-        // [path] [inode id] [.node name] [offset into .node] [size-of .node] entry
+        //TODO: get all root entries here
+        // [path] [inode id] [List-of [.node name] [offset into .node] [size-of .node] entry]
         root_input += ent.first + " " + flushed_inode->get_id() + " " + fname + ".node" + " " + to_string(offset_into_node);
         // generate block offset table
 
@@ -792,4 +796,13 @@ BlockCache::find_entry_in_root(string root_name, string path) {
     if (file_opened)
         ((ifstream*)in_file)->close();
     return node_files;
+}
+
+unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
+get_all_root_entries(string path = "") {
+    unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
+    // iterate thru all root files
+    // for each root file, iterate thru each entry
+    // if path has a size > 0, add the entry to the map (vec of tuples)
+    return root_entries;
 }

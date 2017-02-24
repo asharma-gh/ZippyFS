@@ -1,4 +1,5 @@
 TODO:
+- change .root entries so that finding the list of .node entries is easier
 - cache .node and .data entries for path
 - figure out what operation is primary bottleneck
 

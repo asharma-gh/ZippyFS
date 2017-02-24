@@ -439,6 +439,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         added_names[ent.path] = ent;
     }
 
+
     // construct file path in cache
     char shadow_file_path[strlen(path) + strlen(shadow_path)];
     memset(shadow_file_path, 0, sizeof(shadow_file_path) / sizeof(char));
