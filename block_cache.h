@@ -180,7 +180,7 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 256;
+    const uint64_t MAX_SIZE = 64;
 
     /**
      * @param root_name is the name of the root file
@@ -188,7 +188,7 @@ class BlockCache {
      * @returns [list of (node name, inode id, offset ,size)]
      * If this list is empty, then the path entry did not exist
      */
-    std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>> find_entry_in_root(std::string root_name, std::string path);
+    //std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>> find_entry_in_root(std::string root_name, std::string path);
 
     /**
      * @param path is the path of the item to get all root entries for

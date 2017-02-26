@@ -462,7 +462,6 @@ BlockCache::flush_to_disk() {
 
         // NEW!: timestamp this root file
         string root_input;
-        //TODO: get all root entries here
         // [path] [inode id] [List-of [.node name] [offset into .node] [size-of .node] entry]
         root_input += "INODE:" + ent.first + " " + flushed_inode->get_id() + "\n" + fname + ".node" + " " + to_string(offset_into_node);
         // generate block offset table
@@ -492,6 +491,18 @@ BlockCache::flush_to_disk() {
         offset_into_node += node_ent_size;
 
         root_input += " " + to_string(node_ent_size) + "\n";
+        // carry over old root entries
+        auto old_entries = get_all_root_entries(ent.first)[ent.first];
+        if (old_entries.size() > 0) {
+            // write them to root_input
+            // TODO: something to fix conflicting blocks
+            for (auto entry : old_entries) {
+                string nname = get<0>(entry);
+                uint64_t offset = get<2>(entry);
+                uint64_t size = get<3>(entry);
+                root_input += nname + " " + to_string(offset) + " " + to_string(size) + "\n";
+            }
+        }
 
         // write to .node
         if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
@@ -545,7 +556,7 @@ BlockCache::load_from_disk(string path) {
 
         // we have a .root file
         // check if it contains this path
-        auto node_files = find_entry_in_root(entry_name, path);
+        auto node_files = get_all_root_entries(path)[path];
         if (node_files.size() == 0)
             // then it is not in this root file, skip it
             continue;
@@ -717,7 +728,7 @@ BlockCache::load_from_disk(string path) {
     return 0;
 
 }
-
+/*
 vector<tuple<string, string, uint64_t, uint64_t>>
 BlockCache::find_entry_in_root(string root_name, string path) {
     // check cache first
@@ -726,7 +737,7 @@ BlockCache::find_entry_in_root(string root_name, string path) {
         return meta_cache_.get_entry(path, root_name);
     }
     istream* in_file;
-    /** istream has no way of closing files! so I use safe-casting to close it */
+    / istream has no way of closing files! so I use safe-casting to close it
     bool file_opened = false;
     // if root content is in cache
     if (meta_cache_.root_content_in_cache(root_name)) {
@@ -761,7 +772,7 @@ BlockCache::find_entry_in_root(string root_name, string path) {
         ((ifstream*)in_file)->close();
     return node_files;
 }
-
+*/
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
@@ -838,8 +849,6 @@ BlockCache::get_all_root_entries(string path) {
 
 string
 BlockCache::read_entire_file(string path) {
-    // cache entire .data file, then read from cache
-    cout << "WRITING DATA FILE INTO CACHE" << endl;
     FILE* file  = fopen(path.c_str(), "r");
     // get file size
     fseek(file, 0, SEEK_END);
