@@ -790,6 +790,17 @@ BlockCache::get_all_root_entries(string path) {
         string cur_path;
         string cur_id;
         while (getline(ents, cur_ent)) {
+            if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
+                in_inode_table = false;
+                /// we have an inode entry, get the path
+                char ent_path[PATH_MAX] = {0};
+                char ent_id[FILENAME_MAX] = {0};
+                sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
+                cur_path = ent_path;
+                cur_id = ent_id;
+            } else
+                in_inode_table = true;
+
             if (in_inode_table) {
                 char node_name[FILENAME_MAX] = {0};
                 uint64_t offset;
@@ -797,16 +808,6 @@ BlockCache::get_all_root_entries(string path) {
                 sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
                 root_entries[cur_path].push_back(make_tuple((string)node_name, cur_id, offset, size));
             }
-            if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
-                in_inode_table = true;
-                /// we have an inode entry, get the path
-                char ent_path[PATH_MAX] = {0};
-                char ent_id[FILENAME_MAX] = {0};
-                sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
-                cur_path = ent_path;
-                cur_id = ent_id;
-            }
-
         }
         // get latest .node for the path
         //
