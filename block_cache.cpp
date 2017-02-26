@@ -757,7 +757,6 @@ BlockCache::find_entry_in_root(string root_name, string path) {
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
-    (void)path;
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
@@ -798,6 +797,8 @@ BlockCache::get_all_root_entries(string path) {
                 sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
                 cur_path = ent_path;
                 cur_id = ent_id;
+                if (path.size() > 0 && cur_path.compare(path) != 0)
+                    continue;
             } else
                 in_inode_table = true;
 
@@ -809,11 +810,6 @@ BlockCache::get_all_root_entries(string path) {
                 root_entries[cur_path].push_back(make_tuple((string)node_name, cur_id, offset, size));
             }
         }
-        // get latest .node for the path
-        //
-        // make an entry and add it
-        //
-
     }
 
     return root_entries;
