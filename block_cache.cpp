@@ -435,6 +435,13 @@ BlockCache::flush_to_disk() {
      * TODO: have this root contain previous .index / .nodes
      */
 
+    // timestamp .root
+    string timestamp = to_string(Util::get_time()) + "\n";
+    // write to .root
+    if (pwrite(rootfd, timestamp.c_str(), timestamp.size() * sizeof(char), 0) == -1)
+        cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
+
+
     /**
      * This loop writes to the .node and .data files
      * .head file is written to last.
@@ -454,7 +461,7 @@ BlockCache::flush_to_disk() {
         string inode_idx = ent.second;
 
         // NEW!: timestamp this root file
-        string root_input = to_string(Util::get_time()) + "\n";
+        string root_input;
         //TODO: get all root entries here
         // [path] [inode id] [List-of [.node name] [offset into .node] [size-of .node] entry]
         root_input += "INODE:" + ent.first + " " + flushed_inode->get_id() + "\n" + fname + ".node" + " " + to_string(offset_into_node);
