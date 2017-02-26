@@ -1,17 +1,14 @@
 TODO:
-- change .root entries so that finding the list of .node entries is easier
-- cache .node and .data entries for path
+- add block mtime to .node table
+- this way, we can check if a .node file is garbage
+by looking at each block mtime
+
 - figure out what operation is primary bottleneck
-
-
 
  -- remove zip archives for good, by modifying readdir!
 
-- add modified time for INDIVIDUAL BLOCKS
-- there are instances where people work on different blocks,
-and currently only the later write will get noticed!
 
-- when a new .root is made for a file with previous .root entries, copy those over to the new .root!
+
 Issue:
 - cache consistency when garbage collection occurs
 solution: implement function in block_cache to "update" its file cache
