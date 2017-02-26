@@ -581,20 +581,12 @@ BlockCache::load_from_disk(string path) {
 
             } else {
                 // cache entire .node file, then read from cache
-                cout << "READING FILE INTO CACHE" << endl;
-                FILE* file  = fopen(path_to_node.c_str(), "r");
-                // get file size
-                fseek(file, 0, SEEK_END);
-                long fsize = ftell(file);
-                rewind(file);
-                char contents[fsize + 1] = {'\0'};
-                fread(contents, fsize, 1, file);
+                string node_content = read_entire_file(path_to_node);
                 // add node to cache
-                meta_cache_.add_node_file(node_name, (string)contents);
+                meta_cache_.add_node_file(node_name,  node_content);
                 // do this only if the file is not in cache
-                memcpy(buf, contents + node_offset, node_size);
+                memcpy(buf, node_content.c_str() + node_offset, node_size);
                 cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
-                fclose(file);
 
             }
 
@@ -669,17 +661,7 @@ BlockCache::load_from_disk(string path) {
             } else {
                 // cache entire .data file, then read from cache
                 cout << "WRITING DATA FILE INTO CACHE" << endl;
-                FILE* file  = fopen(path_to_data.c_str(), "r");
-                // get file size
-                fseek(file, 0, SEEK_END);
-                long fsize = ftell(file);
-                rewind(file);
-                char contents[fsize + 1] = {'\0'};
-                fread(contents, fsize, 1, file);
-                // add node to cache
-                meta_cache_.add_node_file(node_name, (string)contents);
-                fclose(file);
-                data_content = contents;
+                data_content = read_entire_file(path_to_data);
             }
 
             // open the .data, offset and read it
@@ -775,7 +757,7 @@ BlockCache::find_entry_in_root(string root_name, string path) {
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
-
+    (void)path;
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
@@ -793,6 +775,9 @@ BlockCache::get_all_root_entries(string path) {
         string root_content;
         if (meta_cache_.root_content_in_cache(root_name)) {
             root_content = meta_cache_.get_root_file_contents(root_name);
+        } else {
+            // load it up to cache
+            //
         }
         // for each thing, make a list-of [path, node]
         //
@@ -804,4 +789,19 @@ BlockCache::get_all_root_entries(string path) {
     }
 
     return root_entries;
+}
+
+string
+read_entire_file(string path) {
+    // cache entire .data file, then read from cache
+    cout << "WRITING DATA FILE INTO CACHE" << endl;
+    FILE* file  = fopen(path.c_str(), "r");
+    // get file size
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    rewind(file);
+    char contents[fsize + 1] = {'\0'};
+    fread(contents, fsize, 1, file);
+
+    return contents;
 }

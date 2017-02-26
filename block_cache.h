@@ -197,5 +197,11 @@ class BlockCache {
      * [map (path, [list of (node name, inode id, offset, size)])
      */
     std::unordered_map<std::string, std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>> get_all_root_entries(std::string path = "");
+
+    /**
+     * @param path is the path to the file
+     * @return all of the contents for the file
+     */
+    std::string read_entire_file(std::string path);
 };
 #endif
