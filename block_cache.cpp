@@ -456,7 +456,7 @@ BlockCache::flush_to_disk() {
         string root_input;
         //TODO: get all root entries here
         // [path] [inode id] [List-of [.node name] [offset into .node] [size-of .node] entry]
-        root_input += ent.first + " " + flushed_inode->get_id() + " " + fname + ".node" + " " + to_string(offset_into_node);
+        root_input += "INODE:" + ent.first + " " + flushed_inode->get_id() + "\n" + fname + ".node" + " " + to_string(offset_into_node);
         // generate block offset table
 
         string node_table;
@@ -776,11 +776,38 @@ BlockCache::get_all_root_entries(string path) {
         if (meta_cache_.root_content_in_cache(root_name)) {
             root_content = meta_cache_.get_root_file_contents(root_name);
         } else {
-            // load it up to cache
-            //
+            // make path to .root file
+            string path_to_root = path_to_disk_ + root_name;
+            // extract all content
+            root_content = read_entire_file(path_to_root);
+            // add it to cache
+            meta_cache_.add_root_file(path_to_root, root_content);
         }
         // for each thing, make a list-of [path, node]
-        //
+        stringstream ents(root_content);
+        string cur_ent;
+        bool in_inode_table = false;
+        string cur_path;
+        string cur_id;
+        while (getline(ents, cur_ent)) {
+            if (in_inode_table) {
+                char node_name[FILENAME_MAX] = {0};
+                uint64_t offset;
+                uint64_t size;
+                sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
+                root_entries[cur_path].push_back(make_tuple((string)node_name, cur_id, offset, size));
+            }
+            if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
+                in_inode_table = true;
+                /// we have an inode entry, get the path
+                char ent_path[PATH_MAX] = {0};
+                char ent_id[FILENAME_MAX] = {0};
+                sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
+                cur_path = ent_path;
+                cur_id = ent_id;
+            }
+
+        }
         // get latest .node for the path
         //
         // make an entry and add it
@@ -792,7 +819,7 @@ BlockCache::get_all_root_entries(string path) {
 }
 
 string
-read_entire_file(string path) {
+BlockCache::read_entire_file(string path) {
     // cache entire .data file, then read from cache
     cout << "WRITING DATA FILE INTO CACHE" << endl;
     FILE* file  = fopen(path.c_str(), "r");
