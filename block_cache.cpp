@@ -453,7 +453,8 @@ BlockCache::flush_to_disk() {
 
         string inode_idx = ent.second;
 
-        string root_input;
+        // NEW!: timestamp this root file
+        string root_input = to_string(Util::get_time()) + "\n";
         //TODO: get all root entries here
         // [path] [inode id] [List-of [.node name] [offset into .node] [size-of .node] entry]
         root_input += "INODE:" + ent.first + " " + flushed_inode->get_id() + "\n" + fname + ".node" + " " + to_string(offset_into_node);
@@ -757,6 +758,11 @@ BlockCache::find_entry_in_root(string root_name, string path) {
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
+
+    /** map (path, root time)
+     * if a root file contains a later time than one in here, then the vector of entries is cleared!
+     */
+    unordered_map<string, unsigned long long> latest_times;
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
@@ -788,6 +794,10 @@ BlockCache::get_all_root_entries(string path) {
         bool in_inode_table = false;
         string cur_path;
         string cur_id;
+        // first get time stamp
+        getline(ents, cur_ent);
+        unsigned long long root_time;
+        sscanf(cur_ent.c_str(), "%llu", &root_time);
         while (getline(ents, cur_ent)) {
             if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
                 in_inode_table = false;
@@ -799,6 +809,10 @@ BlockCache::get_all_root_entries(string path) {
                 cur_id = ent_id;
                 if (path.size() > 0 && cur_path.compare(path) != 0)
                     continue;
+                if (root_time > latest_times[cur_path]) {
+                    root_entries[cur_path].clear();
+                    latest_times[cur_path] = root_time;
+                }
             } else
                 in_inode_table = true;
 
