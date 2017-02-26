@@ -758,6 +758,7 @@ BlockCache::get_all_root_entries(string path) {
         while (getline(ents, cur_ent)) {
             cout << "CUR ENT " << cur_ent << endl;
             if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
+                cout << "FOUND AN INODE ENTRY" << endl;
                 in_inode_table = false;
                 /// we have an inode entry, get the path
                 char ent_path[PATH_MAX] = {0};
@@ -787,7 +788,7 @@ BlockCache::get_all_root_entries(string path) {
             }
         }
     }
-
+    closedir(root_dir);
     return root_entries;
 }
 
@@ -800,6 +801,6 @@ BlockCache::read_entire_file(string path) {
     rewind(file);
     char contents[fsize + 1] = {'\0'};
     fread(contents, fsize, 1, file);
-
+    fclose(file);
     return contents;
 }
