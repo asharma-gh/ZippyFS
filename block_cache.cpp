@@ -5,7 +5,7 @@
 #include "includes.h"
 using namespace std;
 
-// TODO: get rid of shadow directory
+// TODO: testing
 BlockCache::BlockCache(string path_to_shdw)
     : path_to_shdw_(path_to_shdw) {
 
@@ -433,11 +433,6 @@ BlockCache::flush_to_disk() {
     uint64_t offset_into_node = 0;
     uint64_t curr_flush_offset = 0;
 
-    /** the input for the .root file.
-     * Every "flush" constructs a new root
-     * TODO: have this root contain previous .index / .nodes
-     */
-
     // timestamp .root
     string timestamp = to_string(Util::get_time()) + "\n";
     // write to .root
@@ -498,7 +493,7 @@ BlockCache::flush_to_disk() {
         auto old_entries = get_all_root_entries(ent.first)[ent.first];
         if (old_entries.size() > 0) {
             // write them to root_input
-            // TODO: something to fix conflicting blocks
+
             for (auto entry : old_entries) {
                 string nname = get<0>(entry);
                 uint64_t offset = get<2>(entry);
@@ -558,9 +553,6 @@ BlockCache::load_from_disk(string path) {
      ***/
     for (auto node_ent : node_files) {
 
-        //TODO: stuff with the data in the .head file
-        //probably need to keep track of blocks so we only load one if it is a later version
-
         // find the .node
         string node_name = get<0>(node_ent);
         string cached_content;
@@ -575,8 +567,7 @@ BlockCache::load_from_disk(string path) {
         }
         string path_to_node = path_to_disk_ + node_name;
         cout << "PATH TO NODE " << path_to_node << endl;
-        // TODO: cache entire .node file
-        // then read using sstream
+
         string inode_id = get<1>(node_ent);
         uint64_t node_offset = get<2>(node_ent);
         uint64_t node_size = get<3>(node_ent);

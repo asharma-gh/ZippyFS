@@ -4,11 +4,9 @@ TODO:
 by looking at each block mtime
 
 - figure out what operation is primary bottleneck
+- general efficiency tweaks
 
- -- remove zip archives for good, by modifying readdir!
-
-
-
+- update sync.py mechanism, "alert" other users when file has been changed
 Issue:
 - cache consistency when garbage collection occurs
 solution: implement function in block_cache to "update" its file cache
