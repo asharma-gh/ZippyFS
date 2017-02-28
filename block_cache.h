@@ -203,5 +203,6 @@ class BlockCache {
      * @return all of the contents for the file
      */
     std::string read_entire_file(std::string path);
+
 };
 #endif

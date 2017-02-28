@@ -150,13 +150,58 @@ BlockCache::readdir(string path) {
 
     // check stuff on disk
     auto disk_ents = get_all_root_entries();
+    for (auto disk_ent : disk_ents) {
+        // extract values
+        string ent_path = disk_ent.first;
+        auto ent_nodes = disk_ent.second;
+        unsigned long long latest_time = 0;
+        // check if path is in dir
+        char* dirpath = strdup(ent_path.c_str());
+        dirpath = dirname(dirpath);
+        if (strcmp(dirpath, path.c_str()) == 0) {
+            // iterate thru each .node
+            for (auto node_entry : ent_nodes) {
+                // record which 1 has the latest entry
+                //
+                // make path to .node
+                string node_name = get<0>(node_entry);
+                string path_to_node = path_to_disk_ + node_name;
+                // open .node
+                int nodefd = ::open(path_to_node.c_str(), O_RDONLY);
+                if (nodefd == -1)
+                    cout << "ERROR Opening .node ERRNO " << strerror(errno) << endl;
+                // get inode info
+                uint64_t node_offset = get<2>(node_entry);
+                uint64_t node_size = get<3>(node_entry);
+                char buf[node_size] = {0};
+                if (pread(nodefd, buf, node_size, node_offset) == -1)
+                    cout << "ERROR reading .node info ERRNO " << strerror(errno) << endl;
+                // skip first line in buf
+                string inode_info;
+                stringstream ss((string)buf);
+                getline(ss, inode_info);
+                // interpret contents in buf
+                //
+                unsigned long long node_mtime = 0;
+                int is_deleted = 0;
+                sscanf(inode_info.c_str(), "%*s %*d %*d %llu %*d %*d %d", &node_mtime, &is_deleted);
 
-    // iterate thru each entry
-    //
-    // find latest .node
-    //
-    // add to map if it is it is in this dir path
+                if (node_mtime > latest_time) {
+                    // add to map if its a later version
+                    // make index_entry
+                    index_entry ient;
+                    ient.path = ent_path;
+                    ient.deleted = is_deleted;
+                    ient.added_time = node_mtime;
 
+                    added_names[node_name] = ient;
+                    latest_time = node_mtime;
+                }
+            }
+        } else
+            continue;
+    }
+    // TODO: remove vector for map, can convert back to vec if needed
     return ents;
 }
 
@@ -680,6 +725,7 @@ BlockCache::get_all_root_entries(string path) {
         if (strlen(root_name) < 4
                 || strcmp(root_name + (strlen(root_name) - 5), ".root") != 0)
             continue;
+
         // it is a root, check if its in cache, if not, add it
         string root_content;
         if (meta_cache_.root_content_in_cache(root_name)) {
@@ -738,6 +784,7 @@ BlockCache::get_all_root_entries(string path) {
     closedir(root_dir);
     return root_entries;
 }
+
 
 string
 BlockCache::read_entire_file(string path) {
