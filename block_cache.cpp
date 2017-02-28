@@ -143,7 +143,8 @@ BlockCache::readdir(string path) {
             ent.path = entry.first;
             ent.deleted = get_inode_by_path(entry.first)->is_deleted();
             ent.added_time = get_inode_by_path(entry.first)->get_ull_mtime();
-            ents.push_back(ent);
+            added_names[entry.first] = ent;
+            // ents.push_back(ent);
         }
         free(dirpath);
     }
@@ -205,6 +206,10 @@ BlockCache::readdir(string path) {
         } else {
             free(dirpath);
             continue;
+        }
+        // temporarily doing this for testing
+        for (auto thing : added_names) {
+            ents.push_back(thing.second);
         }
     }
     // TODO: remove vector for map, can convert back to vec if needed
