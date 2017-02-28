@@ -108,68 +108,6 @@ BlockCache::load_from_shdw(string path) {
     // TESTING
     int resu = load_from_disk(path);
     return resu;
-    cout << "loading to cache from shdw " << path << endl;
-    int res = load_to_shdw(path.c_str());
-    // construct path to shdw
-    string shdw_file_path = path_to_shdw_ + path.substr(1);
-    cout << "path to shdw file " << shdw_file_path << endl;
-
-    cout << "RESULT " << res << endl;
-    if ((res == -1 || res == 1) && in_cache(path) == -1) {
-        cout << "could not find the thing " << endl;
-        return -1;
-    }
-    // compare times of thing in cache and entry
-    // if both exist
-    struct stat st;
-    struct stat ino_st;
-    stat(shdw_file_path.c_str(), &st);
-
-    if (res == 0 && in_cache(path) == 0) {
-        get_inode_by_path(path)->stat(&ino_st);
-        cout << "time dif " << to_string(difftime(st.st_mtim.tv_sec, ino_st.st_mtim.tv_sec)) << endl;
-        if (difftime(st.st_mtim.tv_sec, ino_st.st_mtim.tv_sec) < 1) {
-            cout << "UPDATED VERSION IS IN CACHE " << endl;
-            // updated version in here
-            return 0;
-        }
-    }
-    if ((res == -1 || res == 1) && in_cache(path) == 0) {
-        cout << "this thing has been in cache ever" << endl;
-        return 0;
-    }
-
-    cout << " thing is in shdw" << endl;
-
-    struct stat shdw_st;
-    stat(shdw_file_path.c_str(), &shdw_st);
-
-    if (S_ISDIR(shdw_st.st_mode)) {
-        cout << "made dir" << endl;
-        make_file(path, shdw_st.st_mode, 0);
-        return 0;
-    }
-    // open, extract bytes
-    FILE* file;
-    if ((file = fopen(shdw_file_path.c_str(), "r")) == NULL) {
-        return -1;
-    }
-    // get file size
-    fseek(file, 0, SEEK_END);
-    long fsize = ftell(file);
-    rewind(file);
-    char contents[fsize];
-    memset(contents, 0, sizeof(contents) / sizeof(char));
-    fread(contents, fsize, 1, file);
-    fclose(file);
-    // add this file to cache
-    make_file(path, st.st_mode, 0);
-    write(path, (uint8_t*)contents, fsize, 0);
-    get_inode_by_path(path)->set_st_time(shdw_st.st_mtim, shdw_st.st_ctim);
-    get_inode_by_path(path)->undo_dirty();
-    cout << "FLIPPED DIRTY " << endl;
-    cout << "finished loading to shdw" << endl;
-    return 0;
 }
 
 int
@@ -192,8 +130,8 @@ BlockCache::readdir(string path) {
     // map (path, index ent)
     map<string, BlockCache::index_entry> added_names;
 
-    // then check the cache, add stuff that's updated (checking for deletions)
 
+    // first check the cache, add stuff that's updated (checking for deletions)
     vector<BlockCache::index_entry> ents;
     for (auto entry : inode_idx_) {
         char* dirpath = strdup(entry.first.c_str());
@@ -209,6 +147,15 @@ BlockCache::readdir(string path) {
         }
         free(dirpath);
     }
+
+    // check stuff on disk
+    auto disk_ents = get_all_root_entries();
+
+    // iterate thru each entry
+    //
+    // find latest .node
+    //
+    // add to map if it is it is in this dir path
 
     return ents;
 }
