@@ -159,6 +159,7 @@ BlockCache::readdir(string path) {
         char* dirpath = strdup(ent_path.c_str());
         dirpath = dirname(dirpath);
         if (strcmp(dirpath, path.c_str()) == 0) {
+            free(dirpath);
             // iterate thru each .node
             for (auto node_entry : ent_nodes) {
                 // record which 1 has the latest entry
@@ -198,8 +199,10 @@ BlockCache::readdir(string path) {
                     latest_time = node_mtime;
                 }
             }
-        } else
+        } else {
+            free(dirpath);
             continue;
+        }
     }
     // TODO: remove vector for map, can convert back to vec if needed
     return ents;
@@ -784,7 +787,6 @@ BlockCache::get_all_root_entries(string path) {
     closedir(root_dir);
     return root_entries;
 }
-
 
 string
 BlockCache::read_entire_file(string path) {
