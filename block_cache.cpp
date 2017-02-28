@@ -177,6 +177,9 @@ BlockCache::readdir(string path) {
                 char buf[node_size] = {0};
                 if (pread(nodefd, buf, node_size, node_offset) == -1)
                     cout << "ERROR reading .node info ERRNO " << strerror(errno) << endl;
+
+                if (close(nodefd) == -1)
+                    cout << "ERROR closing .node ERRNO " << strerror(errno) << endl;
                 // skip first line in buf
                 string inode_info;
                 stringstream ss((string)buf);
