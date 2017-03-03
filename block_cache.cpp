@@ -700,6 +700,7 @@ BlockCache::load_from_disk(string path) {
         cout <<" UPDATED THING " << endl;
         inode_idx_[path] = latest_inode->get_id();
         inode_ptrs_[latest_inode->get_id()] = latest_inode;
+        latest_inode->undo_dirty();
     }
 
     return 0;
