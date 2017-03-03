@@ -752,7 +752,7 @@ BlockCache::get_all_root_entries(string path) {
         stringstream ents(root_content);
         string cur_ent;
         bool in_node_table = false;
-        bool in_root = false;
+        //bool in_root = false;
         bool added_from_cache = false;
         string cur_path;
         string cur_id;
@@ -761,7 +761,8 @@ BlockCache::get_all_root_entries(string path) {
         getline(ents, cur_ent);
         unsigned long long root_time;
         sscanf(cur_ent.c_str(), "%llu", &root_time);
-        bool is_updated = false;
+        //bool is_updated = false;
+        /*
         if (latest_times.find(path) != latest_times.end()
                 && root_time > latest_times[path]) {
             root_entries[cur_path].clear();
@@ -779,8 +780,9 @@ BlockCache::get_all_root_entries(string path) {
             }
             added_from_cache = true;
         }
+        */
         if (meta_cache_.root_has_entries(root_name) && !added_from_cache) {
-            cout << "NOT IN THIS ROOT" << endl;
+            cout << "NOT IN THIS ROOT " << root_name << endl;
             // then we know its not in this root anyways
             // continue;
         }
@@ -791,7 +793,7 @@ BlockCache::get_all_root_entries(string path) {
             // cout << "CUR ENT " << cur_ent << endl;
             if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
                 // cout << "FOUND AN INODE ENTRY" << endl;
-                in_root = true;
+                // in_root = true;
                 in_node_table = false;
                 /// we have an inode entry, get the path
                 char ent_path[PATH_MAX] = {0};
@@ -823,8 +825,8 @@ BlockCache::get_all_root_entries(string path) {
             }
         }
         // cache entries
-        if (in_root && is_updated)
-            meta_cache_.add_entry(path, root_name, temp_ents);
+        // if (in_root && is_updated)
+        //   meta_cache_.add_entry(path, root_name, temp_ents);
     }
     if (root_dir != NULL)
         closedir(root_dir);
@@ -852,9 +854,9 @@ BlockCache::read_entire_file(string path) {
     cout << "STRING |" << ents <<"|" << endl;
     free(contents);
     */
-    std::ifstream t(path);
-    std::stringstream buffer;
-    buffer << t.rdbuf();
+    ifstream ifs(path);
+    stringstream buffer;
+    buffer << ifs.rdbuf();
     //cout << "READ |" <<buffer.str() <<"|"<<endl;
     return buffer.str();
 }
