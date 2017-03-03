@@ -1,13 +1,20 @@
-- test this, find time >_<
-TODO:
-- add block mtime to .node table
-- this way, we can check if a .node file is garbage
-by looking at each block mtime
+- add mtime to each block. Currently we overwrite blocks only if
+the inode's overall mtime is higher. It can be the case though
+if two people work on the same file, on separate blocks, that sections
+    are updated across .node / .data files. 
+adding mtime to each block will fix this, but will require keeping
+track of the time for each block, and changing how stuff is read/written to .node files.
 
-- figure out what operation is primary bottleneck
-- general efficiency tweaks
 
-- update sync.py mechanism, "alert" other users when file has been changed
+- unlinking, removals
+- access / chmod stuff
+- group / user permissions
+- test over network
+-
+- general testing
+
+
+=== To think about later ====
 Issue:
 - cache consistency when garbage collection occurs
 solution: implement function in block_cache to "update" its file cache
@@ -15,66 +22,9 @@ when gc occurs, if gc is implemented in fuse_ops. Alternatively,
 gc should be implemented in the block_cache
 
 ===
-New design
-- each .root file contains the path, inode id, and a [list-of (.node, offset, sizeof ent)]
-- each .node file contains path, mode, links, mtime, ctime, size, deleted and a [list of (block#, offset into data, size of block)]
-- each .data file contains the file data, which is retrieved with the information in the .node files
-
 TODO:
  - make looking for a particular inode id / path faster than linear time, using a tree like structure
 ===
-
-- add blocks to block map
-
-
-- normalize block cache map
-- move away from meta_data_ into multiple maps
-    - data is separated to make loading / flushing easier
-- add a map for .node file contents
-
-- store written blocks for flushing, avoid copying redundant blocks!
-
-
-Initial Plan for data format (simulate zip archives, but without the zipping!!)
-- so by flushing the map, 2 files are created: .head and .node
-- the .head and .node files are named the same, and a .head file contains the offset# and size for inode information within the .node files
-(.head is == to .idx and .node == .zip)
-- each .node file contains the information for the flushed inodes: inode stat info, block#s, offsets into .data files
-- each .data file contains file data. .node files contain indexes into the .data files
-
-Issue:
-- putting together a file with blocks spread across .node files
-
-solution: maintain .root files which contain records (inode#, [list of .head files])
-
-Issue:
-- finding latest version of a file
-solution: check timestamps of each root file, take the latest one
-
-Issue:
-- finding old info for an inode in new root
-solution: copy old info over, append new .head file
-
-Issue:
-- finding block data in a .node file efficiently
-solution: create a .data file containing the block data for the inode,
-            .node files contain a table of offsets into the .data file. Constant time yo
-
-Issue:
-- finding latest version of a block
-solution: time stamp each header file. Put the list of blocks the inode has in the header file.
-- when looking for a particular block, scan the .root file, then scan each .header file.
-
-What this should look like:
-[list-of root], root is [list of (inode#, list of .head)]
-and a [list of .head + (.node, .data)]
-
-searching for a file is pretty slow, but moving from this to a tree shouldn't be that bad. Roots can be cached
-
-- remove garbage collection for now
-
-====
-
 Snapshots
 
 TODO!!

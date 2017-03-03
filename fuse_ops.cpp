@@ -386,7 +386,7 @@ flush_dir() {
     printf("MAGIC COMMAND: %s\n", command);
     system(command);
     chdir(cwd);
-    //garbage_collect();
+    garbage_collect();
     /** signal sync program **/
     // open sync pid
     wordexp_t we;
@@ -604,6 +604,7 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
  * log is located in
  * @return 0 on success, non-zero otherwise
  */
+
 static
 int
 garbage_collect() {

@@ -450,9 +450,11 @@ BlockCache::flush_to_disk() {
         // be recorded right now, future change!
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
-        if (dirty_block_.find(ent.second) == dirty_block_.end()
-                && flushed_inode->is_dir() == 0)
+        if (flushed_inode->is_dirty() == 0
+                && flushed_inode->is_dir() == 0) {
+            cout << "Skipping " << ent.first << " because no changes were made..." << endl;
             continue;
+        }
 
         string inode_data = flushed_inode->get_flush_record();
 
