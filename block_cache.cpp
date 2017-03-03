@@ -113,9 +113,10 @@ BlockCache::load_from_shdw(string path) {
 int
 BlockCache::getattr(string path, struct stat* st) {
     if ((in_cache(path) == -1 && load_from_shdw(path) == -1)
-            || (in_cache(path) == 0 && get_inode_by_path(path)->is_deleted()))
+            || (in_cache(path) == 0 && get_inode_by_path(path)->is_deleted())) {
+        cout << "IN CACHE? " << to_string(in_cache(path)) << endl;
         return -ENOENT;
-    else
+    } else
         return get_inode_by_path(path)->stat(st);
 }
 /****
@@ -155,6 +156,7 @@ BlockCache::readdir(string path) {
         // extract values
         string ent_path = disk_ent.first;
         auto ent_nodes = disk_ent.second;
+        cout << "LOOKING AT |" << ent_path << "|" << endl;
         unsigned long long latest_time = 0;
         // check if path is in dir
         char* dirpath = strdup(ent_path.c_str());
@@ -752,48 +754,31 @@ BlockCache::get_all_root_entries(string path) {
         stringstream ents(root_content);
         string cur_ent;
         bool in_node_table = false;
-        //bool in_root = false;
         bool added_from_cache = false;
         string cur_path;
         string cur_id;
-        vector<tuple<string, string, uint64_t, uint64_t>> temp_ents;
         // first get time stamp
         getline(ents, cur_ent);
         unsigned long long root_time;
         sscanf(cur_ent.c_str(), "%llu", &root_time);
-        //bool is_updated = false;
         /*
-        if (latest_times.find(path) != latest_times.end()
-                && root_time > latest_times[path]) {
-            root_entries[cur_path].clear();
-            cout << "CLEARING OLD ROOT ENTRIES" << endl;
-            latest_times[cur_path] = root_time;
-            is_updated = true;
-        }
-        if (meta_cache_.in_cache(path, root_name)) {
+        if (path.size() > 0 &&
+                meta_cache_.in_cache(path, root_name)) {
             cout << "GETTING ROOT ENTRY FROM CACHE" << endl;
-            auto vec = meta_cache_.get_entry(path, root_name);
-            if (is_updated)
-                root_entries[cur_path] = vec;
-            else {
-                root_entries[cur_path].insert(root_entries[cur_path].end(), vec.begin(), vec.end());
-            }
+            for (auto ent : meta_cache_.get_entry(path, root_name))
+                root_entries[cur_path].push_back(ent);
+
             added_from_cache = true;
+
         }
         */
-        if (meta_cache_.root_has_entries(root_name) && !added_from_cache) {
-            cout << "NOT IN THIS ROOT " << root_name << endl;
-            // then we know its not in this root anyways
-            // continue;
-        }
+        unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> temp_entries;
         //cout << "ROOT CONTENTS |" << root_content << "|" << endl;
         while (getline(ents, cur_ent) && !added_from_cache) {
-            if (ents.bad())
-                continue;
-            // cout << "CUR ENT " << cur_ent << endl;
+
+            cout << "CUR ENT " << cur_ent << endl;
             if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
                 // cout << "FOUND AN INODE ENTRY" << endl;
-                // in_root = true;
                 in_node_table = false;
                 /// we have an inode entry, get the path
                 char ent_path[PATH_MAX] = {0};
@@ -821,15 +806,19 @@ BlockCache::get_all_root_entries(string path) {
                 sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
                 auto ent_vals = make_tuple((string)node_name, cur_id, offset, size);
                 root_entries[cur_path].push_back(ent_vals);
-                temp_ents.push_back(ent_vals);
+                cout << "ADDED ENTRY TO MAP FOR |" << cur_path << "|" << endl;
+                temp_entries[cur_path].push_back(ent_vals);
             }
         }
         // cache entries
-        // if (in_root && is_updated)
-        //   meta_cache_.add_entry(path, root_name, temp_ents);
+        //  for (auto ent : temp_entries)
+        //    meta_cache_.add_entry(ent.first, root_name, ent.second);
     }
     if (root_dir != NULL)
         closedir(root_dir);
+    if (root_entries.find(path) != root_entries.end()) {
+        cout << "there are things in here!!!" << endl;
+    }
     return root_entries;
 }
 

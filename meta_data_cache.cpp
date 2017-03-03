@@ -103,12 +103,3 @@ MetadataCache::data_content_in_cache(string data_file) {
     return in_given_cache(data_content_cache_, data_file);
 }
 
-bool
-MetadataCache::root_has_entries(string root) {
-    for (auto ent : root_entry_cache_) {
-        for (auto key : ent.second)
-            if (key.first == root)
-                return true;
-    }
-    return false;
-}

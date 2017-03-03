@@ -84,10 +84,6 @@ class MetadataCache {
      */
     std::string get_data_file(std::string data_file);
 
-
-    bool root_has_entries(std::string root);
-
-
   private:
     /** number of files this cache can store */
     const uint64_t SIZE_ = 512;
