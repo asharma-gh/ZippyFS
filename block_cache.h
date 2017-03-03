@@ -183,7 +183,7 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 5;
+    const uint64_t MAX_SIZE = 256;
 
     /**
      * @param path is the path of the item to get all root entries for

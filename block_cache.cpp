@@ -782,13 +782,13 @@ BlockCache::get_all_root_entries(string path) {
         if (meta_cache_.root_has_entries(root_name) && !added_from_cache) {
             cout << "NOT IN THIS ROOT" << endl;
             // then we know its not in this root anyways
-            continue;
+            // continue;
         }
-        cout << "ROOT CONTENTS |" << root_content << "|" << endl;
+        //cout << "ROOT CONTENTS |" << root_content << "|" << endl;
         while (getline(ents, cur_ent) && !added_from_cache) {
             if (ents.bad())
                 continue;
-            cout << "CUR ENT " << cur_ent << endl;
+            // cout << "CUR ENT " << cur_ent << endl;
             if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
                 // cout << "FOUND AN INODE ENTRY" << endl;
                 in_root = true;
@@ -833,6 +833,8 @@ BlockCache::get_all_root_entries(string path) {
 
 string
 BlockCache::read_entire_file(string path) {
+    /*
+     * TODO: FIGURE OUT WHERE THIS WENT SO WRONG?
     lock_guard<mutex> lock(mutex_);
     FILE* file  = fopen(path.c_str(), "r");
     // get file size
@@ -840,14 +842,19 @@ BlockCache::read_entire_file(string path) {
     long fsize = ftell(file);
     rewind(file);
     cout << "FILE SIZE "<< to_string(fsize) << endl;
-    char* contents = (char*)malloc(fsize + 1);
-    memset(contents, 0, sizeof(contents) * sizeof(char));
-    fread(contents, fsize, 1, file);
+    char* contents = (char*)malloc(fsize * sizeof(char));
+    // memset(contents, '\0', sizeof(contents) * sizeof(char));
+    fread(contents, sizeof(char), fsize, file);
     fclose(file);
-    //cout << "READ THE FOLLOWING |" << contents << "|" << endl;
+    cout << "READ THE FOLLOWING |" << contents << "|" << endl;
     string ents(contents);
 
     cout << "STRING |" << ents <<"|" << endl;
     free(contents);
-    return ents;
+    */
+    std::ifstream t(path);
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+    //cout << "READ |" <<buffer.str() <<"|"<<endl;
+    return buffer.str();
 }
