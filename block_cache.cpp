@@ -28,6 +28,7 @@ BlockCache::remove(string path) {
             entry.second->dec_link(path);
     }
     get_inode_by_path(path)->delete_inode();
+    has_changed_ = true;
     size_--;
     return 0;
 }
@@ -38,6 +39,8 @@ BlockCache::rmdir(string path) {
     if (in_cache(path) == -1)
         return -1;
     inode_ptrs_[inode_idx_[path]]->delete_inode();
+    has_changed_ = true;
+
     return 0;
 }
 
@@ -60,6 +63,8 @@ BlockCache::rename(string from, string to) {
     get_inode_by_path(from)->delete_inode();
     inode_idx_[to] = nto_inode->get_id();
     inode_ptrs_[inode_idx_[to]] = nto_inode;
+    has_changed_ = true;
+
     return 0;
 }
 
@@ -70,6 +75,7 @@ BlockCache::symlink(string from, string to) {
 
     inode_idx_[to] = ll->get_id();
     inode_ptrs_[ll->get_id()] = ll;
+    has_changed_ = true;
 
     return 0;
 }
@@ -100,6 +106,8 @@ BlockCache::make_file(string path, mode_t mode, bool dirty) {
     size_++;
     inode_idx_[path] = ptr->get_id();
     inode_ptrs_[ptr->get_id()] = ptr;
+    has_changed_ = true;
+
     return 0;
 }
 
@@ -135,9 +143,12 @@ BlockCache::readdir(string path) {
     // first check the cache, add stuff that's updated (checking for deletions)
     vector<BlockCache::index_entry> ents;
     for (auto entry : inode_idx_) {
+        cout << "Checking " << entry.first << endl;
         char* dirpath = strdup(entry.first.c_str());
         dirpath = dirname(dirpath);
+        cout << "DIRNAME " << dirpath << endl;
         if (strcmp(dirpath, path.c_str()) == 0) {
+            cout << "ADDING SHIT TO MAP" << endl;
             struct stat st;
             get_inode_by_path(entry.first)->stat(&st);
             index_entry ent;
@@ -192,7 +203,7 @@ BlockCache::readdir(string path) {
                 unsigned long long node_mtime = 0;
                 int is_deleted = 0;
                 sscanf(inode_info.c_str(), "%*s %*d %*d %llu %*d %*d %d", &node_mtime, &is_deleted);
-
+                cout  << "Curtime: " << to_string(latest_time) << " inode mtime " << to_string(node_mtime) << endl;
                 if (node_mtime > latest_time) {
                     // add to map if its a later version
                     // make index_entry
@@ -201,18 +212,20 @@ BlockCache::readdir(string path) {
                     ient.deleted = is_deleted;
                     ient.added_time = node_mtime;
 
-                    added_names[node_name] = ient;
+                    added_names[ent_path] = ient;
                     latest_time = node_mtime;
+                    cout << "ADDED UPDATED ENTRY" << endl;
                 }
             }
         } else {
             free(dirpath);
             continue;
         }
-        // temporarily doing this for testing
-        for (auto thing : added_names) {
-            ents.push_back(thing.second);
-        }
+    }
+    // temporarily doing this for testing
+    for (auto thing : added_names) {
+        cout << "ADDED " << thing.first << endl;
+        ents.push_back(thing.second);
     }
     // TODO: remove vector for map, can convert back to vec if needed
     return ents;
@@ -279,6 +292,8 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
 
         }
     }
+    has_changed_ = true;
+
     assert(curr_idx + block_size == size);
     return size;
 }
@@ -298,6 +313,8 @@ BlockCache::truncate(string path, uint64_t size) {
         return -1;
 
     get_inode_by_path(path)->set_size(size);
+    has_changed_ = true;
+
     return 0;
 }
 
@@ -418,7 +435,7 @@ BlockCache::get_refs(string path) {
 
 int
 BlockCache::flush_to_disk() {
-    if (dirty_block_.size() == 0)
+    if (!has_changed_)
         return -1;
     // create path to .head file
     string fname = Util::generate_rand_hex_name();
@@ -762,17 +779,18 @@ BlockCache::get_all_root_entries(string path) {
         unsigned long long root_time;
         sscanf(cur_ent.c_str(), "%llu", &root_time);
         /*
-        if (path.size() > 0 &&
-                meta_cache_.in_cache(path, root_name)) {
-            cout << "GETTING ROOT ENTRY FROM CACHE" << endl;
-            for (auto ent : meta_cache_.get_entry(path, root_name))
-                root_entries[cur_path].push_back(ent);
+                if (path.size() > 0 &&
+                        meta_cache_.in_cache(path, root_name)) {
+                    cout << "GETTING ROOT ENTRY FROM CACHE" << endl;
+                    for (auto ent : meta_cache_.get_entry(path, root_name))
+                        root_entries[cur_path].push_back(ent);
 
-            added_from_cache = true;
+                    added_from_cache = true;
 
-        }
-        */
-        unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> temp_entries;
+                }
+
+                unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> temp_entries;
+                */
         //cout << "ROOT CONTENTS |" << root_content << "|" << endl;
         while (getline(ents, cur_ent) && !added_from_cache) {
 
@@ -807,11 +825,11 @@ BlockCache::get_all_root_entries(string path) {
                 auto ent_vals = make_tuple((string)node_name, cur_id, offset, size);
                 root_entries[cur_path].push_back(ent_vals);
                 cout << "ADDED ENTRY TO MAP FOR |" << cur_path << "|" << endl;
-                temp_entries[cur_path].push_back(ent_vals);
+                //  temp_entries[cur_path].push_back(ent_vals);
             }
         }
         // cache entries
-        //  for (auto ent : temp_entries)
+        //for (auto ent : temp_entries)
         //    meta_cache_.add_entry(ent.first, root_name, ent.second);
     }
     if (root_dir != NULL)

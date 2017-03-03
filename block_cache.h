@@ -185,6 +185,9 @@ class BlockCache {
     /* "big enough" size of this block cache */
     const uint64_t MAX_SIZE = 10;
 
+    /** has a file changed? */
+    bool has_changed_ = false;
+
     /**
      * @param path is the path of the item to get all root entries for
      * if path is empty then all root entries for all paths are retrieved
