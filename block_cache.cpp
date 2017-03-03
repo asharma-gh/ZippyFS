@@ -589,7 +589,7 @@ BlockCache::load_from_disk(string path) {
             meta_cache_.add_node_file(node_name,  node_content);
             // do this only if the file is not in cache
             memcpy(buf, node_content.c_str() + node_offset, node_size);
-            cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
+            //cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
 
         }
 
@@ -784,6 +784,7 @@ BlockCache::get_all_root_entries(string path) {
             // then we know its not in this root anyways
             continue;
         }
+        cout << "ROOT CONTENTS |" << root_content << "|" << endl;
         while (getline(ents, cur_ent) && !added_from_cache) {
             if (ents.bad())
                 continue;
@@ -832,16 +833,21 @@ BlockCache::get_all_root_entries(string path) {
 
 string
 BlockCache::read_entire_file(string path) {
+    lock_guard<mutex> lock(mutex_);
     FILE* file  = fopen(path.c_str(), "r");
     // get file size
     fseek(file, 0, SEEK_END);
     long fsize = ftell(file);
     rewind(file);
+    cout << "FILE SIZE "<< to_string(fsize) << endl;
     char* contents = (char*)malloc(fsize + 1);
     memset(contents, 0, sizeof(contents) * sizeof(char));
     fread(contents, fsize, 1, file);
     fclose(file);
+    //cout << "READ THE FOLLOWING |" << contents << "|" << endl;
     string ents(contents);
+
+    cout << "STRING |" << ents <<"|" << endl;
     free(contents);
     return ents;
 }
