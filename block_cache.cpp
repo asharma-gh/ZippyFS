@@ -265,6 +265,7 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
             cout << "overrided block" << endl;
             cout << "adding dirty block to map" << endl;
             dirty_block_[inode_idx_[path]][block_idx] = temp;
+            dirty_block_mtime_[inode_idx_[path]][block_idx] = Util::get_time();
 
         } else {
             shared_ptr<Block> ptr(new Block(buf + curr_idx, block_size));
@@ -272,6 +273,8 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
             inode->add_block(block_idx, ptr);
             cout << "adding dirty block to map" << endl;
             dirty_block_[inode_idx_[path]][block_idx] = ptr;
+            dirty_block_mtime_[inode_idx_[path]][block_idx] = Util::get_time();
+
         }
     }
     assert(curr_idx + block_size == size);
@@ -711,6 +714,7 @@ BlockCache::load_from_disk(string path) {
 
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
+    /** map(path, entries) */
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
     cout << "GETTING ALL ENTRIES FOR " << path << endl;
     /** map (path, root time)
@@ -731,6 +735,7 @@ BlockCache::get_all_root_entries(string path) {
                 || strcmp(root_name + (strlen(root_name) - 5), ".root") != 0)
             continue;
 
+
         // it is a root, check if its in cache, if not, add it
         string root_content;
         if (meta_cache_.root_content_in_cache(root_name)) {
@@ -746,47 +751,82 @@ BlockCache::get_all_root_entries(string path) {
         // for each thing, make a list-of [path, node]
         stringstream ents(root_content);
         string cur_ent;
-        bool in_inode_table = false;
+        bool in_node_table = false;
+        bool in_root = false;
+        bool added_from_cache = false;
         string cur_path;
         string cur_id;
+        vector<tuple<string, string, uint64_t, uint64_t>> temp_ents;
         // first get time stamp
         getline(ents, cur_ent);
         unsigned long long root_time;
         sscanf(cur_ent.c_str(), "%llu", &root_time);
-        while (getline(ents, cur_ent)) {
+        bool is_updated = false;
+        if (latest_times.find(path) != latest_times.end()
+                && root_time > latest_times[path]) {
+            root_entries[cur_path].clear();
+            cout << "CLEARING OLD ROOT ENTRIES" << endl;
+            latest_times[cur_path] = root_time;
+            is_updated = true;
+        }
+        if (meta_cache_.in_cache(path, root_name)) {
+            cout << "GETTING ROOT ENTRY FROM CACHE" << endl;
+            auto vec = meta_cache_.get_entry(path, root_name);
+            if (is_updated)
+                root_entries[cur_path] = vec;
+            else {
+                root_entries[cur_path].insert(root_entries[cur_path].end(), vec.begin(), vec.end());
+            }
+            added_from_cache = true;
+        }
+        if (meta_cache_.root_has_entries(root_name) && !added_from_cache) {
+            cout << "NOT IN THIS ROOT" << endl;
+            // then we know its not in this root anyways
+            continue;
+        }
+        while (getline(ents, cur_ent) && !added_from_cache) {
+            if (ents.bad())
+                continue;
             cout << "CUR ENT " << cur_ent << endl;
             if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
-                cout << "FOUND AN INODE ENTRY" << endl;
-                in_inode_table = false;
+                // cout << "FOUND AN INODE ENTRY" << endl;
+                in_root = true;
+                in_node_table = false;
                 /// we have an inode entry, get the path
                 char ent_path[PATH_MAX] = {0};
                 char ent_id[FILENAME_MAX] = {0};
                 sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
                 cur_path = ent_path;
                 cur_id = ent_id;
-                cout << "CUR PATH: " << cur_path << endl;
-                cout << "PATH: " << path << endl;
+                //  cout << "CUR PATH: " << cur_path << endl;
+                //  cout << "PATH: " << path << endl;
                 if (path.size() > 0 && cur_path.compare(path) != 0)
                     continue;
-                cout << "FOUND " << cur_path << endl;
+                //  cout << "FOUND " << cur_path << endl;
                 if (root_time > latest_times[cur_path]) {
                     root_entries[cur_path].clear();
                     cout << "CLEARING OLD ROOT ENTRIES" << endl;
                     latest_times[cur_path] = root_time;
                 }
             } else
-                in_inode_table = true;
+                in_node_table = true;
 
-            if (in_inode_table) {
+            if (in_node_table) {
                 char node_name[FILENAME_MAX] = {0};
                 uint64_t offset;
                 uint64_t size;
                 sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
-                root_entries[cur_path].push_back(make_tuple((string)node_name, cur_id, offset, size));
+                auto ent_vals = make_tuple((string)node_name, cur_id, offset, size);
+                root_entries[cur_path].push_back(ent_vals);
+                temp_ents.push_back(ent_vals);
             }
         }
+        // cache entries
+        if (in_root && is_updated)
+            meta_cache_.add_entry(path, root_name, temp_ents);
     }
-    closedir(root_dir);
+    if (root_dir != NULL)
+        closedir(root_dir);
     return root_entries;
 }
 
@@ -797,8 +837,11 @@ BlockCache::read_entire_file(string path) {
     fseek(file, 0, SEEK_END);
     long fsize = ftell(file);
     rewind(file);
-    char contents[fsize + 1] = {'\0'};
+    char* contents = (char*)malloc(fsize + 1);
+    memset(contents, 0, sizeof(contents) * sizeof(char));
     fread(contents, fsize, 1, file);
     fclose(file);
-    return contents;
+    string ents(contents);
+    free(contents);
+    return ents;
 }

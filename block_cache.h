@@ -173,6 +173,9 @@ class BlockCache {
     /** map of ((inode idx, block idx), dirty block) for flushing */
     std::map<std::string, std::map<uint64_t, std::shared_ptr<Block>>> dirty_block_;
 
+    /** map of ((inode idx, block idx), mtime) for flushing */
+    std::map<std::string, std::map<uint64_t, unsigned long long>> dirty_block_mtime_;
+
     /** cache for .root/.node/.data files */
     MetadataCache meta_cache_;
 
@@ -180,15 +183,7 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 64;
-
-    /**
-     * @param root_name is the name of the root file
-     * @param path is the path of the file to find
-     * @returns [list of (node name, inode id, offset ,size)]
-     * If this list is empty, then the path entry did not exist
-     */
-    //std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>> find_entry_in_root(std::string root_name, std::string path);
+    const uint64_t MAX_SIZE = 5;
 
     /**
      * @param path is the path of the item to get all root entries for

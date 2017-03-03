@@ -8,9 +8,9 @@ MetadataCache::MetadataCache() {
 
 void
 MetadataCache::add_entry(string path, string root, vector<tuple<string, string, uint64_t, uint64_t>> entry) {
-    if (root_entry_cache_.size() == SIZE_) {
-        root_entry_cache_.clear();
-    }
+    //  if (root_entry_cache_.size() == ROOT_CACHE_SIZE_) {
+    //    root_entry_cache_.clear();
+    // }
     //  root_lru_times_[path] = ULLONG_MAX;
     root_entry_cache_[path][root] = entry;
     cout << "ADDED ENTRY " << root << "TO CACHE" << endl;
@@ -101,4 +101,14 @@ MetadataCache::node_content_in_cache(string node_file) {
 bool
 MetadataCache::data_content_in_cache(string data_file) {
     return in_given_cache(data_content_cache_, data_file);
+}
+
+bool
+MetadataCache::root_has_entries(string root) {
+    for (auto ent : root_entry_cache_) {
+        for (auto key : ent.second)
+            if (key.first == root)
+                return true;
+    }
+    return false;
 }

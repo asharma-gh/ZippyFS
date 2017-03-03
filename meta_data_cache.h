@@ -85,12 +85,16 @@ class MetadataCache {
     std::string get_data_file(std::string data_file);
 
 
+    bool root_has_entries(std::string root);
+
+
   private:
     /** number of files this cache can store */
-    const uint64_t SIZE_ = 128;
+    const uint64_t SIZE_ = 512;
 
     /**
      * map (path,map(root, path entries))
+     * is never cleared, only gc'd
      */
     std::unordered_map<std::string, std::unordered_map<std::string,
         std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>>> root_entry_cache_;
