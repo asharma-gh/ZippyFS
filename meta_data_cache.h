@@ -76,7 +76,7 @@ class MetadataCache {
     /**
      * adds the given data file and content to cache
      */
-    void add_data_file(std::string data_file, std::string contents);
+    void add_data_file(std::string data_file, std::string const& contents);
 
     /**
      * @return the content for the given .data file
@@ -111,7 +111,7 @@ class MetadataCache {
     std::unordered_map<std::string, std::string> data_content_cache_;
 
     /** adds the given key and value to the map */
-    void add_content(std::unordered_map<std::string, std::string> cache, std::string key, std::string value);
+    // void add_content(std::unordered_map<std::string, std::string> cache, std::string key, std::string value);
 
     /** gets the content for the given key and map */
     std::string get_content(std::unordered_map<std::string, std::string> cache, std::string key);

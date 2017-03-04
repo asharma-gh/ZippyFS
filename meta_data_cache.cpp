@@ -39,7 +39,7 @@ MetadataCache::root_content_in_cache(string root_name) {
 
 void
 MetadataCache::add_root_file(string root_file, string contents) {
-    add_content(root_content_cache_, root_file, contents);
+    root_content_cache_[root_file] =  contents;
 }
 
 string
@@ -49,16 +49,16 @@ MetadataCache::get_root_file_contents(string root_file) {
     }
     return "";
 }
-
+/*
 void
 MetadataCache::add_content(unordered_map<string, string> cache, string key, string value) {
-    if (cache.size() == SIZE_) {
-        cache.clear();
-    }
+    // if (cache.size() == SIZE_) {
+    //     cache.clear();
+    // }
 
-    cache[key] = value;
+    // cache[key] = value;
 }
-
+*/
 string
 MetadataCache::get_content(unordered_map<string, string> cache, string key) {
     if (in_given_cache(cache, key)) {
@@ -85,12 +85,12 @@ MetadataCache::get_data_file(string data_file) {
 
 void
 MetadataCache::add_node_file(string node_file, string content) {
-    add_content(node_content_cache_, node_file, content);
+    node_content_cache_[node_file] = content;
 }
 
 void
-MetadataCache::add_data_file(string data_file, string content) {
-    add_content(data_content_cache_, data_file, content);
+MetadataCache::add_data_file(string data_file, string const& content) {
+    data_content_cache_[data_file] =  content;
 }
 
 bool
@@ -100,6 +100,9 @@ MetadataCache::node_content_in_cache(string node_file) {
 
 bool
 MetadataCache::data_content_in_cache(string data_file) {
+    cout <<"===DATA CACHE CONTENTS===" << endl;
+    for (auto ent : data_content_cache_) {
+        cout << ent.first << endl;
+    }
     return in_given_cache(data_content_cache_, data_file);
 }
-

@@ -1,3 +1,7 @@
+- fix meta_data_cache
+- improve efficiency by passing pointers / references
+    - data files are so big copying values is too slow
+
 - add mtime to each block. Currently we overwrite blocks only if
 the inode's overall mtime is higher. It can be the case though
 if two people work on the same file, on separate blocks, that sections

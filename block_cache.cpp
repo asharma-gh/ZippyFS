@@ -601,11 +601,13 @@ BlockCache::load_from_disk(string path) {
         // cache entire data file if it isn't already
         string data_content;
         if (meta_cache_.data_content_in_cache(data_name)) {
+            cout << "GOT DATA FILE FROM CACHE" << endl;
             data_content = meta_cache_.get_data_file(data_name);
         } else {
             // cache entire .data file, then read from cache
             cout << "WRITING DATA FILE INTO CACHE" << endl;
             data_content = read_entire_file(path_to_data);
+            meta_cache_.add_data_file(data_name, data_content);
         }
 
         // open the .data, offset and read it
