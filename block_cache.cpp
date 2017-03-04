@@ -654,7 +654,10 @@ BlockCache::load_from_disk(string path) {
     return 0;
 
 }
-
+// TODO:
+// when path = "", cache result of this call for each .root
+// on subsequent calls, read stuff from cache instead of
+// reading from the file, stop opening / read
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
 

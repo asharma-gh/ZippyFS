@@ -55,13 +55,13 @@ class MetadataCache {
     /**
      * adds the given node file and content to this cache
      */
-    void add_node_file(std::string node_file, std::string contents);
+    void add_node_file(std::string node_file, std::string const& contents);
 
     /**
      * @return the content for the given node file
      * @return empty string if dne
      */
-    std::string get_node_file(std::string node_file);
+    std::string& get_node_file(std::string node_file);
 
     /**
      * @return true if the given nodes content is in cache
@@ -82,7 +82,7 @@ class MetadataCache {
      * @return the content for the given .data file
      * @return empty string if dne
      */
-    std::string get_data_file(std::string data_file);
+    std::string& get_data_file(std::string data_file);
 
   private:
     /** number of files this cache can store */
@@ -109,16 +109,5 @@ class MetadataCache {
      * map (data name, data contents)
      */
     std::unordered_map<std::string, std::string> data_content_cache_;
-
-    /** adds the given key and value to the map */
-    // void add_content(std::unordered_map<std::string, std::string> cache, std::string key, std::string value);
-
-    /** gets the content for the given key and map */
-    std::string get_content(std::unordered_map<std::string, std::string> cache, std::string key);
-
-    /** checks if the given key has an entry in this cache */
-    bool in_given_cache(std::unordered_map<std::string, std::string> cache, std::string key);
-
-
 };
 #endif
