@@ -84,6 +84,13 @@ class MetadataCache {
      */
     std::string& get_data_file(std::string data_file);
 
+    void add_inverted_root_entry(std::string root, std::string path, std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>> ents);
+
+    bool in_inverted_root_cache(std::string root);
+
+    std::unordered_map<std::string, std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>> get_inverted_root_ent(std::string root, std::string path="");
+
+
   private:
     /** number of files this cache can store */
     const uint64_t SIZE_ = 1024;
@@ -99,6 +106,13 @@ class MetadataCache {
      * map (root name, root contents)
      */
     std::unordered_map<std::string, std::string> root_content_cache_;
+
+    /**
+     * map (root name, map(path, path entries in root))
+     */
+    std::unordered_map<std::string, std::unordered_map<std::string,
+        std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>>> inverted_root_entry_cache_;
+
 
     /**
      * map (node name, node contents)

@@ -91,3 +91,26 @@ MetadataCache::data_content_in_cache(string data_file) {
     cout <<"===DATA CACHE CONTENTS===" << endl;
     return data_content_cache_.find(data_file) != data_content_cache_.end();
 }
+
+void
+MetadataCache::add_inverted_root_entry(string root, string path,
+                                       vector<tuple<string, string, uint64_t, uint64_t>> ents) {
+    inverted_root_entry_cache_[root][path] = ents;
+}
+
+bool
+MetadataCache::in_inverted_root_cache(string root) {
+    return inverted_root_entry_cache_.find(root) != inverted_root_entry_cache_.end();
+}
+
+unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
+MetadataCache::get_inverted_root_ent(string root, string path) {
+    if (path.compare("") == 0) {
+        return inverted_root_entry_cache_[root];
+    } else {
+        unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> res;
+        res[path] = inverted_root_entry_cache_[root][path];
+
+        return res;
+    }
+}

@@ -699,6 +699,18 @@ BlockCache::get_all_root_entries(string path) {
             // add it to cache
             meta_cache_.add_root_file(path_to_root, root_content);
         }
+        // check if the contents have been cached
+        if (meta_cache_.in_inverted_root_cache(root_name)) {
+            auto temp = meta_cache_.get_inverted_root_ent(root_name, path);
+            // add values to cache
+            for (auto ent : temp) {
+                for (auto tup : ent.second) {
+                    root_entries[ent.first].push_back(tup);
+                }
+            }
+            continue;
+
+        }
         // for each thing, make a list-of [path, node]
         stringstream ents(root_content);
         string cur_ent;
@@ -709,7 +721,8 @@ BlockCache::get_all_root_entries(string path) {
         getline(ents, cur_ent);
         unsigned long long root_time;
         sscanf(cur_ent.c_str(), "%llu", &root_time);
-
+        /** map (path, ents)  for cur root*/
+        unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> cur_ents;
         //cout << "ROOT CONTENTS |" << root_content << "|" << endl;
         while (getline(ents, cur_ent)) {
 
@@ -751,12 +764,19 @@ BlockCache::get_all_root_entries(string path) {
                 root_entries[cur_path].push_back(ent_vals);
                 inode_to_node[cur_path].insert(nname);
                 cout << "ADDED ENTRY TO MAP FOR |" << cur_path << "|" << endl;
+                cur_ents[cur_path].push_back(ent_vals);
+            }
+        }
+        // cache stuff
+        if (path.compare("") == 0
+                && !meta_cache_.in_inverted_root_cache(root_name)) {
+            for (auto ent : cur_ents) {
+                meta_cache_.add_inverted_root_entry(root_name, ent.first, ent.second);
             }
         }
     }
     if (root_dir != NULL)
         closedir(root_dir);
-
 
     return root_entries;
 }
