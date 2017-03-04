@@ -366,6 +366,7 @@ BlockCache::flush_to_disk() {
     int rootfd = ::open(path_to_root.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
     int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
 
+    string node_content, root_content, data_content;
 
     // TODO:
     //  - add checksums for each files
@@ -444,19 +445,21 @@ BlockCache::flush_to_disk() {
                 root_input += nname + " " + to_string(offset) + " " + to_string(size) + "\n";
             }
         }
+        node_content += inode_data + node_table;
+        root_content += root_input;
 
-        // write to .node
-        if (pwrite(nodefd, inode_data.c_str(), inode_data.size() * sizeof(char), 0) == -1)
-            cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
-        if (pwrite(nodefd, node_table.c_str(), node_table.size() * sizeof(char), 0) == -1)
-            cout << "ERROR writing TABLE to .node ERRNO: " << strerror(errno);
-
-        // write to .root
-        if (pwrite(rootfd, root_input.c_str(), root_input.size() * sizeof(char), 0) == -1)
-            cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
 
     }
-
+    // write to .node
+    if (pwrite(nodefd, node_content.c_str(), node_content.size() * sizeof(char), 0) == -1)
+        cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
+    /*
+    if (pwrite(nodefd, node_table.c_str(), node_table.size() * sizeof(char), 0) == -1)
+        cout << "ERROR writing TABLE to .node ERRNO: " << strerror(errno);
+    */
+    // write to .root
+    if (pwrite(rootfd, root_content.c_str(), root_content.size() * sizeof(char), 0) == -1)
+        cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
     close(nodefd);
     close(datafd);
     close(rootfd);
