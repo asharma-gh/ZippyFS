@@ -386,7 +386,7 @@ BlockCache::flush_to_disk() {
      * .head file is written to last.
      */
     for (auto ent : inode_idx_) {
-        // if nothing was written to this file, don't flush it
+        // if nothing was done to this inode, don't flush it
         // TODO: chmod / other ways to modify files aren't gonna
         // be recorded right now, future change!
         // fetch record
@@ -396,12 +396,6 @@ BlockCache::flush_to_disk() {
             continue;
         }
 
-        // skip directories that have not been deleted
-        // or modified
-        if (flushed_inode->is_dir()
-                && flushed_inode->is_deleted() == 0
-                && flushed_inode->is_dirty() == 0)
-            continue;
 
         string inode_data = flushed_inode->get_flush_record();
 
