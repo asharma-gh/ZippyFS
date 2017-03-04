@@ -437,6 +437,7 @@ int
 BlockCache::flush_to_disk() {
     if (!has_changed_)
         return -1;
+    lock_guard<mutex> lock(mutex_);
     // create path to .head file
     string fname = Util::generate_rand_hex_name();
     string path_to_node = path_to_disk_ + fname + ".node";
@@ -733,8 +734,13 @@ BlockCache::load_from_disk(string path) {
 
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
+
     /** map(path, entries) */
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
+
+    /** map of (inode, node) to avoid duplicate entries */
+    unordered_map<string, unordered_set<string>> inode_to_node;
+
     cout << "GETTING ALL ENTRIES FOR " << path << endl;
     /** map (path, root time)
      * if a root file contains a later time than one in here, then the vector of entries is cleared!
@@ -771,28 +777,15 @@ BlockCache::get_all_root_entries(string path) {
         stringstream ents(root_content);
         string cur_ent;
         bool in_node_table = false;
-        bool added_from_cache = false;
         string cur_path;
         string cur_id;
         // first get time stamp
         getline(ents, cur_ent);
         unsigned long long root_time;
         sscanf(cur_ent.c_str(), "%llu", &root_time);
-        /*
-                if (path.size() > 0 &&
-                        meta_cache_.in_cache(path, root_name)) {
-                    cout << "GETTING ROOT ENTRY FROM CACHE" << endl;
-                    for (auto ent : meta_cache_.get_entry(path, root_name))
-                        root_entries[cur_path].push_back(ent);
 
-                    added_from_cache = true;
-
-                }
-
-                unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> temp_entries;
-                */
         //cout << "ROOT CONTENTS |" << root_content << "|" << endl;
-        while (getline(ents, cur_ent) && !added_from_cache) {
+        while (getline(ents, cur_ent)) {
 
             cout << "CUR ENT " << cur_ent << endl;
             if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
@@ -806,6 +799,7 @@ BlockCache::get_all_root_entries(string path) {
                 cur_id = ent_id;
                 //  cout << "CUR PATH: " << cur_path << endl;
                 //  cout << "PATH: " << path << endl;
+
                 if (path.size() > 0 && cur_path.compare(path) != 0)
                     continue;
                 //  cout << "FOUND " << cur_path << endl;
@@ -814,6 +808,7 @@ BlockCache::get_all_root_entries(string path) {
                     cout << "CLEARING OLD ROOT ENTRIES" << endl;
                     latest_times[cur_path] = root_time;
                 }
+
             } else
                 in_node_table = true;
 
@@ -822,48 +817,30 @@ BlockCache::get_all_root_entries(string path) {
                 uint64_t offset;
                 uint64_t size;
                 sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
-                auto ent_vals = make_tuple((string)node_name, cur_id, offset, size);
+                string nname = (string)node_name;
+                if (inode_to_node[cur_path].find(nname) != inode_to_node[cur_path].end())
+                    // then we don't need to add this
+                    continue;
+                auto ent_vals = make_tuple(nname, cur_id, offset, size);
                 root_entries[cur_path].push_back(ent_vals);
+                inode_to_node[cur_path].insert(nname);
                 cout << "ADDED ENTRY TO MAP FOR |" << cur_path << "|" << endl;
-                //  temp_entries[cur_path].push_back(ent_vals);
             }
         }
-        // cache entries
-        //for (auto ent : temp_entries)
-        //    meta_cache_.add_entry(ent.first, root_name, ent.second);
     }
     if (root_dir != NULL)
         closedir(root_dir);
-    if (root_entries.find(path) != root_entries.end()) {
-        cout << "there are things in here!!!" << endl;
-    }
+
+
     return root_entries;
 }
 
 string
 BlockCache::read_entire_file(string path) {
-    /*
-     * TODO: FIGURE OUT WHERE THIS WENT SO WRONG?
-    lock_guard<mutex> lock(mutex_);
-    FILE* file  = fopen(path.c_str(), "r");
-    // get file size
-    fseek(file, 0, SEEK_END);
-    long fsize = ftell(file);
-    rewind(file);
-    cout << "FILE SIZE "<< to_string(fsize) << endl;
-    char* contents = (char*)malloc(fsize * sizeof(char));
-    // memset(contents, '\0', sizeof(contents) * sizeof(char));
-    fread(contents, sizeof(char), fsize, file);
-    fclose(file);
-    cout << "READ THE FOLLOWING |" << contents << "|" << endl;
-    string ents(contents);
 
-    cout << "STRING |" << ents <<"|" << endl;
-    free(contents);
-    */
     ifstream ifs(path);
     stringstream buffer;
     buffer << ifs.rdbuf();
-    //cout << "READ |" <<buffer.str() <<"|"<<endl;
+
     return buffer.str();
 }

@@ -183,7 +183,7 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 10;
+    const uint64_t MAX_SIZE = 256;
 
     /** has a file changed? */
     bool has_changed_ = false;

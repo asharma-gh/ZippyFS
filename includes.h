@@ -30,4 +30,5 @@
 #include <mutex>
 #include <sstream>
 #include <algorithm>
+#include <unordered_set>
 #endif
