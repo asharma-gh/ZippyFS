@@ -334,96 +334,14 @@ BlockCache::open(string path) {
 
     return 0;
 }
-
+//TODO: remove all of this
 int
 BlockCache::flush_to_shdw(int on_close) {
-    clear_shdw();
+    //clear_shdw();
     cout << "SIZE " << size_ << endl;
     if (size_ < MAX_SIZE && on_close == 0)
         return -1;
     return flush_to_disk();
-
-    // make index file for cache
-    string idx_path = path_to_shdw_ + "index.idx";
-    cout << "PATH TO SHDW " << idx_path << endl;
-
-    // create files for each item in cache
-    for (auto const& entry : inode_idx_) {
-        // load previous version to shadow director
-        cout  << "NAME " << entry.first << endl;
-        cout << "DIRTY? " << get_inode_by_path(entry.first)->is_dirty() << endl;
-        shared_ptr<Inode> ent = get_inode_by_path(entry.first);
-        if (ent->is_dirty() == 0)
-            continue;
-        cout << "IS NOT DIRTY" << endl;
-
-        cout << "==== PRINTING OUT FLUSH RECORD ====" << endl;
-        cout << ent->get_flush_record() << endl;
-        // open index file
-        int idx_fd = ::open(idx_path.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-        if (idx_fd == -1)
-            perror("Open failed");
-
-        if (ent->is_deleted()) {
-            string record = ent->get_record();
-            ::write(idx_fd, record.c_str(), record.length());
-            close(idx_fd);
-            continue;
-
-        }
-
-        // load file or parent to shdw
-        int res = load_to_shdw(entry.first.c_str());
-        if (res == -1) {
-            char* dirpath = strdup(entry.first.c_str());
-            cout << "dirp " << dirpath << endl;
-            dirpath = dirname(dirpath);
-            cout << "dirname " << dirpath << endl;
-            if (strcmp(dirpath, "/") != 0) {
-                string file_path = path_to_shdw_ + (dirpath + 1);
-                cout << "file path " << file_path << endl;
-                if (in_cache(file_path) == 0)
-                    mkdir(file_path.c_str(), get_inode_by_path(file_path)->get_mode());
-
-            }
-            free(dirpath);
-        }
-
-        // create path to file in shadow dir
-        string file_path = path_to_shdw_ + entry.first.substr(1);
-        cout << "path to file " << file_path <<  endl;
-
-        if (ent->is_dir()) {
-            mkdir(file_path.c_str(), ent->get_mode());
-            string record = ent->get_record();
-            ::write(idx_fd, record.c_str(), record.length());
-            if (close(idx_fd) == -1)
-                cout << "Error closing indx fd Errno " << strerror(errno) << endl;
-            continue;
-        }
-
-        // open previous version / make new one
-        int file_fd = ::open(file_path.c_str(), O_CREAT | O_WRONLY, ent->get_mode());
-        if (file_fd == -1)
-            cout << "error opening file ERRNO " << strerror(errno) << endl;
-        cout << "initiating the flush" << endl;
-        ent->flush_to_fd(file_fd);
-        cout << "finished flush" << endl;
-
-        string record = ent->get_record();
-        ::write(idx_fd, record.c_str(), record.length());
-        if (close(file_fd) == -1)
-            cout << "Error closing file ERRNO " << strerror(errno) << endl;
-        if (close(idx_fd) == -1)
-            cout << "Errror closing indx fd ERRNO " << strerror(errno) << endl;
-
-    }
-    inode_idx_.clear();
-    inode_ptrs_.clear();
-    dirty_block_.clear();
-    size_ = 0;
-    flush_dir();
-    return 0;
 }
 
 vector<string>
@@ -468,16 +386,22 @@ BlockCache::flush_to_disk() {
      * .head file is written to last.
      */
     for (auto ent : inode_idx_) {
-        // if nothing was written to this inode, don't flush it
+        // if nothing was written to this file, don't flush it
         // TODO: chmod / other ways to modify files aren't gonna
         // be recorded right now, future change!
         // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
-        if (flushed_inode->is_dirty() == 0
-                && flushed_inode->is_dir() == 0) {
+        if (flushed_inode->is_dirty() == 0) {
             cout << "Skipping " << ent.first << " because no changes were made..." << endl;
             continue;
         }
+
+        // skip directories that have not been deleted
+        // or modified
+        if (flushed_inode->is_dir()
+                && flushed_inode->is_deleted() == 0
+                && flushed_inode->is_dirty() == 0)
+            continue;
 
         string inode_data = flushed_inode->get_flush_record();
 

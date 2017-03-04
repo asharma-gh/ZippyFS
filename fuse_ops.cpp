@@ -1130,7 +1130,7 @@ zippyfs_destroy(void* private_data) {
     (void)private_data;
     // flush
     block_cache->flush_to_shdw(1);
-    flush_dir();
+    //flush_dir();
     // delete process cache directory
     char removal_cmd[PATH_MAX + 12];
     sprintf(removal_cmd, "rm -rf %s", shadow_path);
