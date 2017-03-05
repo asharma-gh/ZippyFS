@@ -167,7 +167,7 @@ BlockCache::readdir(string path) {
         // extract values
         string ent_path = disk_ent.first;
         auto ent_nodes = disk_ent.second;
-        cout << "LOOKING AT |" << ent_path << "|" << endl;
+        //cout << "LOOKING AT |" << ent_path << "|" << endl;
         unsigned long long latest_time = 0;
         // check if path is in dir
         char* dirpath = strdup(ent_path.c_str());
@@ -327,10 +327,10 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::open(string path) {
-    int res = load_from_shdw(path);
-    cout << "open res " << res << endl;
-    if (res == 0)
-        get_inode_by_path(path)->update_atime();
+    //int res = load_from_shdw(path);
+    //cout << "open res " << res << endl;
+    // if (res == 0)
+    //     get_inode_by_path(path)->update_atime();
 
     return 0;
 }
@@ -410,6 +410,7 @@ BlockCache::flush_to_disk() {
 
         string node_table;
         // write to .data
+        // TODO: buffer input for .data and perform single write to it
         for (auto blk : dirty_block_[inode_idx]) {
             cout << "WRITING DIRTY BLOCK" << endl;
             auto block = blk.second;
@@ -556,11 +557,12 @@ BlockCache::load_from_disk(string path) {
             data_table[blockidx] = make_pair(data_offset, block_size);
         }
         cout << "INODE INFO " << inode_info << endl;
-        cout << "FINISHED BUILDING THE FOLLOWING TABLE" << endl;
-
+        //cout << "FINISHED BUILDING THE FOLLOWING TABLE" << endl;
+        /*
         for (auto ent : data_table) {
             cout << "BLOCK NUM " << to_string(ent.first) << " OFFSET# " << to_string(ent.second.first) << " SIZE# " << to_string(ent.second.second) << endl;
         }
+        */
         // we now have the entire inode entry
         // record inode data
         //
@@ -654,10 +656,7 @@ BlockCache::load_from_disk(string path) {
     return 0;
 
 }
-// TODO:
-// when path = "", cache result of this call for each .root
-// on subsequent calls, read stuff from cache instead of
-// reading from the file, stop opening / read
+
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
 
@@ -681,16 +680,21 @@ BlockCache::get_all_root_entries(string path) {
     // iterate thru each entry in root
     while ((entry = ::readdir(root_dir)) != NULL) {
         root_name = entry->d_name;
+        cout << "ENT NAME " << root_name << endl;
         // if this file is not a .root, skip it
         if (strlen(root_name) < 4
-                || strcmp(root_name + (strlen(root_name) - 5), ".root") != 0)
+                || strcmp(root_name + (strlen(root_name) - 5), ".root") != 0) {
+            cout << "not a root" << endl;
             continue;
+        }
 
+        cout << "what the actual fuck" << endl;
 
         // it is a root, check if its in cache, if not, add it
         string root_content;
         if (meta_cache_.root_content_in_cache(root_name)) {
             root_content = meta_cache_.get_root_file_contents(root_name);
+            cout << "stuff happens" << endl;
         } else {
             // make path to .root file
             string path_to_root = path_to_disk_ + root_name;
@@ -702,15 +706,21 @@ BlockCache::get_all_root_entries(string path) {
         // check if the contents have been cached
         if (meta_cache_.in_inverted_root_cache(root_name)) {
             auto temp = meta_cache_.get_inverted_root_ent(root_name, path);
+            if (temp.size() == 0)
+                // its not in this root anyways
+                continue;
             // add values to cache
             for (auto ent : temp) {
                 for (auto tup : ent.second) {
                     root_entries[ent.first].push_back(tup);
                 }
             }
+
+            cout <<"GOT ENT FROM CACHE" << endl;
             continue;
 
         }
+        cout << "por que" << endl;
         // for each thing, make a list-of [path, node]
         stringstream ents(root_content);
         string cur_ent;
@@ -723,7 +733,7 @@ BlockCache::get_all_root_entries(string path) {
         sscanf(cur_ent.c_str(), "%llu", &root_time);
         /** map (path, ents)  for cur root*/
         unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> cur_ents;
-        //cout << "ROOT CONTENTS |" << root_content << "|" << endl;
+        cout << "ROOT CONTENTS |" << root_content << "|" << endl;
         while (getline(ents, cur_ent)) {
 
             cout << "CUR ENT " << cur_ent << endl;
@@ -773,6 +783,7 @@ BlockCache::get_all_root_entries(string path) {
             for (auto ent : cur_ents) {
                 meta_cache_.add_inverted_root_entry(root_name, ent.first, ent.second);
             }
+            cout <<"CACHED ROOT STUFF"<<endl;
         }
     }
     if (root_dir != NULL)
