@@ -327,8 +327,7 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::open(string path) {
-    //int res = load_from_shdw(path);
-    //cout << "open res " << res << endl;
+
     // if (res == 0)
     //     get_inode_by_path(path)->update_atime();
 
@@ -454,10 +453,7 @@ BlockCache::flush_to_disk() {
     // write to .node
     if (pwrite(nodefd, node_content.c_str(), node_content.size() * sizeof(char), 0) == -1)
         cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
-    /*
-    if (pwrite(nodefd, node_table.c_str(), node_table.size() * sizeof(char), 0) == -1)
-        cout << "ERROR writing TABLE to .node ERRNO: " << strerror(errno);
-    */
+
     // write to .root
     if (pwrite(rootfd, root_content.c_str(), root_content.size() * sizeof(char), 0) == -1)
         cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
@@ -680,7 +676,6 @@ BlockCache::get_all_root_entries(string path) {
     // iterate thru each entry in root
     while ((entry = ::readdir(root_dir)) != NULL) {
         root_name = entry->d_name;
-        cout << "ENT NAME " << root_name << endl;
         // if this file is not a .root, skip it
         if (strlen(root_name) < 4
                 || strcmp(root_name + (strlen(root_name) - 5), ".root") != 0) {
@@ -688,13 +683,10 @@ BlockCache::get_all_root_entries(string path) {
             continue;
         }
 
-        cout << "what the actual fuck" << endl;
-
         // it is a root, check if its in cache, if not, add it
         string root_content;
         if (meta_cache_.root_content_in_cache(root_name)) {
             root_content = meta_cache_.get_root_file_contents(root_name);
-            cout << "stuff happens" << endl;
         } else {
             // make path to .root file
             string path_to_root = path_to_disk_ + root_name;
@@ -720,7 +712,6 @@ BlockCache::get_all_root_entries(string path) {
             continue;
 
         }
-        cout << "por que" << endl;
         // for each thing, make a list-of [path, node]
         stringstream ents(root_content);
         string cur_ent;
