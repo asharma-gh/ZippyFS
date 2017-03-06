@@ -1,3 +1,13 @@
+- On a flush, make the file: [hash of path][delim][rand cush].file
+
+- On a load, extract all [hash of path][*].file stuff and read entries from them.
+
+
+Issue: file limit on unix could be reached w/ these versioned files
+Solution: garbage collection, or impose a restriction
+======
+
+
 - load from disk is the biggest bottleneck, make it faster some how
 
 - add mtime to each block. Currently we overwrite blocks only if
