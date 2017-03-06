@@ -368,15 +368,15 @@ int
 BlockCache::flush_to_disk() {
     if (!has_changed_)
         return -1;
-    lock_guard<mutex> lock(mutex_);
+    //lock_guard<mutex> lock(mutex_);
     // create path to .head file
     string fname = Util::generate_rand_hex_name();
     string path_to_node = path_to_disk_ + fname + ".node";
     string path_to_data = path_to_disk_ + fname + ".data";
-    string path_to_root = path_to_disk_ + fname + ".root";
+
 
     int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-    int rootfd = ::open(path_to_root.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+
     int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
 
     string node_content, root_content, data_content;
@@ -388,11 +388,6 @@ BlockCache::flush_to_disk() {
     uint64_t offset_into_node = 0;
     uint64_t curr_flush_offset = 0;
 
-    // timestamp .root
-    string timestamp = to_string(Util::get_time()) + "\n";
-    // write to .root
-    if (pwrite(rootfd, timestamp.c_str(), timestamp.size() * sizeof(char), 0) == -1)
-        cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
 
     /** map(path, (.file name, content)) */
     unordered_map<string, unordered_map<string, string>> flushed_file_ents;
@@ -474,10 +469,6 @@ BlockCache::flush_to_disk() {
     if (pwrite(nodefd, node_content.c_str(), node_content.size() * sizeof(char), 0) == -1)
         cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
 
-    // write to .root
-    if (pwrite(rootfd, root_content.c_str(), root_content.size() * sizeof(char), 0) == -1)
-        cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
-
     // write .files
     for (auto ent : flushed_file_ents) {
         for (auto file : ent.second) {
@@ -491,7 +482,7 @@ BlockCache::flush_to_disk() {
     }
     close(nodefd);
     close(datafd);
-    close(rootfd);
+
     inode_idx_.clear();
     inode_ptrs_.clear();
     dirty_block_.clear();
@@ -706,7 +697,7 @@ BlockCache::get_all_root_entries(string path, string parent) {
         cout << "Nothing to do..." << endl;
         return root_entries;
     }
-    glob(pattern.c_str(), 0, NULL, &res);
+    glob(pattern.c_str(), GLOB_NOSORT, NULL, &res);
     cout << "SIZE: " << to_string(res.gl_pathc) << endl;
     if (res.gl_pathc == 0)
         return root_entries;

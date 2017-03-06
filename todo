@@ -1,10 +1,8 @@
-- still really slow on readdir calls
-    - hash parent and add that to .meta name
-    - use similar semantics to glob for all children of parent
-
 
 Issue: file limit on unix could be reached w/ these versioned files
-Solution: garbage collection, or impose a restriction
+Solution: garbage collection, or impose a restriction?
+
+Issue: .data files get way to big, need to break them up somehow!
 ======
 
 
