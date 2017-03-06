@@ -146,5 +146,18 @@ class Util {
 
     }
 
+    /**
+     * constructs a file name in the form of
+     * [hash-of-path]-[random 128 hex].file
+     */
+    static
+    std::string
+    generate_fname(std::string path) {
+        std::string hash = crypto_hash(path);
+        std::string rand_bits = generate_rand_hex_name();
+
+        return hash + rand_bits + ".file";
+    }
+
 };
 #endif
