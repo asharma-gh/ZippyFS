@@ -139,7 +139,7 @@ BlockCache::readdir(string path) {
     // map (path, index ent)
     map<string, BlockCache::index_entry> added_names;
 
-
+    unsigned long long time = Util::get_time();
     // first check the cache, add stuff that's updated (checking for deletions)
     vector<BlockCache::index_entry> ents;
     for (auto entry : inode_idx_) {
@@ -163,6 +163,7 @@ BlockCache::readdir(string path) {
 
     // check stuff on disk
     auto disk_ents = get_all_root_entries();
+    unsigned long long dtime = Util::get_time();
     for (auto disk_ent : disk_ents) {
         // extract values
         string ent_path = disk_ent.first;
@@ -170,12 +171,13 @@ BlockCache::readdir(string path) {
         //cout << "LOOKING AT |" << ent_path << "|" << endl;
         unsigned long long latest_time = 0;
         // check if path is in dir
-        cout << "PATH: " << ent_path << endl;
+        //cout << "PATH: " << ent_path << endl;
         char* dirpath = strdup(ent_path.c_str());
         dirpath = dirname(dirpath);
         if (strcmp(dirpath, path.c_str()) == 0) {
             free(dirpath);
             // iterate thru each .node
+
             for (auto node_entry : ent_nodes) {
                 // record which 1 has the latest entry
                 //
@@ -218,8 +220,8 @@ BlockCache::readdir(string path) {
                     cout << "ADDED UPDATED ENTRY" << endl;
                 }
             }
+
         } else {
-            cout << "Seg?" <<endl;
             if (!dirpath)
                 free(dirpath);
             continue;
@@ -231,6 +233,15 @@ BlockCache::readdir(string path) {
         ents.push_back(thing.second);
     }
     cout << "SEG?" << endl;
+    unsigned long long etime = Util::get_time();
+
+    cout << "Started: " << to_string(time)
+         << "\nStarted disk read: " <<to_string(dtime)
+         << "\nEnded w/: " << to_string(etime)
+         << "\nDiff start & end: " << to_string (etime - dtime)
+         << "\nDiff disk & end: " << to_string (etime - time)
+         << "\nDiff start & disk: " << to_string (dtime - time)
+         << endl;
     // TODO: remove vector for map, can convert back to vec if needed
     return ents;
 }
@@ -576,12 +587,7 @@ BlockCache::load_from_disk(string path) {
             data_table[blockidx] = make_pair(data_offset, block_size);
         }
         cout << "INODE INFO " << inode_info << endl;
-        //cout << "FINISHED BUILDING THE FOLLOWING TABLE" << endl;
-        /*
-        for (auto ent : data_table) {
-            cout << "BLOCK NUM " << to_string(ent.first) << " OFFSET# " << to_string(ent.second.first) << " SIZE# " << to_string(ent.second.second) << endl;
-        }
-        */
+
         // we now have the entire inode entry
         // record inode data
         //
@@ -685,7 +691,9 @@ BlockCache::get_all_root_entries(string path) {
     unordered_map<string, unordered_set<string>> inode_to_node;
     string hashname;
     glob_t res;
-    if (path.compare("") != 0) {
+    unsigned long long start = Util::get_time();
+    if (path.size() > 0) {
+        cout << "!!!!!!!!!!!!!!!!DOINGTHIS!!!!!!!!!!!!!!!!!!!!"<<endl;
         // add - to end to avoid collision w/ rand section
         hashname = Util::crypto_hash(path) + "-";
         string pattern = path_to_disk_ + hashname + "*";
@@ -723,6 +731,7 @@ BlockCache::get_all_root_entries(string path) {
             }
 
         }
+        cout << "THIS TOOK HOW LONG?: " << to_string(Util::get_time() - start) << endl;
         return root_entries;
 
     }
@@ -731,11 +740,12 @@ BlockCache::get_all_root_entries(string path) {
 
     // if no path specified, go thru them all.
     // check if hash path exists in root
-
+    unsigned long long dstart = Util::get_time();
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
     }
+
     struct dirent* entry;
     string entry_name;
     // iterate thru each entry in root
@@ -757,6 +767,7 @@ BlockCache::get_all_root_entries(string path) {
         getline(sstream, cur_ent);
         sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
         if (meta_cache_.in_inverted_root_cache(entry_name)) {
+            //  cout << "==== SKIPPING ====" << endl;
             auto res = meta_cache_.get_inverted_root_ent(entry_name, ent_path);
             if (res.size() == 0)
                 continue;
@@ -769,9 +780,10 @@ BlockCache::get_all_root_entries(string path) {
             }
             continue;
         }
-        vector<tuple<string, string, uint64_t, uint64_t>> temp;
-        while(getline(sstream, cur_ent)) {
 
+        vector<tuple<string, string, uint64_t, uint64_t>> temp;
+
+        while(getline(sstream, cur_ent)) {
             // cout << "Stuff" << endl;
             // everything else must be in the ent table
             char node_name[FILENAME_MAX] = {0};
@@ -788,11 +800,16 @@ BlockCache::get_all_root_entries(string path) {
             temp.push_back(ent_vals);
 
         }
+
         meta_cache_.add_inverted_root_entry(entry_name, ent_path, temp);
-
-        // read .node table
     }
-
+    unsigned long long end = Util::get_time();
+    cout << "DIF FROM START " << to_string(end - start)
+         << endl;
+    cout << "DIF FROM DISK " << to_string (end  - dstart)
+         << endl;
+    cout << "DIF OF START TO DISK: " << to_string(dstart - start)
+         << endl;
     if (root_dir != NULL)
         closedir(root_dir);
 
