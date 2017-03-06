@@ -3,6 +3,7 @@ Issue: file limit on unix could be reached w/ these versioned files
 Solution: garbage collection, or impose a restriction?
 
 Issue: .data files get way to big, need to break them up somehow!
+Solution: create files [hash][blocknum]
 ======
 
 
