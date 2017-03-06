@@ -327,7 +327,7 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::open(string path) {
-
+    (void)path;
     // if (res == 0)
     //     get_inode_by_path(path)->update_atime();
 
@@ -349,7 +349,9 @@ BlockCache::get_refs(string path) {
         throw domain_error("thing not here");
     return get_inode_by_path(path)->get_refs();
 }
-
+//
+//TODO: rewrite this to flush a .file for each file!
+//
 int
 BlockCache::flush_to_disk() {
     if (!has_changed_)
@@ -655,128 +657,18 @@ BlockCache::load_from_disk(string path) {
 
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
-
+    (void)path;
     /** map(path, entries) */
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
 
-    /** map of (inode, node) to avoid duplicate entries */
-    unordered_map<string, unordered_set<string>> inode_to_node;
-
-    cout << "GETTING ALL ENTRIES FOR " << path << endl;
-    /** map (path, root time)
-     * if a root file contains a later time than one in here, then the vector of entries is cleared!
-     */
-    unordered_map<string, unsigned long long> latest_times;
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
     }
     struct dirent* entry;
-    const char* root_name;
     // iterate thru each entry in root
-    while ((entry = ::readdir(root_dir)) != NULL) {
-        root_name = entry->d_name;
-        // if this file is not a .root, skip it
-        if (strlen(root_name) < 4
-                || strcmp(root_name + (strlen(root_name) - 5), ".root") != 0) {
-            cout << "not a root" << endl;
-            continue;
-        }
+    while ((entry = ::readdir(root_dir)) != NULL) {}
 
-        // it is a root, check if its in cache, if not, add it
-        string root_content;
-        if (meta_cache_.root_content_in_cache(root_name)) {
-            root_content = meta_cache_.get_root_file_contents(root_name);
-        } else {
-            // make path to .root file
-            string path_to_root = path_to_disk_ + root_name;
-            // extract all content
-            root_content = read_entire_file(path_to_root);
-            // add it to cache
-            meta_cache_.add_root_file(path_to_root, root_content);
-        }
-        // check if the contents have been cached
-        if (meta_cache_.in_inverted_root_cache(root_name)) {
-            auto temp = meta_cache_.get_inverted_root_ent(root_name, path);
-            if (temp.size() == 0)
-                // its not in this root anyways
-                continue;
-            // add values to cache
-            for (auto ent : temp) {
-                for (auto tup : ent.second) {
-                    root_entries[ent.first].push_back(tup);
-                }
-            }
-
-            cout <<"GOT ENT FROM CACHE" << endl;
-            continue;
-
-        }
-        // for each thing, make a list-of [path, node]
-        stringstream ents(root_content);
-        string cur_ent;
-        bool in_node_table = false;
-        string cur_path;
-        string cur_id;
-        // first get time stamp
-        getline(ents, cur_ent);
-        unsigned long long root_time;
-        sscanf(cur_ent.c_str(), "%llu", &root_time);
-        /** map (path, ents)  for cur root*/
-        unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> cur_ents;
-        cout << "ROOT CONTENTS |" << root_content << "|" << endl;
-        while (getline(ents, cur_ent)) {
-
-            cout << "CUR ENT " << cur_ent << endl;
-            if (strstr(cur_ent.c_str(), "INODE:") != NULL) {
-                // cout << "FOUND AN INODE ENTRY" << endl;
-                in_node_table = false;
-                /// we have an inode entry, get the path
-                char ent_path[PATH_MAX] = {0};
-                char ent_id[FILENAME_MAX] = {0};
-                sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
-                cur_path = ent_path;
-                cur_id = ent_id;
-                //  cout << "CUR PATH: " << cur_path << endl;
-                //  cout << "PATH: " << path << endl;
-
-                if (path.size() > 0 && cur_path.compare(path) != 0)
-                    continue;
-                //  cout << "FOUND " << cur_path << endl;
-                if (root_time > latest_times[cur_path]) {
-                    root_entries[cur_path].clear();
-                    cout << "CLEARING OLD ROOT ENTRIES" << endl;
-                    latest_times[cur_path] = root_time;
-                }
-
-            } else
-                in_node_table = true;
-
-            if (in_node_table) {
-                char node_name[FILENAME_MAX] = {0};
-                uint64_t offset;
-                uint64_t size;
-                sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
-                string nname = (string)node_name;
-                if (inode_to_node[cur_path].find(nname) != inode_to_node[cur_path].end())
-                    // then we don't need to add this
-                    continue;
-                auto ent_vals = make_tuple(nname, cur_id, offset, size);
-                root_entries[cur_path].push_back(ent_vals);
-                inode_to_node[cur_path].insert(nname);
-                cout << "ADDED ENTRY TO MAP FOR |" << cur_path << "|" << endl;
-                cur_ents[cur_path].push_back(ent_vals);
-            }
-        }
-        // cache stuff
-        if (path.compare("") == 0
-                && !meta_cache_.in_inverted_root_cache(root_name)) {
-            for (auto ent : cur_ents) {
-                meta_cache_.add_inverted_root_entry(root_name, ent.first, ent.second);
-            }
-            cout <<"CACHED ROOT STUFF"<<endl;
-        }
-    }
     if (root_dir != NULL)
         closedir(root_dir);
 
