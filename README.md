@@ -1,9 +1,14 @@
 # "no"zippyfs
 distributed file system in fuse, early in development    
-Original version: branch distfs  
+Original version: branch nozippyfs
 
-Utilizes zip archives to compress written data and as a consistent format to distribute writes over the network  
-unzipping is expensive so more efficient solutions are being explored.  
+
+Seeking thru .root files line by line ends up being a huge bottleneck when there are a lot of files
+
+In this branch I'm going to give each file version its own file that'll make locating a particular group of file versions
+as expensive as iterating thru the directory of all file versions.
+
+ 
  
 ## Features (so far):  
 read / write stuff over a network  
