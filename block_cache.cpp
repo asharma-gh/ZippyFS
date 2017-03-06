@@ -170,6 +170,7 @@ BlockCache::readdir(string path) {
         //cout << "LOOKING AT |" << ent_path << "|" << endl;
         unsigned long long latest_time = 0;
         // check if path is in dir
+        cout << "PATH: " << ent_path << endl;
         char* dirpath = strdup(ent_path.c_str());
         dirpath = dirname(dirpath);
         if (strcmp(dirpath, path.c_str()) == 0) {
@@ -218,7 +219,9 @@ BlockCache::readdir(string path) {
                 }
             }
         } else {
-            free(dirpath);
+            cout << "Seg?" <<endl;
+            if (!dirpath)
+                free(dirpath);
             continue;
         }
     }
@@ -227,6 +230,7 @@ BlockCache::readdir(string path) {
         cout << "ADDED " << thing.first << endl;
         ents.push_back(thing.second);
     }
+    cout << "SEG?" << endl;
     // TODO: remove vector for map, can convert back to vec if needed
     return ents;
 }
@@ -382,7 +386,8 @@ BlockCache::flush_to_disk() {
     if (pwrite(rootfd, timestamp.c_str(), timestamp.size() * sizeof(char), 0) == -1)
         cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
 
-
+    /** map(path, (.file name, content)) */
+    unordered_map<string, unordered_map<string, string>> flushed_file_ents;
     /**
      * This loop writes to the .node and .data files
      * .head file is written to last.
@@ -398,6 +403,8 @@ BlockCache::flush_to_disk() {
             continue;
         }
 
+        // file name for this inode
+        string file_name = Util::generate_fname(ent.first);
 
         string inode_data = flushed_inode->get_flush_record();
 
@@ -450,6 +457,9 @@ BlockCache::flush_to_disk() {
         node_content += inode_data + node_table;
         root_content += root_input;
 
+        // NEW!
+        flushed_file_ents[ent.first][file_name] = root_input;
+
 
     }
     // write to .node
@@ -459,6 +469,18 @@ BlockCache::flush_to_disk() {
     // write to .root
     if (pwrite(rootfd, root_content.c_str(), root_content.size() * sizeof(char), 0) == -1)
         cout << "ERROR writing to .root ERRNO: " << strerror(errno) << endl;
+
+    // write .files
+    for (auto ent : flushed_file_ents) {
+        for (auto file : ent.second) {
+            string fpath = path_to_disk_ + file.first;
+
+            int fd = ::open(fpath.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+            if (pwrite(fd, file.second.c_str(), file.second.size() * sizeof(char), 0) == -1)
+                cout << "Error writing to .file ERRNO " << strerror(errno) << endl;
+            close(fd);
+        }
+    }
     close(nodefd);
     close(datafd);
     close(rootfd);
@@ -497,7 +519,6 @@ BlockCache::load_from_disk(string path) {
      * node_ent is (node_name, inode id, offset, size)
      ***/
     for (auto node_ent : node_files) {
-
         // find the .node
         string node_name = get<0>(node_ent);
         string cached_content;
@@ -657,17 +678,103 @@ BlockCache::load_from_disk(string path) {
 
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
 BlockCache::get_all_root_entries(string path) {
-    (void)path;
     /** map(path, entries) */
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
+
+    /** map of (inode, node) to avoid duplicate entries */
+    unordered_map<string, unordered_set<string>> inode_to_node;
+    string hashname;
+    glob_t res;
+    if (path.compare("") != 0) {
+        // add - to end to avoid collision w/ rand section
+        hashname = Util::crypto_hash(path) + "-";
+        string pattern = path_to_disk_ + hashname + "*";
+        glob(pattern.c_str(), 0, NULL, &res);
+        if (res.gl_pathc == 0) {
+            cout << "NOT ON DISK" << endl;
+            return root_entries;
+        }
+        // check thru glob stuff
+        for (uint64_t ii = 0; ii < res.gl_pathc; ii++) {
+            string content = read_entire_file(res.gl_pathv[ii]);
+            stringstream sstream(content);
+            char ent_path[PATH_MAX] = {0};
+            char ent_id[FILENAME_MAX] = {0};
+            string cur_ent;
+            getline(sstream, cur_ent);
+            sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
+
+            while(getline(sstream, cur_ent)) {
+
+                // cout << "Stuff" << endl;
+                // everything else must be in the ent table
+                char node_name[FILENAME_MAX] = {0};
+                uint64_t offset;
+                uint64_t size;
+                sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
+                string nname = (string)node_name;
+                auto ent_vals = make_tuple(nname, ent_id, offset, size);
+                if (inode_to_node[ent_path].find(nname) != inode_to_node[ent_path].end())
+                    // then we don't need to add this
+                    continue;
+                root_entries[ent_path].push_back(ent_vals);
+                inode_to_node[ent_path].insert(nname);
+            }
+
+        }
+        return root_entries;
+    }
+    cout << "THIS MUST BE A READDIR CALL " << endl;
+    // TODO: cache these, avoid syscalls
+
+    // if no path specified, go thru them all.
+    // check if hash path exists in root
 
     DIR* root_dir = opendir(path_to_disk_.c_str());
     if (root_dir == NULL) {
         cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
     }
     struct dirent* entry;
+    string entry_name;
     // iterate thru each entry in root
-    while ((entry = ::readdir(root_dir)) != NULL) {}
+    while ((entry = ::readdir(root_dir)) != NULL) {
+        entry_name = entry->d_name;
+        // parse name to see if it matches this file
+        if (path.size() > 0
+                && strstr(entry_name.c_str(), hashname.c_str()) == NULL)
+            continue;
+        // we must have a file that contains this
+        // open .meta
+        // read meta data
+        string content = read_entire_file(path_to_disk_ + entry_name);
+        stringstream sstream(content);
+        char ent_path[PATH_MAX] = {0};
+        char ent_id[FILENAME_MAX] = {0};
+        string cur_ent;
+        getline(sstream, cur_ent);
+        sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
+
+        while(getline(sstream, cur_ent)) {
+
+            // cout << "Stuff" << endl;
+            // everything else must be in the ent table
+            char node_name[FILENAME_MAX] = {0};
+            uint64_t offset;
+            uint64_t size;
+            sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
+            string nname = (string)node_name;
+            auto ent_vals = make_tuple(nname, ent_id, offset, size);
+            if (inode_to_node[ent_path].find(nname) != inode_to_node[ent_path].end())
+                // then we don't need to add this
+                continue;
+            root_entries[ent_path].push_back(ent_vals);
+            inode_to_node[ent_path].insert(nname);
+
+
+        }
+
+        // read .node table
+    }
 
     if (root_dir != NULL)
         closedir(root_dir);

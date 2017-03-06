@@ -16,7 +16,7 @@ as expensive as iterating thru the directory of all file versions.
 
 Idea:
 ```
-[hash of path][delim][128 rand nums].file  
+[hash of path][delim][128 rand nums].meta
 ```
 for each flushed file version, so locating a file is a matter of checking if [hash of path][random*].file exists  
 

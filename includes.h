@@ -32,4 +32,5 @@
 #include <algorithm>
 #include <unordered_set>
 #include <sodium.h>
+#include <glob.h>
 #endif
