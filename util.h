@@ -111,5 +111,40 @@ class Util {
         return std::string(hex_name);
     }
 
+    /**
+     * generates a hash of the given content
+     * returns a string representation of the hex bytes
+     */
+    static
+    std::string
+    crypto_hash(std::string content) {
+        unsigned int c_len = content.size();
+        unsigned char ccontent[c_len] = {0};
+
+        strcpy((char*)ccontent, content.c_str());
+
+        unsigned char hash[crypto_generichash_BYTES + 1] = {'\0'};
+
+        crypto_generichash(hash, crypto_generichash_BYTES, ccontent, c_len, NULL, 0);
+
+        std::string res = binary_to_hex((char*)hash, crypto_generichash_BYTES);
+        return res;
+    }
+
+    /**
+     * converts binary stuff to hex
+     */
+    static
+    std::string
+    binary_to_hex(char* binary, uint64_t len) {
+        char hex[(len*2) + 1] = {'\0'};
+        for (uint64_t i = 0; i < len; i++) {
+            sprintf(hex + i*2,"%02X", binary[i]);
+        }
+        std::string shex(hex);
+        return shex;
+
+    }
+
 };
 #endif

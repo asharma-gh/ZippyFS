@@ -31,4 +31,5 @@
 #include <sstream>
 #include <algorithm>
 #include <unordered_set>
+#include <sodium.h>
 #endif

@@ -1,6 +1,6 @@
 CC = g++
-CFLAGS := -Wall `pkg-config fuse --cflags` -lzip -g -D_FILE_OFFSET_BITS=64
-LDFLAGS := -g `pkg-config fuse --libs` -lzip -D_FILE_OFFSET_BITS=64
+CFLAGS := -Wall `pkg-config fuse --cflags` -lzip -lsodium -g -D_FILE_OFFSET_BITS=64
+LDFLAGS := -g `pkg-config fuse --libs` -lzip -lsodium -D_FILE_OFFSET_BITS=64
 SRCS := $(wildcard %.c) $(wildcard %.cpp)
 OBJS := $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 DEP = $(wildcard %.h)
