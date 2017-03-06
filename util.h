@@ -148,7 +148,7 @@ class Util {
 
     /**
      * constructs a file name in the form of
-     * [hash-of-path]-[random 128 hex].meta
+     * [hash-of-parent].[hash-of-path]-[random 128 hex].meta
      */
     static
     std::string
@@ -156,7 +156,14 @@ class Util {
         std::string hash = crypto_hash(path);
         std::string rand_bits = generate_rand_hex_name();
 
-        return hash + "-" + rand_bits + ".meta";
+        // get parent
+
+        std::string p = path.substr(0, path.find_last_of("/"));
+        if (p.size() == 0)
+            p = "ROOT";
+        std::string phash = crypto_hash(p);
+
+        return phash + "." + hash + "-" + rand_bits + ".meta";
     }
 
 };

@@ -162,7 +162,7 @@ BlockCache::readdir(string path) {
     }
 
     // check stuff on disk
-    auto disk_ents = get_all_root_entries();
+    auto disk_ents = get_all_root_entries("",path);
     unsigned long long dtime = Util::get_time();
     for (auto disk_ent : disk_ents) {
         // extract values
@@ -235,10 +235,7 @@ BlockCache::readdir(string path) {
     cout << "SEG?" << endl;
     unsigned long long etime = Util::get_time();
 
-    cout << "Started: " << to_string(time)
-         << "\nStarted disk read: " <<to_string(dtime)
-         << "\nEnded w/: " << to_string(etime)
-         << "\nDiff start & end: " << to_string (etime - dtime)
+    cout << "\nDiff start & end: " << to_string (etime - dtime)
          << "\nDiff disk & end: " << to_string (etime - time)
          << "\nDiff start & disk: " << to_string (dtime - time)
          << endl;
@@ -454,7 +451,7 @@ BlockCache::flush_to_disk() {
 
         root_input += " " + to_string(node_ent_size) + "\n";
         // carry over old root entries
-        auto old_entries = get_all_root_entries(ent.first)[ent.first];
+        auto old_entries = get_all_root_entries(ent.first, "")[ent.first];
         if (old_entries.size() > 0) {
             // write them to root_input
 
@@ -515,7 +512,7 @@ BlockCache::load_from_disk(string path) {
     unsigned long long latest_mtime = 0;
     // we have a .root file
     // check if it contains this path
-    auto node_files = get_all_root_entries(path)[path];
+    auto node_files = get_all_root_entries(path, "")[path];
     if (node_files.size() == 0) {
         // then it doesn't exist in disk
         cout << "NO ROOT ENTRIES" << endl;
@@ -683,108 +680,53 @@ BlockCache::load_from_disk(string path) {
 }
 
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
-BlockCache::get_all_root_entries(string path) {
+BlockCache::get_all_root_entries(string path, string parent) {
+    // TODO: cache to avoid reads
     /** map(path, entries) */
     unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
 
     /** map of (inode, node) to avoid duplicate entries */
     unordered_map<string, unordered_set<string>> inode_to_node;
     string hashname;
+    string pattern;
     glob_t res;
     unsigned long long start = Util::get_time();
     if (path.size() > 0) {
         cout << "!!!!!!!!!!!!!!!!DOINGTHIS!!!!!!!!!!!!!!!!!!!!"<<endl;
         // add - to end to avoid collision w/ rand section
-        hashname = Util::crypto_hash(path) + "-";
-        string pattern = path_to_disk_ + hashname + "*";
-        glob(pattern.c_str(), 0, NULL, &res);
-        if (res.gl_pathc == 0) {
-            cout << "NOT ON DISK" << endl;
-            return root_entries;
-        }
+        hashname = "*." + Util::crypto_hash(path) + "-";
+        pattern = path_to_disk_ + hashname + "*";
+    } else if (path.size() == 0 && parent.size() > 0) {
+        if (parent.size() == 1)
+            parent = "ROOT"; //path.substr(0, path.find_last_of("/"));
 
-        // check thru glob stuff
-        for (uint64_t ii = 0; ii < res.gl_pathc; ii++) {
-            string content = read_entire_file(res.gl_pathv[ii]);
-            stringstream sstream(content);
-            char ent_path[PATH_MAX] = {0};
-            char ent_id[FILENAME_MAX] = {0};
-            string cur_ent;
-            getline(sstream, cur_ent);
-            sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
-
-            while(getline(sstream, cur_ent)) {
-
-                // cout << "Stuff" << endl;
-                // everything else must be in the ent table
-                char node_name[FILENAME_MAX] = {0};
-                uint64_t offset;
-                uint64_t size;
-                sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
-                string nname = (string)node_name;
-                auto ent_vals = make_tuple(nname, ent_id, offset, size);
-                if (inode_to_node[ent_path].find(nname) != inode_to_node[ent_path].end())
-                    // then we don't need to add this
-                    continue;
-                root_entries[ent_path].push_back(ent_vals);
-                inode_to_node[ent_path].insert(nname);
-            }
-
-        }
-        cout << "THIS TOOK HOW LONG?: " << to_string(Util::get_time() - start) << endl;
+        hashname = Util::crypto_hash(parent);
+        pattern  = path_to_disk_ + hashname + ".*";
+    } else {
+        cout << "Nothing to do..." << endl;
+        return root_entries;
+    }
+    glob(pattern.c_str(), 0, NULL, &res);
+    cout << "SIZE: " << to_string(res.gl_pathc) << endl;
+    if (res.gl_pathc == 0)
         return root_entries;
 
-    }
-    cout << "THIS MUST BE A READDIR CALL " << endl;
-    // TODO: cache these, avoid syscalls
-
-    // if no path specified, go thru them all.
-    // check if hash path exists in root
     unsigned long long dstart = Util::get_time();
-    DIR* root_dir = opendir(path_to_disk_.c_str());
-    if (root_dir == NULL) {
-        cout << "ERROR opening root DIR ERRNO: " << strerror(errno) << endl;
-    }
-
-    struct dirent* entry;
-    string entry_name;
-    // iterate thru each entry in root
-    while ((entry = ::readdir(root_dir)) != NULL) {
-        entry_name = entry->d_name;
-        // parse name to see if it matches this file
-        if (path.size() > 0
-                && strstr(entry_name.c_str(), hashname.c_str()) == NULL)
-            continue;
-
-        // we must have a file that contains this
-        // open .meta
-        // read meta data
-        string content = read_entire_file(path_to_disk_ + entry_name);
+    cout << "Checking thru stuff" << endl;
+    // check thru glob stuff
+    for (uint64_t ii = 0; ii < res.gl_pathc; ii++) {
+        string content = read_entire_file(res.gl_pathv[ii]);
+        cout << "Content: " << content << endl;
         stringstream sstream(content);
         char ent_path[PATH_MAX] = {0};
         char ent_id[FILENAME_MAX] = {0};
         string cur_ent;
         getline(sstream, cur_ent);
         sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
-        if (meta_cache_.in_inverted_root_cache(entry_name)) {
-            //  cout << "==== SKIPPING ====" << endl;
-            auto res = meta_cache_.get_inverted_root_ent(entry_name, ent_path);
-            if (res.size() == 0)
-                continue;
-
-            for (auto ent : res) {
-                for (auto vec : ent.second) {
-                    inode_to_node[ent_path].insert(get<0>(vec));
-                    root_entries[ent_path].push_back(vec);
-                }
-            }
-            continue;
-        }
-
-        vector<tuple<string, string, uint64_t, uint64_t>> temp;
 
         while(getline(sstream, cur_ent)) {
-            // cout << "Stuff" << endl;
+
+            cout << "Stuff: " << cur_ent << endl;
             // everything else must be in the ent table
             char node_name[FILENAME_MAX] = {0};
             uint64_t offset;
@@ -797,12 +739,10 @@ BlockCache::get_all_root_entries(string path) {
                 continue;
             root_entries[ent_path].push_back(ent_vals);
             inode_to_node[ent_path].insert(nname);
-            temp.push_back(ent_vals);
-
         }
 
-        meta_cache_.add_inverted_root_entry(entry_name, ent_path, temp);
     }
+
     unsigned long long end = Util::get_time();
     cout << "DIF FROM START " << to_string(end - start)
          << endl;
@@ -810,11 +750,8 @@ BlockCache::get_all_root_entries(string path) {
          << endl;
     cout << "DIF OF START TO DISK: " << to_string(dstart - start)
          << endl;
-    if (root_dir != NULL)
-        closedir(root_dir);
-
-
     return root_entries;
+
 }
 
 string

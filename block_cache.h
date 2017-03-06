@@ -194,7 +194,7 @@ class BlockCache {
      * @return all paths for all roots and their inodes and sizes (latest root entry only!)
      * [map (path, [list of (node name, inode id, offset, size)])
      */
-    std::unordered_map<std::string, std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>> get_all_root_entries(std::string path = "");
+    std::unordered_map<std::string, std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>> get_all_root_entries(std::string path, std::string parent);
 
     /**
      * @param path is the path to the file
