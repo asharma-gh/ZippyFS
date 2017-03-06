@@ -694,6 +694,7 @@ BlockCache::get_all_root_entries(string path) {
             cout << "NOT ON DISK" << endl;
             return root_entries;
         }
+
         // check thru glob stuff
         for (uint64_t ii = 0; ii < res.gl_pathc; ii++) {
             string content = read_entire_file(res.gl_pathv[ii]);
@@ -723,6 +724,7 @@ BlockCache::get_all_root_entries(string path) {
 
         }
         return root_entries;
+
     }
     cout << "THIS MUST BE A READDIR CALL " << endl;
     // TODO: cache these, avoid syscalls
@@ -743,6 +745,7 @@ BlockCache::get_all_root_entries(string path) {
         if (path.size() > 0
                 && strstr(entry_name.c_str(), hashname.c_str()) == NULL)
             continue;
+
         // we must have a file that contains this
         // open .meta
         // read meta data
@@ -753,7 +756,20 @@ BlockCache::get_all_root_entries(string path) {
         string cur_ent;
         getline(sstream, cur_ent);
         sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
+        if (meta_cache_.in_inverted_root_cache(entry_name)) {
+            auto res = meta_cache_.get_inverted_root_ent(entry_name, ent_path);
+            if (res.size() == 0)
+                continue;
 
+            for (auto ent : res) {
+                for (auto vec : ent.second) {
+                    inode_to_node[ent_path].insert(get<0>(vec));
+                    root_entries[ent_path].push_back(vec);
+                }
+            }
+            continue;
+        }
+        vector<tuple<string, string, uint64_t, uint64_t>> temp;
         while(getline(sstream, cur_ent)) {
 
             // cout << "Stuff" << endl;
@@ -769,15 +785,17 @@ BlockCache::get_all_root_entries(string path) {
                 continue;
             root_entries[ent_path].push_back(ent_vals);
             inode_to_node[ent_path].insert(nname);
-
+            temp.push_back(ent_vals);
 
         }
+        meta_cache_.add_inverted_root_entry(entry_name, ent_path, temp);
 
         // read .node table
     }
 
     if (root_dir != NULL)
         closedir(root_dir);
+
 
     return root_entries;
 }
