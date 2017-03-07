@@ -617,18 +617,7 @@ BlockCache::load_from_disk(string path) {
         string path_to_data = path_to_disk_ + data_name;
         cout << "PATH TO DATA " << path_to_data << endl;
 
-        // cache entire data file if it isn't already
-        string data_content;
-        if (meta_cache_.data_content_in_cache(data_name)) {
-            cout << "GOT DATA FILE FROM CACHE" << endl;
-            data_content = meta_cache_.get_data_file(data_name);
-        } else {
-            // cache entire .data file, then read from cache
-            cout << "WRITING DATA FILE INTO CACHE" << endl;
-            data_content = read_entire_file(path_to_data);
-            meta_cache_.add_data_file(data_name, data_content);
-        }
-
+        int datafd = ::open(path_to_data.c_str(), O_RDONLY);
         // open the .data, offset and read it
         for (auto ent : data_table) {
             // if this isn't an updated inode and we already have a block, then don't add it!
@@ -641,12 +630,12 @@ BlockCache::load_from_disk(string path) {
             uint64_t size_of_data_ent = ent.second.second;
             uint8_t data_buf[size_of_data_ent] = {0};
             // read data, add to map
-            memcpy(data_buf, data_content.c_str() + offset_into_data, size_of_data_ent);
-
+            if (pread(datafd, data_buf, size_of_data_ent, offset_into_data) == -1)
+                cout << "Error reading data ERRNO: " << strerror(errno) << endl;
             // add block to map for inode
             inode_blocks[ent.first] = shared_ptr<Block>(new Block(data_buf, size_of_data_ent));
-
         }
+        close(datafd);
     }
 
     // if latest_mtime is still 0, then we could not find an inode for this path
@@ -687,7 +676,7 @@ BlockCache::get_all_root_entries(string path, string parent) {
     glob_t res;
     unsigned long long start = Util::get_time();
     if (path.size() > 0) {
-        cout << "!!!!!!!!!!!!!!!!DOINGTHIS!!!!!!!!!!!!!!!!!!!!"<<endl;
+        cout << "FINDING MATCHING META FILES..." << endl;
         // add - to end to avoid collision w/ rand section
         hashname = "*." + Util::crypto_hash(path) + "-";
         pattern = path_to_disk_ + hashname + "*";
