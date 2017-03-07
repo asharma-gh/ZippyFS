@@ -15,11 +15,11 @@ In this branch I'm going to give each file version its own file that'll make loc
 as expensive as glob'ing either all files with that path or parent  
 Idea:
 ```
-[hash of parent][hash of path][delim][128 rand nums].meta
+[hash of parent][delim][hash of path][delim][128 rand nums].meta
 ```
 for each flushed file version, so locating a file is a matter of checking if [hash or parent][hash of path][random bits].meta exists  
 
-## Installation Set-up
+## Installation/Set-up
 This is still in very early stages, and some hacking at the source may be required to get it running. sync.py for instance needs to be overhauled for your server configuration.  
 
 Other than that you will need libfuse and sodium, along with a linux machine and g++  

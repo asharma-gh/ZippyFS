@@ -1,4 +1,5 @@
-
+- hoist .node stuff into .meta
+- fragment .data for each block and idx
 Issue: file limit on unix could be reached w/ these versioned files
 Solution: garbage collection, or impose a restriction?
 

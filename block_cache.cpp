@@ -477,6 +477,10 @@ BlockCache::flush_to_disk() {
             int fd = ::open(fpath.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
             if (pwrite(fd, file.second.c_str(), file.second.size() * sizeof(char), 0) == -1)
                 cout << "Error writing to .file ERRNO " << strerror(errno) << endl;
+
+            // TODO:
+            // include .node information in this .meta file
+            // create a corresponding .data file for this inode
             close(fd);
         }
     }
