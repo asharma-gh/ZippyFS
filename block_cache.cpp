@@ -534,7 +534,7 @@ BlockCache::load_from_disk(string path) {
         char buf[node_size + 1] = {0};
         cout << "NODE ENT SIZE " << to_string(node_size) << " OFFSET " << to_string(node_offset) << endl;
         int nfd = ::open (path_to_node.c_str(), O_RDONLY);
-        if (pread(nfd, buf, node_offset, node_size) == -1)
+        if (pread(nfd, buf, node_size, node_offset) == -1)
             cout << "Error reading node ERRNO " << strerror(errno) << endl;
 
         close(nfd);
@@ -622,18 +622,18 @@ BlockCache::load_from_disk(string path) {
         close(datafd);
     }
 
-// if latest_mtime is still 0, then we could not find an inode for this path
+    // if latest_mtime is still 0, then we could not find an inode for this path
     if (latest_mtime == 0) {
         cout << "Time didn't change!" << endl;
         return -1;
     }
 
-// add data to the latest inode
+    // add data to the latest inode
     for (auto ent : inode_blocks) {
         latest_inode->add_block(ent.first, ent.second);
     }
 
-// add to cache if this one is a later version than the current one, if there is a current one
+    // add to cache if this one is a later version than the current one, if there is a current one
     bool is_updated = (in_cache(path) == 0) && get_inode_by_path(path)->get_ull_mtime() > latest_mtime;
 
     if (!is_updated || in_cache(path) == -1) {
@@ -666,7 +666,7 @@ BlockCache::get_all_root_entries(string path, string parent) {
         pattern = path_to_disk_ + hashname + "*";
     } else if (path.size() == 0 && parent.size() > 0) {
         if (parent.size() == 1)
-            parent = "ROOT"; //path.substr(0, path.find_last_of("/"));
+            parent = "ROOT";
 
         hashname = Util::crypto_hash(parent);
         pattern  = path_to_disk_ + hashname + ".*";
@@ -734,5 +734,6 @@ BlockCache::read_entire_file(string path) {
 
 string
 BlockCache::get_latest_meta(string path) {
+    auto ents = get_all_root_entries(path, "");
     return path;
 }

@@ -1,23 +1,16 @@
 # zippyfs
 distributed file system in fuse, early in development    
 Original version: branch nozippyfs
+## Design
+This file system is built using FUSE. This allows us to create a program that utilizes the unix i/o interface.  
+This program consists of 3 main components, a block cache, directory on disk, and the server.  
+The block cache contains files in-memory for modification. When files are modified, the changes are flushed to disk in the directory on disk.  
+If a particular section of a file was modified, that block of the file is flushed.  
+Contents in the disk directory are synchronized with the server. Contents on the server are synchronized with all peers connected to it.  
+"Contents" consists of meta-data associated with each file and corresponding blocks. When changes are flushed, a new version of the meta data and data are created, so all changed versions exist.  
 
-## Rational
-Seeking thru .root files line by line ends up being a huge bottleneck when there are a lot of files.
-
-The original plan was instead of iterating thru the directory to find a given root with a given file,  
-roots have pointers to each other in a b-tree like structure where inode numbers are the keys.  
-This would make finding a particular file a matter of hopping thru references to .root files.  
-This would still require seeking thru the .roots, which even if it's cached as a string, would still be too slow.  
-
-
-In this branch I'm going to give each file version its own file that'll make locating a particular group of file versions
-as expensive as glob'ing either all files with that path or parent  
-Idea:
-```
-[hash of parent][delim][hash of path][delim][128 rand nums].meta
-```
-for each flushed file version, so locating a file is a matter of checking if [hash or parent][hash of path][random bits].meta exists  
+currently finding a file involves glob'ing the directory of stuff, linking together the files in a b-tree may make this much faster  
+ 
 
 ## Installation/Set-up
 This is still in very early stages, and some hacking at the source may be required to get it running. sync.py for instance needs to be overhauled for your server configuration.  
