@@ -524,16 +524,7 @@ BlockCache::load_from_disk(string path) {
     for (auto node_ent : node_files) {
         // find the .node
         string node_name = get<0>(node_ent);
-        string cached_content;
-        bool in_cache = false;
-        if (meta_cache_.node_content_in_cache(node_name)) {
-            // don't need to open, load content into buf
-            // to "pread" from
-            cached_content = meta_cache_.get_node_file(node_name);
-            in_cache = true;
 
-            cout << "NODE IS IN CACHE" << endl;
-        }
         string path_to_node = path_to_disk_ + node_name;
         cout << "PATH TO NODE " << path_to_node << endl;
 
@@ -542,20 +533,13 @@ BlockCache::load_from_disk(string path) {
         uint64_t node_size = get<3>(node_ent);
         char buf[node_size + 1] = {0};
         cout << "NODE ENT SIZE " << to_string(node_size) << " OFFSET " << to_string(node_offset) << endl;
-        if (in_cache) {
-            // read entry into buf
-            memcpy(buf, cached_content.c_str() + node_offset, node_size);
+        int nfd = ::open (path_to_node.c_str(), O_RDONLY);
+        if (pread(nfd, buf, node_offset, node_size) == -1)
+            cout << "Error reading node ERRNO " << strerror(errno) << endl;
 
-        } else {
-            // cache entire .node file, then read from cache
-            string node_content = read_entire_file(path_to_node);
-            // add node to cache
-            meta_cache_.add_node_file(node_name,  node_content);
-            // do this only if the file is not in cache
-            memcpy(buf, node_content.c_str() + node_offset, node_size);
-            //cout << "READ THE FOLLOWING INTO BUF " << buf << endl;
+        close(nfd);
 
-        }
+
 
         string node_contents = (string)buf;
         cout << "CONTENTS " << node_contents << endl;
@@ -638,18 +622,18 @@ BlockCache::load_from_disk(string path) {
         close(datafd);
     }
 
-    // if latest_mtime is still 0, then we could not find an inode for this path
+// if latest_mtime is still 0, then we could not find an inode for this path
     if (latest_mtime == 0) {
         cout << "Time didn't change!" << endl;
         return -1;
     }
 
-    // add data to the latest inode
+// add data to the latest inode
     for (auto ent : inode_blocks) {
         latest_inode->add_block(ent.first, ent.second);
     }
 
-    // add to cache if this one is a later version than the current one, if there is a current one
+// add to cache if this one is a later version than the current one, if there is a current one
     bool is_updated = (in_cache(path) == 0) && get_inode_by_path(path)->get_ull_mtime() > latest_mtime;
 
     if (!is_updated || in_cache(path) == -1) {
@@ -746,4 +730,9 @@ BlockCache::read_entire_file(string path) {
     buffer << ifs.rdbuf();
 
     return buffer.str();
+}
+
+string
+BlockCache::get_latest_meta(string path) {
+    return path;
 }

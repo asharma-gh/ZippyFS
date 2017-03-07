@@ -176,9 +176,6 @@ class BlockCache {
     /** map of ((inode idx, block idx), mtime) for flushing */
     std::map<std::string, std::map<uint64_t, unsigned long long>> dirty_block_mtime_;
 
-    /** cache for .root/.node/.data files */
-    MetadataCache meta_cache_;
-
     /* size of this block cache */
     uint64_t size_;
 
@@ -195,6 +192,11 @@ class BlockCache {
      * [map (path, [list of (node name, inode id, offset, size)])
      */
     std::unordered_map<std::string, std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>> get_all_root_entries(std::string path, std::string parent);
+
+    /**
+     * finds the latest .meta file associated with the given path
+     */
+    std::string get_latest_meta(std::string path);
 
     /**
      * @param path is the path to the file
