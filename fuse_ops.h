@@ -67,17 +67,6 @@ int zippyfs_symlink(const char* from, const char* to);
 /** read symlink */
 int zippyfs_readlink(const char* path, char* buf, size_t size);
 
-/********** utility functions **********/
-
-/** loads the thing in path to the shadow directory */
-int load_to_shdw(const char* path);
-
-/** flushes shadow dir to storage */
-int flush_dir();
-
-/** clears the shadow directory */
-void clear_shdw();
-
 #ifdef __cplusplus
 }
 #endif

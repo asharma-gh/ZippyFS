@@ -1,5 +1,4 @@
 #include "fuse_ops.h"
-
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,7 +12,6 @@
 #include <inttypes.h>
 #include <linux/random.h>
 #include <limits.h>
-#include <zip.h>
 #include <syscall.h>
 #include <stdlib.h>
 #include <sys/time.h>

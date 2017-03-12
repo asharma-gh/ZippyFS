@@ -59,6 +59,7 @@ BlockCache::rename(string from, string to) {
 
     if (res == -1)
         make_file(to, get_inode_by_path(from)->get_mode(), 1);
+
     shared_ptr<Inode> nto_inode(new Inode(to, *get_inode_by_path(from)));
     get_inode_by_path(from)->delete_inode();
     inode_idx_[to] = nto_inode->get_id();
@@ -232,7 +233,6 @@ BlockCache::readdir(string path) {
         cout << "ADDED " << thing.first << endl;
         ents.push_back(thing.second);
     }
-    cout << "SEG?" << endl;
     unsigned long long etime = Util::get_time();
 
     cout << "\nDiff start & end: " << to_string (etime - dtime)
