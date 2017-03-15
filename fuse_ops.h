@@ -9,7 +9,7 @@ extern "C" {
 
 /***** fuse functions *******/
 
-void zippyfs_init(const char* shdw, const char* zip_dir);
+void zippyfs_init(const char* zip_dir);
 
 /** retrieves the attributes for thing in path into st */
 int zippyfs_getattr(const char *path, struct stat *st);

@@ -2,8 +2,7 @@
 - break up .data file, hoist .node content into .meta files
 
 
-- read-only operations should not need to load stuff to cache
-- the only thing which should load a file to cache is open().
+- read-only operations that do not operate on data (getattr, access) should not load to cache
 
 - make only functions that result in a changed inode to load to cache
 
