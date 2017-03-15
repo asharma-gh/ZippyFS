@@ -41,13 +41,8 @@ BlockCache* block_cache;
 /** the path of the mounted directory of zip files */
 static char* zip_dir_name;
 
-/** cache path */
-//static char* shadow_path;
-
 void
-zippyfs_init( const char* zip_dir) {
-    // printf("starting w/ shdw %s and zip %s\n", shdw, zip_dir);
-    //shadow_path = strdup(shdw);
+zippyfs_init(const char* zip_dir) {
     zip_dir_name = strdup(zip_dir);
     block_cache = new BlockCache("foo");
 }
@@ -301,11 +296,5 @@ zippyfs_destroy(void* private_data) {
     (void)private_data;
     // flush
     block_cache->flush_to_shdw(1);
-    // delete process cache directory
-    //char removal_cmd[PATH_MAX + 12];
-    //sprintf(removal_cmd, "rm -rf %s", shadow_path);
-    //system(removal_cmd);
-    //rmdir(shadow_path);
-    //free(shadow_path);
     free(zip_dir_name);
 }

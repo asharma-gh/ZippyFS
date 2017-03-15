@@ -68,29 +68,10 @@ main(int argc, char *argv[]) {
     printf("shadow dir path: %s\n", temp_path);
     wordexp_t path;
     wordexp(temp_path, &path, 0);
-    /*
-    char* shadow_path = strdup(*(path.we_wordv));
-    wordfree(&path);
-    printf("expanded dir path: %s\n", shadow_path);
 
-    // make program directory if it doesn't exist yet
-    if (mkdir(shadow_path, S_IRWXU)) {
-        printf("error making zipfs directory ERRNO: %s\n", strerror(errno));
-    }
-    // construct shadow directory path
-    strcat(shadow_path, shadow_name);
-    strcat(shadow_path, "/");
-    */
     // init ops
     zippyfs_init( zip_dir);
 
-    /*
-    // make the directory
-    if (mkdir(shadow_path, S_IRWXU)) {
-        printf("error making shadow directory\n");
-        printf("ERRNO: %s\n", strerror(errno));
-    }
-    */
     // construct process-local rmlog path and dir
     char rmlog_path[strlen(zip_dir) + 10];
     memset(rmlog_path, 0, sizeof(rmlog_path) / sizeof(char));

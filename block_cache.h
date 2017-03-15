@@ -13,15 +13,9 @@ class BlockCache {
   public:
 
     /**
-     * constructs a BlockCache that flushes to the given dir
-     * @param path_to_shdw is the path of the shadow dir
-     */
-    BlockCache(std::string path_to_shdw);
-
-    /**
      * @param path_to_disk is the path to flush stuff to
      */
-    BlockCache(std::string path_to_disk, bool f);
+    BlockCache(std::string path_to_disk);
 
     /**
      * creates a file with the given path and mode

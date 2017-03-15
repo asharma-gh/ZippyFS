@@ -6,15 +6,8 @@
 using namespace std;
 
 // TODO: testing
-BlockCache::BlockCache(string path_to_shdw)
-    : path_to_shdw_(path_to_shdw) {
-
-    path_to_disk_ = "/home/arvin/FileSystem/zipfs/o/dir/root/";
-}
-
-BlockCache::BlockCache(string path_to_disk, bool f) :
+BlockCache::BlockCache(string path_to_disk) :
     path_to_disk_(path_to_disk) {
-    (void)f;
 }
 
 int
