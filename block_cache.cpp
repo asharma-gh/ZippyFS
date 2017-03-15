@@ -6,8 +6,8 @@
 using namespace std;
 
 // TODO: testing
-BlockCache::BlockCache(string path_to_disk) :
-    path_to_disk_(path_to_disk) {
+BlockCache::BlockCache(string path_to_disk) {
+    path_to_disk_ = path_to_disk + "root/";
 }
 
 int

@@ -44,7 +44,7 @@ static char* zip_dir_name;
 void
 zippyfs_init(const char* zip_dir) {
     zip_dir_name = strdup(zip_dir);
-    block_cache = new BlockCache("foo");
+    block_cache = new BlockCache(zip_dir_name);
 }
 
 
