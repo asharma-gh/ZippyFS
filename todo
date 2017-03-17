@@ -1,10 +1,47 @@
-- gc is pretty much a no-go in the current design
-- break up .data file, hoist .node content into .meta files
+indexing thru the file system is slow (using glob) when theres a large number of files
+
+- create a data structure which can be serialized as bytes to a file, using mmap
+
+example finding a file:
+/foo/meme --> hash --> abc
+
+binary tree of hash -> meta_data
+
+tree structure:
+struct header {
+    int tree_offset;
+    // other offset
+};
+struct ent {
+    char hash[4096];
+    // offsets into memory, based on how deep its in the tree
+    uint32_t ent_left;
+    uint32_t ent_right;
+    struct inode;
+};
+
+struct inode {
+    uint32_t mode;
+    uint32_t nlink;
+    uint64_t mtime;
+    uint64_t ctime;
+    uint64_t size;
+    int deleted;
+    int block_data;
+};
+
+struct block_data {
+    int next;
+    int size;
+    int offset;
+    char data_file[4096];
+};
+
+this requires a memory allocator which only operates within a file
+the end result will be a file containing the entire data structure,
+which we can then mmap back and act on as if it was always in memory.
 
 
-- read-only operations that do not operate on data (getattr, access) should not load to cache
-
-- make only functions that result in a changed inode to load to cache
 
 
 ======
