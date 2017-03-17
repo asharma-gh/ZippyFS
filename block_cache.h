@@ -174,23 +174,10 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 100;
+    const uint64_t MAX_SIZE = 65536;
 
     /** has a file changed? */
     bool has_changed_ = false;
-
-    /**
-     * @param path is the path of the item to get all root entries for
-     * if path is empty then all root entries for all paths are retrieved
-     * @return all paths for all roots and their inodes and sizes (latest root entry only!)
-     * [map (path, [list of (node name, inode id, offset, size)])
-     */
-    std::unordered_map<std::string, std::vector<std::tuple<std::string, std::string, uint64_t, uint64_t>>> get_all_root_entries(std::string path, std::string parent);
-
-    /**
-     * finds the latest .meta file associated with the given path
-     */
-    std::string get_latest_meta(std::string path);
 
     /**
      * gets all the .meta files associated with the given path
@@ -198,12 +185,6 @@ class BlockCache {
      * @param bool is if this path is a parent, in which all the children of this parent are retrieved
      */
     std::unordered_set<std::string> get_all_meta_files(std::string path, bool is_parent);
-
-    /**
-     * @param path is the path to the file
-     * @return all of the contents for the file
-     */
-    std::string read_entire_file(std::string path);
 
     /**
      * Struct for retrieving inode info from disk

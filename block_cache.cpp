@@ -114,12 +114,22 @@ BlockCache::load_from_shdw(string path) {
 
 int
 BlockCache::getattr(string path, struct stat* st) {
-    if ((in_cache(path) == -1 && load_from_shdw(path) == -1)
-            || (in_cache(path) == 0 && get_inode_by_path(path)->is_deleted())) {
-        cout << "IN CACHE? " << to_string(in_cache(path)) << endl;
-        return -ENOENT;
-    } else
+    if (in_cache(path) == 0)
         return get_inode_by_path(path)->stat(st);
+
+    disk_inode_info di  = get_latest_inode(path, false);
+    if (di.i_mtime == 0)
+        return -ENOENT;
+
+    st->st_mode = di.i_mode;
+    st->st_nlink = di.i_nlink;
+    st->st_blocks = di.i_size / Block::get_physical_size() + (di.i_size % Block::get_physical_size() == 0);
+    st->st_size = di.i_size;
+    st->st_ctim = Util::get_time_ts(di.i_ctime);
+    st->st_mtim = Util::get_time_ts(di.i_mtime);
+
+    return 0;
+
 }
 /****
  * TODO:
@@ -302,9 +312,13 @@ BlockCache::in_cache(string path) {
 
 int
 BlockCache::open(string path) {
-    (void)path;
-    // if (res == 0)
-    //     get_inode_by_path(path)->update_atime();
+    if (in_cache(path) == 0)
+        return 0;
+
+    load_from_disk(path);
+
+    // todo make file if it doesnt exist
+
 
     return 0;
 }
@@ -455,93 +469,6 @@ BlockCache::load_from_disk(string path) {
     return 0;
 }
 
-unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
-BlockCache::get_all_root_entries(string path, string parent) {
-    // TODO: cache to avoid reads
-    /** map(path, entries) */
-    unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>> root_entries;
-
-    /** map of (inode, node) to avoid duplicate entries */
-    unordered_map<string, unordered_set<string>> inode_to_node;
-    string hashname;
-    string pattern;
-    glob_t res;
-    unsigned long long start = Util::get_time();
-    if (path.size() > 0) {
-        cout << "FINDING MATCHING META FILES..." << endl;
-        // add - to end to avoid collision w/ rand section
-        hashname = "*." + Util::crypto_hash(path) + "-";
-        pattern = path_to_disk_ + hashname + "*";
-    } else if (path.size() == 0 && parent.size() > 0) {
-        if (parent.size() == 1)
-            parent = "ROOT";
-
-        hashname = Util::crypto_hash(parent);
-        pattern  = path_to_disk_ + hashname + ".*";
-    } else {
-        cout << "Nothing to do..." << endl;
-        return root_entries;
-    }
-    glob(pattern.c_str(), GLOB_NOSORT, NULL, &res);
-    cout << "SIZE: " << to_string(res.gl_pathc) << endl;
-    if (res.gl_pathc == 0)
-        return root_entries;
-
-    unsigned long long dstart = Util::get_time();
-    cout << "Checking thru stuff" << endl;
-    // check thru glob stuff
-    for (uint64_t ii = 0; ii < res.gl_pathc; ii++) {
-        string content = read_entire_file(res.gl_pathv[ii]);
-        cout << "Content: " << content << endl;
-        stringstream sstream(content);
-        char ent_path[PATH_MAX] = {0};
-        char ent_id[FILENAME_MAX] = {0};
-        string cur_ent;
-        getline(sstream, cur_ent);
-        sscanf(cur_ent.c_str(), "INODE: %s %s", ent_path, ent_id);
-
-        while(getline(sstream, cur_ent)) {
-
-            cout << "Stuff: " << cur_ent << endl;
-            // everything else must be in the ent table
-            char node_name[FILENAME_MAX] = {0};
-            uint64_t offset;
-            uint64_t size;
-            sscanf(cur_ent.c_str(), "%s %" SCNd64 "%" SCNd64, node_name, &offset, &size);
-            string nname = (string)node_name;
-            auto ent_vals = make_tuple(nname, ent_id, offset, size);
-            if (inode_to_node[ent_path].find(nname) != inode_to_node[ent_path].end())
-                // then we don't need to add this
-                continue;
-            root_entries[ent_path].push_back(ent_vals);
-            inode_to_node[ent_path].insert(nname);
-        }
-
-    }
-
-    unsigned long long end = Util::get_time();
-    cout << "DIF FROM START " << to_string(end - start)
-         << endl;
-    cout << "DIF FROM DISK " << to_string (end  - dstart)
-         << endl;
-    cout << "DIF OF START TO DISK: " << to_string(dstart - start)
-         << endl;
-    return root_entries;
-
-}
-
-string
-BlockCache::read_entire_file(string path) {
-
-    ifstream ifs(path);
-    stringstream buffer;
-    buffer << ifs.rdbuf();
-
-    return buffer.str();
-}
-
-
-
 unordered_set<string>
 BlockCache::get_all_meta_files(string path, bool is_parent) {
     (void)path;
@@ -627,7 +554,7 @@ BlockCache::get_latest_inode(string path, bool get_data) {
             // open data file
             int dfd = ::open(dpath.c_str(), O_RDONLY);
             // copy over entries
-            //int datafd = ::open()
+
             while (getline(ifs, curline)) {
                 // retrieve stuff
                 uint64_t blckidx = 0;

@@ -39,6 +39,14 @@ class Util {
                + (unsigned long long)(tv.tv_usec) / 1000;
     }
 
+    static
+    struct timespec
+    get_time_ts(unsigned long long millisec) {
+        struct timespec req;
+        req.tv_sec=  (time_t)(millisec/1000);
+        req.tv_nsec = (millisec % 1000) * 1000000;
+        return req;
+    }
     /**
      * lazy implementation of crc64 without a table
      * - iterates thru each bit and applies a mask
