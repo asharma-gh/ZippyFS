@@ -361,7 +361,7 @@ BlockCache::flush_to_disk() {
      */
     for (auto ent : inode_idx_) {
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
-        if (flushed_inode->is_dirty() == 0 || flushed_inode->is_deleted() == 1) {
+        if (flushed_inode->is_dirty() == 0) {
             cout << "Skipping " << ent.first << " because no changes were made..." << endl;
             continue;
         }
