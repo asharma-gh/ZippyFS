@@ -354,45 +354,27 @@ BlockCache::get_refs(string path) {
         throw domain_error("thing not here");
     return get_inode_by_path(path)->get_refs();
 }
-//
-//TODO: rewrite this to flush a .file for each file!
-//
+/**
+ * TODO:
+ * - move .node info into the .meta files
+ * - write a .data for every .meta
+ */
 int
 BlockCache::flush_to_disk() {
     if (!has_changed_)
         return -1;
-    //lock_guard<mutex> lock(mutex_);
-    // create path to .head file
-    string fname = Util::generate_rand_hex_name();
-    string path_to_node = path_to_disk_ + fname + ".node";
-    string path_to_data = path_to_disk_ + fname + ".data";
-
-
-    int nodefd = ::open(path_to_node.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-
-    int datafd = ::open(path_to_data.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
-
-    string node_content, root_content, data_content;
-
-    // TODO:
-    //  - add checksums for each files
-
-    // create entry for .node file
-    uint64_t offset_into_node = 0;
-    uint64_t curr_flush_offset = 0;
-
 
     /** map(path, (.file name, content)) */
-    unordered_map<string, unordered_map<string, string>> flushed_file_ents;
+    unordered_map<string, pair<string, string>> flushed_file_ents;
+
+    /** map(path, (.file name, data)) */
+    unordered_map<string, pair<string, string>> flushed_file_data;
+
     /**
      * This loop writes to the .node and .data files
      * .head file is written to last.
      */
     for (auto ent : inode_idx_) {
-        // if nothing was done to this inode, don't flush it
-        // TODO: chmod / other ways to modify files aren't gonna
-        // be recorded right now, future change!
-        // fetch record
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
         if (flushed_inode->is_dirty() == 0) {
             cout << "Skipping " << ent.first << " because no changes were made..." << endl;
@@ -402,83 +384,56 @@ BlockCache::flush_to_disk() {
         // file name for this inode
         string file_name = Util::generate_fname(ent.first);
 
-        string inode_data = flushed_inode->get_flush_record();
-
         string inode_idx = ent.second;
-
-        // NEW!: timestamp this root file
         string root_input;
-        // [path] [inode id] [List-of [.node name] [offset into .node] [size-of .node] entry]
-        root_input += "INODE: " + ent.first + " " + flushed_inode->get_id() + "\n" + fname + ".node" + " " + to_string(offset_into_node);
+        // [path] [inode id] [mode] [#links] [mtime] [ctime] [size] deleted\n
+        // [block offset table]\n
+        root_input += "INODE: " + flushed_inode->get_flush_record();
         // generate block offset table
-
-        string node_table;
-        // write to .data
-        // TODO: buffer input for .data and perform single write to it
-        for (auto blk : dirty_block_[inode_idx]) {
-            cout << "WRITING DIRTY BLOCK" << endl;
-            auto block = blk.second;
+        // and gen block data for file
+        string data_entry;
+        string data_table;
+        uint64_t cur_offset = 0;
+        cout << "MAKING DIRTY BLOCK TABLE" << endl;
+        for (auto blck : dirty_block_[inode_idx]) {
+            auto block = blck.second;
             uint64_t block_sz = block->get_actual_size();
             auto block_data = block->get_data();
-            char buf[block_sz] = {0};
-            for (uint64_t ii = 0; ii < block_sz; ii++) {
+            char buf[block_sz + 1] = {'\0'};
+            for (unsigned int ii = 0; ii < block_sz; ii++)
                 buf[ii] = block_data[ii];
-            }
-            if (pwrite(datafd, buf, block_sz * sizeof(char), curr_flush_offset) == -1)
-                cout << "Error flushing block to a file ERRNO " << strerror(errno) << endl;
-
-            node_table += to_string(blk.first) + " "
-                          + to_string(curr_flush_offset) + " "
-                          + to_string (block_sz) + "\n";
-            curr_flush_offset += block_sz;
-            cout << "NEW FLUSH OFFSET " << curr_flush_offset << endl;
-
+            data_entry += buf;
+            data_table += to_string(blck.first) + " "
+                          + to_string(cur_offset) + " "
+                          + to_string(block_sz) + "\n";
+            cur_offset += block_sz;
         }
-        uint64_t node_ent_size = node_table.size() + inode_data.size();
-        offset_into_node += node_ent_size;
+        root_input += data_table;
 
-        root_input += " " + to_string(node_ent_size) + "\n";
-        // carry over old root entries
-        auto old_entries = get_all_root_entries(ent.first, "")[ent.first];
-        if (old_entries.size() > 0) {
-            // write them to root_input
-
-            for (auto entry : old_entries) {
-                string nname = get<0>(entry);
-                uint64_t offset = get<2>(entry);
-                uint64_t size = get<3>(entry);
-                root_input += nname + " " + to_string(offset) + " " + to_string(size) + "\n";
-            }
-        }
-        node_content += inode_data + node_table;
-        root_content += root_input;
-
-        // NEW!
-        flushed_file_ents[ent.first][file_name] = root_input;
-
+        flushed_file_ents[ent.first] = make_pair(file_name, root_input);
+        flushed_file_data[ent.first] = make_pair(Util::generate_dataname(ent.first), data_entry);
 
     }
-    // write to .node
-    if (pwrite(nodefd, node_content.c_str(), node_content.size() * sizeof(char), 0) == -1)
-        cout << "ERROR writing to .node ERRNO: " << strerror(errno) << endl;
+
 
     // write .files
     for (auto ent : flushed_file_ents) {
-        for (auto file : ent.second) {
-            string fpath = path_to_disk_ + file.first;
+        auto file = ent.second;
+        string fpath = path_to_disk_ + file.first;
 
-            int fd = ::open(fpath.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-            if (pwrite(fd, file.second.c_str(), file.second.size() * sizeof(char), 0) == -1)
-                cout << "Error writing to .file ERRNO " << strerror(errno) << endl;
+        int fd = ::open(fpath.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+        if (pwrite(fd, file.second.c_str(), file.second.size() * sizeof(char), 0) == -1)
+            cout << "Error writing to .meta ERRNO " << strerror(errno) << endl;
+        auto data_ent = flushed_file_data[ent.first];
+        string dataf = path_to_disk_ + data_ent.first;
+        int datafd = ::open(dataf.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
 
-            // TODO:
-            // include .node information in this .meta file
-            // create a corresponding .data file for this inode
-            close(fd);
-        }
+        if (pwrite(datafd, data_ent.second.c_str(), data_ent.second.size() * sizeof(char), 0) == -1)
+            cout << "Error writing to .data ERRNO " << strerror(errno) << endl;
+        close(datafd);
+        close(fd);
+
     }
-    close(nodefd);
-    close(datafd);
 
     inode_idx_.clear();
     inode_ptrs_.clear();
@@ -506,7 +461,9 @@ BlockCache::load_from_disk(string path) {
         cout << "NO ROOT ENTRIES" << endl;
         return -1;
     }
+    return 0;
 
+    // DEPRECATED!!! REMOVING NODE FILES !!!
     /***
      * node_files has all of the extracted node files for this path and root
      * GOAL AT THE END OF THIS LOOP:
@@ -729,4 +686,13 @@ string
 BlockCache::get_latest_meta(string path) {
     auto ents = get_all_root_entries(path, "");
     return path;
+}
+
+unordered_set<string>
+BlockCache::get_all_meta_files(string path, bool is_parent) {
+    (void)path;
+    (void)is_parent;
+    unordered_set<string> meta_files;
+
+    return meta_files;
 }

@@ -193,6 +193,13 @@ class BlockCache {
     std::string get_latest_meta(std::string path);
 
     /**
+     * gets all the .meta files associated with the given path
+     * @param path is the path of the file to fetch .meta files for
+     * @param bool is if this path is a parent, in which all the children of this parent are retrieved
+     */
+    std::unordered_set<std::string> get_all_meta_files(std::string path, bool is_parent);
+
+    /**
      * @param path is the path to the file
      * @return all of the contents for the file
      */

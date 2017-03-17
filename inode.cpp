@@ -191,16 +191,15 @@ string
 Inode::get_flush_record() {
     /**
      * FORMAT:
-     * [path] [mode] [# links] [mtime] [ctime] [size] deleted\n
-     * [block offset table]  ==> (block#, offset into .data, size of block)\n
+     * [path] [inode_id] [mode] [# links] [mtime] [ctime] [size] deleted\n
      */
     string rec = path_ + " "
+                 + inode_id_ + " "
                  + to_string(mode_) + " "
                  + to_string(nlink_)
                  + " " + to_string(ul_mtime_)
                  + " " + to_string(ul_ctime_) + " "
                  + to_string(size_) + " " + to_string(deleted_) + "\n";
-
     return rec;
 }
 
