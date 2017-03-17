@@ -218,6 +218,7 @@ BlockCache::readdir(string path) {
 
 int
 BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
+    cout << "Write " << to_string(size) << " ofst " << to_string(offset) << endl;
     if (in_cache(path) == -1) {
         cout << "loading from shdw " << path << endl;
         if (load_from_shdw(path) == -1) {
@@ -360,7 +361,7 @@ BlockCache::flush_to_disk() {
      */
     for (auto ent : inode_idx_) {
         shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
-        if (flushed_inode->is_dirty() == 0) {
+        if (flushed_inode->is_dirty() == 0 || flushed_inode->is_deleted() == 1) {
             cout << "Skipping " << ent.first << " because no changes were made..." << endl;
             continue;
         }

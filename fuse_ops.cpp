@@ -157,7 +157,7 @@ zippyfs_open(const char* path, struct fuse_file_info* fi) {
  */
 int
 zippyfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi) {
-    printf("WRITE to  %s\n",  path);
+    printf("WRITE to  %s %lu \n",  path, size);
     (void)fi;
     block_cache->write(path, (uint8_t*)buf, size, offset);
     block_cache->flush_to_shdw(0);
