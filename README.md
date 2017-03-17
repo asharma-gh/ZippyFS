@@ -2,7 +2,7 @@
 distributed file system in fuse, early in development    
 Original version: branch nozippyfs
 ## Design
-This file system is built using FUSE. This allows us to create a program that utilizes the unix i/o interface.  
+This file system is built using FUSE. This allows us to create a file system which redefines the unix i/o interface.  
 This program consists of 3 main components, a block cache, directory on disk, and the server.  
 The block cache contains files in-memory for modification. When files are modified, the changes are flushed to disk in the directory on disk.  
 If a particular section of a file was modified, that block of the file is flushed.  
