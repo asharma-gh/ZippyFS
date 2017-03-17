@@ -174,7 +174,7 @@ class BlockCache {
     uint64_t size_;
 
     /* "big enough" size of this block cache */
-    const uint64_t MAX_SIZE = 8192;
+    const uint64_t MAX_SIZE = 100;
 
     /** has a file changed? */
     bool has_changed_ = false;
@@ -217,8 +217,10 @@ class BlockCache {
         unsigned long long i_ctime;
         uint64_t i_size;
         int i_deleted;
-        /** map(block_id, block_size, block data */
-        std::unordered_map<uint64_t, std::pair<uint64_t, std::string>> i_blocks;
+        /** map(block_id, block time) */
+        std::unordered_map<uint64_t, unsigned long long> i_block_time;
+        /** map(block_id, block ptr) */
+        std::unordered_map<uint64_t, std::shared_ptr<Block>> i_block_data;
     } disk_inode_info;
 
     /**

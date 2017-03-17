@@ -135,6 +135,7 @@ BlockCache::readdir(string path) {
 
     unsigned long long time = Util::get_time();
     // first check the cache, add stuff that's updated (checking for deletions)
+    // load_from_disk("/mm");
     vector<BlockCache::index_entry> ents;
     for (auto entry : inode_idx_) {
         cout << "Checking " << entry.first << endl;
@@ -150,77 +151,28 @@ BlockCache::readdir(string path) {
             ent.deleted = get_inode_by_path(entry.first)->is_deleted();
             ent.added_time = get_inode_by_path(entry.first)->get_ull_mtime();
             added_names[entry.first] = ent;
-            // ents.push_back(ent);
         }
         free(dirpath);
     }
-
-    // check stuff on disk
-    auto disk_ents = get_all_root_entries("",path);
     unsigned long long dtime = Util::get_time();
-    for (auto disk_ent : disk_ents) {
-        // extract values
-        string ent_path = disk_ent.first;
-        auto ent_nodes = disk_ent.second;
-        //cout << "LOOKING AT |" << ent_path << "|" << endl;
-        unsigned long long latest_time = 0;
-        // check if path is in dir
-        //cout << "PATH: " << ent_path << endl;
-        char* dirpath = strdup(ent_path.c_str());
-        dirpath = dirname(dirpath);
-        if (strcmp(dirpath, path.c_str()) == 0) {
-            free(dirpath);
-            // iterate thru each .node
+    /*
+        // check stuff on disk
+        auto disk_ents = get_all_meta_files(path, true);;
 
-            for (auto node_entry : ent_nodes) {
-                // record which 1 has the latest entry
-                //
-                // make path to .node
-                string node_name = get<0>(node_entry);
-                string path_to_node = path_to_disk_ + node_name;
-                // open .node
-                int nodefd = ::open(path_to_node.c_str(), O_RDONLY);
-                if (nodefd == -1)
-                    cout << "ERROR Opening .node ERRNO " << strerror(errno) << endl;
-                // get inode info
-                uint64_t node_offset = get<2>(node_entry);
-                uint64_t node_size = get<3>(node_entry);
-                char buf[node_size] = {0};
-                if (pread(nodefd, buf, node_size, node_offset) == -1)
-                    cout << "ERROR reading .node info ERRNO " << strerror(errno) << endl;
+        for (auto disk_ent : disk_ents) {
 
-                if (close(nodefd) == -1)
-                    cout << "ERROR closing .node ERRNO " << strerror(errno) << endl;
-                // skip first line in buf
-                string inode_info;
-                stringstream ss((string)buf);
-                getline(ss, inode_info);
-                // interpret contents in buf
-                //
-                unsigned long long node_mtime = 0;
-                int is_deleted = 0;
-                sscanf(inode_info.c_str(), "%*s %*d %*d %llu %*d %*d %d", &node_mtime, &is_deleted);
-                cout  << "Curtime: " << to_string(latest_time) << " inode mtime " << to_string(node_mtime) << endl;
-                if (node_mtime > latest_time) {
-                    // add to map if its a later version
-                    // make index_entry
-                    index_entry ient;
-                    ient.path = ent_path;
-                    ient.deleted = is_deleted;
-                    ient.added_time = node_mtime;
-
-                    added_names[ent_path] = ient;
-                    latest_time = node_mtime;
-                    cout << "ADDED UPDATED ENTRY" << endl;
-                }
-            }
-
-        } else {
-            if (!dirpath)
+            char* dirpath = strdup(ent_path.c_str());
+            dirpath = dirname(dirpath);
+            if (strcmp(dirpath, path.c_str()) == 0) {
                 free(dirpath);
-            continue;
+
+            } else {
+                if (!dirpath)
+                    free(dirpath);
+                continue;
+            }
         }
-    }
+        */
     // temporarily doing this for testing
     for (auto thing : added_names) {
         cout << "ADDED " << thing.first << endl;
@@ -293,7 +245,7 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
             inode->add_block(block_idx, ptr);
             cout << "adding dirty block to map" << endl;
             dirty_block_[inode_idx_[path]][block_idx] = ptr;
-            dirty_block_mtime_[inode_idx_[path]][block_idx] = Util::get_time();
+            dirty_block_mtime_[inode_idx_[path]][block_idx] = inode->get_ull_mtime();
 
         }
     }
@@ -395,20 +347,23 @@ BlockCache::flush_to_disk() {
         string data_table;
         uint64_t cur_offset = 0;
         cout << "Flushing " << ent.first << endl;
-        for (auto blck : dirty_block_[inode_idx]) {
-            auto block = blck.second;
-            uint64_t block_sz = block->get_actual_size();
-            auto block_data = block->get_data();
-            char buf[block_sz + 1] = {'\0'};
-            for (unsigned int ii = 0; ii < block_sz; ii++)
-                buf[ii] = block_data[ii];
-            data_entry += buf;
-            data_table += to_string(blck.first) + " "
-                          + to_string(cur_offset) + " "
-                          + to_string(block_sz) + "\n";
-            cur_offset += block_sz;
+        if (flushed_inode->is_deleted() == 0) {
+            for (auto blck : dirty_block_[inode_idx]) {
+                auto block = blck.second;
+                uint64_t block_sz = block->get_actual_size();
+                auto block_data = block->get_data();
+                char buf[block_sz + 1] = {'\0'};
+                for (unsigned int ii = 0; ii < block_sz; ii++)
+                    buf[ii] = block_data[ii];
+                data_entry += buf;
+                data_table += to_string(blck.first) + " "
+                              + to_string(cur_offset) + " "
+                              + to_string(block_sz) + " "
+                              + to_string(dirty_block_mtime_[inode_idx][blck.first]) + "\n";
+                cur_offset += block_sz;
+            }
+            root_input += data_table;
         }
-        root_input += data_table;
 
         flushed_file_ents[ent.first] = make_pair(file_name, root_input);
         flushed_file_data[ent.first] = make_pair(Util::generate_dataname(file_name), data_entry);
@@ -448,143 +403,28 @@ BlockCache::load_from_disk(string path) {
     cout << "LOADING " << path << " FROM DISK" << endl;
 
     std::shared_ptr<Inode> latest_inode;
-
-    /** map (block idx, block) for this inode */
-    map<uint64_t, shared_ptr<Block>> inode_blocks;
-
-    unsigned long long latest_mtime = 0;
-    // we have a .root file
-    // check if it contains this path
-    auto node_files = get_all_root_entries(path, "")[path];
-    if (node_files.size() == 0) {
-        // then it doesn't exist in disk
-        cout << "NO ROOT ENTRIES" << endl;
+    disk_inode_info di = get_latest_inode(path, true);
+    if (di.i_mtime == 0)
+        // none exists
         return -1;
-    }
-    return 0;
 
-    // DEPRECATED!!! REMOVING NODE FILES !!!
-    /***
-     * node_files has all of the extracted node files for this path and root
-     * GOAL AT THE END OF THIS LOOP:
-     * - construct an inode in memory based on the latest .node file
-     * - extract all of the valid blocks contained in each .node file's .data file
-     * node_ent is (node_name, inode id, offset, size)
-     ***/
-    for (auto node_ent : node_files) {
-        // find the .node
-        string node_name = get<0>(node_ent);
+    latest_inode = shared_ptr<Inode>(new Inode(path));
+    latest_inode->set_id(di.i_inode_id);
+    latest_inode->set_size(di.i_size);
+    latest_inode->set_mode(di.i_mode);
+    latest_inode->set_nlink(di.i_nlink);
+    latest_inode->set_mtime(di.i_mtime);
+    latest_inode->set_ctime(di.i_ctime);
+    if (di.i_deleted)
+        latest_inode->delete_inode();
 
-        string path_to_node = path_to_disk_ + node_name;
-        cout << "PATH TO NODE " << path_to_node << endl;
-
-        string inode_id = get<1>(node_ent);
-        uint64_t node_offset = get<2>(node_ent);
-        uint64_t node_size = get<3>(node_ent);
-        char buf[node_size + 1] = {0};
-        cout << "NODE ENT SIZE " << to_string(node_size) << " OFFSET " << to_string(node_offset) << endl;
-        int nfd = ::open (path_to_node.c_str(), O_RDONLY);
-        if (pread(nfd, buf, node_size, node_offset) == -1)
-            cout << "Error reading node ERRNO " << strerror(errno) << endl;
-
-        close(nfd);
-
-
-
-        string node_contents = (string)buf;
-        cout << "CONTENTS " << node_contents << endl;
-        // interpret node entry
-        istringstream sstream(node_contents);
-        string inode_info;
-        // first line is always inode info
-        getline(sstream, inode_info);
-
-        string table_ent;
-
-        /** map of (block#, (offset into data, size)) */
-        map<uint64_t, pair<uint64_t, uint64_t>> data_table;
-
-        // build table
-        while (getline(sstream, table_ent)) {
-            uint64_t blockidx, data_offset, block_size = 0;
-            cout << "TABLE ENTRY "  << table_ent << endl;
-            sscanf(table_ent.c_str(), "%" SCNd64" %" SCNd64" %" SCNd64, &blockidx, &data_offset, &block_size);
-
-            data_table[blockidx] = make_pair(data_offset, block_size);
-        }
-        cout << "INODE INFO " << inode_info << endl;
-
-        // we now have the entire inode entry
-        // record inode data
-        //
-        // interpret inode_info
-        char inode_path[PATH_MAX];
-        uint32_t mode, nlinks = 0;
-        unsigned long long mtime, ctime = 0;
-        uint64_t size = 0;
-        int is_deleted = 0;
-        sscanf(inode_info.c_str(), "%s %" SCNd32 " %" SCNd32 " %llu %llu %" SCNd64 "%d",
-               inode_path, &mode, &nlinks, &mtime, &ctime, &size, &is_deleted);
-
-        // make inode if this is a later version
-        bool updated = false;
-        if (mtime > latest_mtime) {
-            latest_mtime = mtime;
-            updated = true;
-            latest_inode = shared_ptr<Inode>(new Inode(path));
-            latest_inode->set_id((string)inode_id);
-            latest_inode->set_size(size);
-            latest_inode->set_mode(mode);
-            latest_inode->set_nlink(nlinks);
-            latest_inode->set_mtime(mtime);
-            latest_inode->set_ctime(ctime);
-            if (is_deleted) {
-                latest_inode->delete_inode();
-                // if this entry was a deletion, then there is no data to read
-                continue;
-            }
-        }
-
-        // find the .data, open it
-        string data_name =  node_name.substr(0, node_name.size() -  5) + ".data";
-
-        string path_to_data = path_to_disk_ + data_name;
-        cout << "PATH TO DATA " << path_to_data << endl;
-
-        int datafd = ::open(path_to_data.c_str(), O_RDONLY);
-        // open the .data, offset and read it
-        for (auto ent : data_table) {
-            // if this isn't an updated inode and we already have a block, then don't add it!
-            // else we either have an updated inode or do not have the inode block, so we add it.
-            if (!updated && inode_blocks.find(ent.first) != inode_blocks.end())
-                continue;
-
-            // ent.first is the block#, ent.second.first is offset#, ent.second.second is size#
-            uint64_t offset_into_data = ent.second.first;
-            uint64_t size_of_data_ent = ent.second.second;
-            uint8_t data_buf[size_of_data_ent] = {0};
-            // read data, add to map
-            if (pread(datafd, data_buf, size_of_data_ent, offset_into_data) == -1)
-                cout << "Error reading data ERRNO: " << strerror(errno) << endl;
-            // add block to map for inode
-            inode_blocks[ent.first] = shared_ptr<Block>(new Block(data_buf, size_of_data_ent));
-        }
-        close(datafd);
-    }
-
-    // if latest_mtime is still 0, then we could not find an inode for this path
-    if (latest_mtime == 0) {
-        cout << "Time didn't change!" << endl;
-        return -1;
-    }
-
-    // add data to the latest inode
-    for (auto ent : inode_blocks) {
-        latest_inode->add_block(ent.first, ent.second);
+    // add all blocks
+    for (auto blk : di.i_block_data) {
+        latest_inode->add_block(blk.first, blk.second);
     }
 
     // add to cache if this one is a later version than the current one, if there is a current one
-    bool is_updated = (in_cache(path) == 0) && get_inode_by_path(path)->get_ull_mtime() > latest_mtime;
+    bool is_updated = (in_cache(path) == 0) && get_inode_by_path(path)->get_ull_mtime() >= di.i_mtime;
 
     if (!is_updated || in_cache(path) == -1) {
         cout <<" UPDATED THING " << endl;
@@ -593,8 +433,8 @@ BlockCache::load_from_disk(string path) {
         latest_inode->undo_dirty();
     }
 
-    return 0;
 
+    return 0;
 }
 
 unordered_map<string, vector<tuple<string, string, uint64_t, uint64_t>>>
@@ -682,11 +522,7 @@ BlockCache::read_entire_file(string path) {
     return buffer.str();
 }
 
-string
-BlockCache::get_latest_meta(string path) {
-    auto ents = get_all_root_entries(path, "");
-    return path;
-}
+
 
 unordered_set<string>
 BlockCache::get_all_meta_files(string path, bool is_parent) {
@@ -719,11 +555,89 @@ BlockCache::get_all_meta_files(string path, bool is_parent) {
     // check thru glob stuff
     for (uint64_t ii = 0; ii < res.gl_pathc; ii++) {
         string fpath = res.gl_pathv[ii];
-        if (!strstr(fpath.c_str(), ".data"))
+        if (strstr(fpath.c_str(), ".data"))
             continue;
         // we have a hit
         meta_files.insert(fpath);
     }
 
     return meta_files;
+}
+
+BlockCache::disk_inode_info
+BlockCache::get_latest_inode(string path, bool get_data) {
+    cout << "GETTING LATEST INODE FOR " << path << endl;
+    auto meta_files = get_all_meta_files(path, false);
+    disk_inode_info cur_inode;
+    cur_inode.i_mtime = 0;
+
+    for (auto meta : meta_files) {
+        ifstream ifs(meta);
+        string curline;
+        // update cur_inode only if the mtime is greater
+        unsigned long long cur_mtime = 0;
+        // first line is always inode info
+        getline(ifs, curline);
+        char ent_path[PATH_MAX] = {'\0'};
+        char ent_id[2048] = {'\0'};
+        uint32_t ent_mode = 0;
+        uint32_t ent_nlink = 0;
+        unsigned long long ent_mtime = 0;
+        unsigned long long ent_ctime = 0;
+        uint64_t ent_size = 0;
+        int ent_deleted = 0;
+
+        sscanf(curline.c_str(),
+               "INODE: %s %s %" SCNd32 " %" SCNd32 " %llu %llu %" SCNd64 " %d",
+               ent_path, ent_id, &ent_mode, &ent_nlink,
+               &ent_mtime, &ent_ctime, &ent_size, &ent_deleted);
+        if (cur_mtime <= ent_mtime) {
+            // we have an updated entry
+            cur_inode.i_path = ent_path;
+            cur_inode.i_inode_id = ent_id;
+            cur_inode.i_mode = ent_mode;
+            cur_inode.i_nlink = ent_nlink;
+            cur_inode.i_mtime = ent_mtime;
+            cur_inode.i_ctime = ent_ctime;
+            cur_inode.i_size = ent_size;
+            cur_inode.i_deleted = ent_deleted;
+        }
+        // if we need the data too, then build up blocks
+        // need to add block time to blocks
+        if (get_data || !S_ISDIR(cur_inode.i_mode)) {
+            // make data file name
+            string dpath = meta.substr(0, meta.size() - 5) + ".data";
+
+            // open data file
+            int dfd = ::open(dpath.c_str(), O_RDONLY);
+            // copy over entries
+            //int datafd = ::open()
+            while (getline(ifs, curline)) {
+                // retrieve stuff
+                uint64_t blckidx = 0;
+                uint64_t blckoffset = 0;
+                uint64_t blcksize = 0;
+                unsigned long long blckmtime = 0;
+
+                sscanf(curline.c_str(), "%" SCNd64" %" SCNd64" %" SCNd64" %llu",
+                       &blckidx, &blckoffset, &blcksize, &blckmtime);
+                // if this block is not updated, then skip it
+                if(cur_inode.i_block_time.find(blckidx) != cur_inode.i_block_time.end()
+                        && cur_inode.i_block_time[blckidx] > blckmtime)
+                    continue;
+
+                // clear to add it, extract data
+                uint8_t blckcontent[blcksize] = {'\0'};
+
+                if (pread(dfd, blckcontent, blcksize, blckoffset) == -1)
+                    cout << "Error reading data ERRNO: " << strerror(errno) << endl;
+                cur_inode.i_block_time[blckidx] = blckmtime;
+                cur_inode.i_block_data[blckidx] = shared_ptr<Block>(new Block(blckcontent, blcksize));
+
+            }
+            close(dfd);
+        }
+    }
+
+    return cur_inode;
 }
