@@ -155,24 +155,42 @@ BlockCache::readdir(string path) {
         free(dirpath);
     }
     unsigned long long dtime = Util::get_time();
-    /*
-        // check stuff on disk
-        auto disk_ents = get_all_meta_files(path, true);;
 
-        for (auto disk_ent : disk_ents) {
+    // check stuff on disk
+    auto disk_ents = get_all_meta_files(path, true);
 
-            char* dirpath = strdup(ent_path.c_str());
-            dirpath = dirname(dirpath);
-            if (strcmp(dirpath, path.c_str()) == 0) {
-                free(dirpath);
-
-            } else {
-                if (!dirpath)
-                    free(dirpath);
-                continue;
+    for (auto disk_ent : disk_ents) {
+        // read path from disk_ent
+        ifstream df(disk_ent);
+        string ent_line;
+        getline(df, ent_line);
+        char ent_path[PATH_MAX] = {'\0'};
+        sscanf(ent_line.c_str(), "INODE: %s ", ent_path);
+        cout << "ENTRY PATH " << ent_path << endl;
+        char* dirpath = strdup(ent_path);
+        dirpath = dirname(dirpath);
+        if (strcmp(dirpath, path.c_str()) == 0) {
+            free(dirpath);
+            // find latest thing, add entry
+            disk_inode_info latest = get_latest_inode((string)ent_path, false);
+            if ((added_names.find(ent_path) != added_names.end()
+                    && added_names[ent_path].added_time < latest.i_mtime) || added_names.find(ent_path) == added_names.end()) {
+                // we have a later entry, update!
+                cout << "UPDATING ENTRY IN READDIR" << endl;
+                index_entry up_ie;
+                up_ie.path = latest.i_path;
+                up_ie.added_time = latest.i_mtime;
+                up_ie.deleted = latest.i_deleted;
+                added_names[ent_path] = up_ie;
             }
+
+        } else {
+            if (!dirpath)
+                free(dirpath);
+            continue;
         }
-        */
+    }
+
     // temporarily doing this for testing
     for (auto thing : added_names) {
         cout << "ADDED " << thing.first << endl;
@@ -532,20 +550,18 @@ BlockCache::get_all_meta_files(string path, bool is_parent) {
     string hashname;
     string pattern;
     glob_t res;
-
+    cout << "GETTING ALL META FILES FOR " << path << " IS PARENT? " << to_string(is_parent) << endl;
     if (!is_parent) {
-        cout << "FINDING MATCHING META FILES..." << endl;
+        // cout << "FINDING MATCHING META FILES..." << endl;
         // add - to end to avoid collision w/ rand section
         hashname = "*." + Util::crypto_hash(path) + "-";
         pattern = path_to_disk_ + hashname + "*";
-    } else if (is_parent && path.size() == 1) {
-        path = "ROOT";
+    } else {
+        if (path.compare("/") == 0)
+            path = "ROOT";
 
         hashname = Util::crypto_hash(path);
         pattern  = path_to_disk_ + hashname + ".*";
-    } else {
-        cout << "Nothing to do..." << endl;
-        return meta_files;
     }
     glob(pattern.c_str(), GLOB_NOSORT, NULL, &res);
     cout << "SIZE: " << to_string(res.gl_pathc) << endl;
@@ -604,7 +620,7 @@ BlockCache::get_latest_inode(string path, bool get_data) {
         }
         // if we need the data too, then build up blocks
         // need to add block time to blocks
-        if (get_data || !S_ISDIR(cur_inode.i_mode)) {
+        if (get_data && !S_ISDIR(cur_inode.i_mode)) {
             // make data file name
             string dpath = meta.substr(0, meta.size() - 5) + ".data";
 
