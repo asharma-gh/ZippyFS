@@ -21,12 +21,16 @@ class TireFire {
 
     /**
      * @param size is the size of the requested memory
-     * @returns pointer to memory
+     * @returns index to a pointer to memory
      * allocation is consecutive in the file, there is no free
      * only way to free is to make a new file
      */
-    void* get_tire(size_t size);
+    uint32_t get_tire(size_t size);
 
+    /**
+     * gets the memory associated with the given index
+     */
+    void* get_memory(uint32_t index);
     /**
      * Closes the mmapped region, flushes it
      */
@@ -37,6 +41,9 @@ class TireFire {
     std::string file_;
     uint64_t cur_size_;
     void* cur_ptr_;
+    uint64_t latest_index;
+    std::unordered_map<uint32_t, uint64_t> index_to_offset;
+    std::unordered_map<uint32_t, void*> index_to_ptr;
 
 
 };
