@@ -167,16 +167,13 @@ class Util {
     }
 
     /**
-     * constructs a name for a .data file for the given path and block
+     * constructs a name for a .data file for the given meta file
      */
     static
     std::string
-    generate_dataname(std::string path) {
-
-        std::string hash = crypto_hash(path);
-        std::string rand_bits = generate_rand_hex_name();
-
-        return hash + "-" + rand_bits + ".data";
+    generate_dataname(std::string meta_file) {
+        std::string dfile = meta_file.substr(0, meta_file.size() - 5);
+        return dfile + ".data";
     }
 
 };

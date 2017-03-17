@@ -394,7 +394,7 @@ BlockCache::flush_to_disk() {
         string data_entry;
         string data_table;
         uint64_t cur_offset = 0;
-        cout << "MAKING DIRTY BLOCK TABLE" << endl;
+        cout << "Flushing " << ent.first << endl;
         for (auto blck : dirty_block_[inode_idx]) {
             auto block = blck.second;
             uint64_t block_sz = block->get_actual_size();
@@ -411,7 +411,7 @@ BlockCache::flush_to_disk() {
         root_input += data_table;
 
         flushed_file_ents[ent.first] = make_pair(file_name, root_input);
-        flushed_file_data[ent.first] = make_pair(Util::generate_dataname(ent.first), data_entry);
+        flushed_file_data[ent.first] = make_pair(Util::generate_dataname(file_name), data_entry);
 
     }
 
@@ -693,6 +693,37 @@ BlockCache::get_all_meta_files(string path, bool is_parent) {
     (void)path;
     (void)is_parent;
     unordered_set<string> meta_files;
+    string hashname;
+    string pattern;
+    glob_t res;
+
+    if (!is_parent) {
+        cout << "FINDING MATCHING META FILES..." << endl;
+        // add - to end to avoid collision w/ rand section
+        hashname = "*." + Util::crypto_hash(path) + "-";
+        pattern = path_to_disk_ + hashname + "*";
+    } else if (is_parent && path.size() == 1) {
+        path = "ROOT";
+
+        hashname = Util::crypto_hash(path);
+        pattern  = path_to_disk_ + hashname + ".*";
+    } else {
+        cout << "Nothing to do..." << endl;
+        return meta_files;
+    }
+    glob(pattern.c_str(), GLOB_NOSORT, NULL, &res);
+    cout << "SIZE: " << to_string(res.gl_pathc) << endl;
+    if (res.gl_pathc == 0)
+        return meta_files;
+
+    // check thru glob stuff
+    for (uint64_t ii = 0; ii < res.gl_pathc; ii++) {
+        string fpath = res.gl_pathv[ii];
+        if (!strstr(fpath.c_str(), ".data"))
+            continue;
+        // we have a hit
+        meta_files.insert(fpath);
+    }
 
     return meta_files;
 }
