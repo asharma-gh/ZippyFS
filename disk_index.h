@@ -1,6 +1,7 @@
 #ifndef DISK_INDEX_H
 #define DISK_INDEX_H
 #include "includes.h"
+#include "inode.h"
 /**
  * Represents an in-memory structure of flushed files
  * @author Arvin Sharma
@@ -31,3 +32,4 @@ class DiskIndex {
 
     } block_data;
 };
+#endif
