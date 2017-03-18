@@ -39,6 +39,7 @@ class TireFire {
     ~TireFire();
   private:
     std::string file_;
+    int fd_;
     uint64_t cur_size_;
     void* cur_ptr_;
     uint64_t latest_index;

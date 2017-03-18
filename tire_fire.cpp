@@ -1,32 +1,45 @@
 #include "tire_fire.h"
 #include <sys/mman.h>
-
+#include <string.h>
 using namespace std;
 
 TireFire::TireFire(string path)
     : file_ (path) {
     cur_size_ = 0;
     latest_index = 0;
-    int fd = ::open(file_.c_str(), O_CREAT | O_WRONLY | O_RDONLY, S_IRWXU);
-    cur_ptr_ = mmap(0, cur_size_, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    close(fd);
+    cur_ptr_ = nullptr;
+
 
 }
 
 uint32_t
 TireFire::get_tire(size_t size) {
-    // truncate the file to new length
     uint64_t old_size = cur_size_;
+    if (cur_ptr_ == nullptr) {
+        fd_ = ::open(file_.c_str(), O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
+        truncate(file_.c_str(), size);
+        cur_ptr_ = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
+        if (cur_ptr_ == (void*)-1)
+            cout << "ERROR MMAP! ERRNO: " << strerror(errno) << endl;
+        cur_size_ = size;
+        // only do this on the first go
+        goto addtomap;
+    }
+
+    // truncate the file to new length
     cur_size_ += size;
     truncate(file_.c_str(), cur_size_);
     cur_ptr_ = mremap(cur_ptr_, old_size, cur_size_, MREMAP_MAYMOVE);
+    if (cur_ptr_ == (void*)-1)
+        cout << "ERROR MMAP get tire! ERRNO: " << strerror(errno) << endl;
 
     //  change old ents
     for (auto ent : index_to_ptr) {
         index_to_ptr[ent.first] = (char*)cur_ptr_ + index_to_offset[ent.first];
     }
 
-    index_to_offset[latest_index] = cur_size_;
+addtomap:
+    index_to_offset[latest_index] = old_size;
     index_to_ptr[latest_index] = (char*)cur_ptr_ + old_size;
 
     return latest_index++;
@@ -50,9 +63,13 @@ TireFire::flush_head() {
     for (auto ent : index_to_offset) {
         ((uint64_t*)fl.get_memory(ar))[ent.first] = ent.second;
     }
+
+    // destructor is called, will flush for us
 }
 
 TireFire::~TireFire() {
+    cout << "Destroying.." << endl;
+    close(fd_);
     // flush change
     msync(cur_ptr_, cur_size_, MS_INVALIDATE | MS_ASYNC);
 }

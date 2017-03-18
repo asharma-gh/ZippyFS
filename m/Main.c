@@ -15,7 +15,6 @@
 #include <syscall.h>
 #include <stdlib.h>
 #include <sys/time.h>
-
 /**
  * okay i don't understand why initialzer lists dont work
  * with extern c so I'm doing this
