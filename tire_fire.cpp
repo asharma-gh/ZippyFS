@@ -19,10 +19,8 @@ TireFire::get_tire(size_t size) {
     uint64_t old_size = cur_size_;
     cur_size_ += size;
     truncate(file_.c_str(), cur_size_);
-    int fd = ::open(file_.c_str(), O_CREAT | O_WRONLY | O_RDONLY, S_IRWXU);
     cur_ptr_ = mremap(cur_ptr_, old_size, cur_size_, MREMAP_MAYMOVE);
 
-    close(fd);
     //  change old ents
     for (auto ent : index_to_ptr) {
         index_to_ptr[ent.first] = (char*)cur_ptr_ + index_to_offset[ent.first];
