@@ -32,12 +32,12 @@ class TireFire {
      */
     void* get_memory(uint32_t index);
     /**
-     * Closes the mmapped region, flushes it
+     * Closes the mmapped region, flushes the header for it
      */
+    void flush_head();
+
     ~TireFire();
-
   private:
-
     std::string file_;
     uint64_t cur_size_;
     void* cur_ptr_;

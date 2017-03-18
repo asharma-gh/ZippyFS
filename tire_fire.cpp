@@ -38,6 +38,20 @@ TireFire::get_memory(uint32_t index) {
     return index_to_ptr[index];
 }
 
+void
+TireFire::flush_head() {
+
+    // make header file to offset into the other one
+    string head = file_ + ".head";
+
+    TireFire fl(head);
+    auto ar = fl.get_tire(index_to_offset.size() * sizeof(uint64_t));
+
+    for (auto ent : index_to_offset) {
+        ((uint64_t*)fl.get_memory(ar))[ent.first] = ent.second;
+    }
+}
+
 TireFire::~TireFire() {
     // flush change
     msync(cur_ptr_, cur_size_, MS_INVALIDATE | MS_ASYNC);
