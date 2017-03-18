@@ -58,10 +58,12 @@ TireFire::flush_head() {
     string head = file_ + ".head";
 
     TireFire fl(head);
+    cout << "num head bytes: " << to_string(index_to_offset.size() * sizeof(uint64_t));
     auto ar = fl.get_tire(index_to_offset.size() * sizeof(uint64_t));
-
+    uint64_t* mem = (uint64_t*)fl.get_memory(ar);
     for (auto ent : index_to_offset) {
-        ((uint64_t*)fl.get_memory(ar))[ent.first] = ent.second;
+        cout << "flushing " << to_string(ent.first) << " " << to_string(ent.second) << endl;
+        mem[ent.first] = ent.second;
     }
 
     // destructor is called, will flush for us

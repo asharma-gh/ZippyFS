@@ -28,5 +28,6 @@ main () {
 
     pwrite(fd, (char*)&meme, sizeof(foo), 0);
 
+
     close(fd);
 }
