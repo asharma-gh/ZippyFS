@@ -11,8 +11,15 @@ TireFire::TireFire(string path)
 
 
 }
+TireFire::TireFire() {
 
-uint64_t
+}
+
+void
+TireFire::set_path(string path) {
+    file_ = path;
+}
+int64_t
 TireFire::get_tire(size_t size) {
     uint64_t old_size = cur_size_;
     if (cur_ptr_ == nullptr) {
@@ -46,7 +53,7 @@ addtomap:
 }
 
 void*
-TireFire::get_memory(uint32_t index) {
+TireFire::get_memory(int64_t index) {
     if (index_to_ptr.find(index) == index_to_ptr.end())
         return nullptr;
     return index_to_ptr[index];

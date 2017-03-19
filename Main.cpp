@@ -15,7 +15,7 @@ main () {
     string path2 =  "/home/arvin/test/st/selfref";
     TireFire tf2(path2);
 
-    int rootidx = tf2.get_tire(sizeof(node));
+    int64_t rootidx = tf2.get_tire(sizeof(node));
 
     node* root = (node*)tf2.get_memory(rootidx);
     cout << "setting root val to 42..." << endl;
@@ -23,7 +23,7 @@ main () {
 
     cout << "creating next node..." << endl;
 
-    int childidx = tf2.get_tire(sizeof(node));
+    int64_t childidx = tf2.get_tire(sizeof(node));
     cout << "setting child val to 255..." << endl;
 
     node* child = (node*)tf2.get_memory(childidx);
@@ -41,7 +41,7 @@ main () {
     void* ffile = mmap(0, sizeof(node) * 2, PROT_READ, MAP_SHARED, fd, 0);
     // mmap header file to memory
     int hfd = ::open((path2 + ".head").c_str(), O_RDWR);
-    uint64_t* hfile = (uint64_t*)mmap(0, sizeof(int) * 2, PROT_READ, MAP_SHARED, hfd, 0);
+    uint64_t* hfile = (uint64_t*)mmap(0, sizeof(uint64_t) * 2, PROT_READ, MAP_SHARED, hfd, 0);
 
     // get root
     cout << "getting root..." << endl;

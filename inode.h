@@ -86,7 +86,7 @@ class Inode {
      * @return the mtime as ull
      */
     unsigned long long get_ull_mtime();
-
+    unsigned long long get_ull_ctime();
     /**
      * sets the size of this inode
      * @param size is the new size for this inode
@@ -217,8 +217,8 @@ class Inode {
     /**
      * returns the id for this inode
      */
+    std::string get_path();
     std::string get_id();
-
   private:
     /** the path of this inode **/
     std::string path_;

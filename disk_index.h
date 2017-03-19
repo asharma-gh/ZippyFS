@@ -2,6 +2,8 @@
 #define DISK_INDEX_H
 #include "includes.h"
 #include "inode.h"
+#include "tire_fire.h"
+#include "block.h"
 /**
  * Represents a persistent  in-memory structure of flushed files / inodes
  * (eventually will replace block_cache internal structure)
@@ -23,8 +25,9 @@ class DiskIndex {
 
     /**
      * Adds the given inode to this disk index
+     * with the dirty blocks (block idx, block)
      */
-    void add_inode(Inode in);
+    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks);
 
     /**
      * finds the given inode from this disk structure
@@ -41,31 +44,44 @@ class DiskIndex {
     typedef struct inode {
 
         // stat info
-        //
-        // block data memory index
-        int block_data;
+        uint32_t mode;
+        uint32_t nlink;
+        uint64_t mtime;
+        uint64_t ctime;
+        uint64_t size;
+        int deleted;
+        // index to hash memory, always 512 size char*
+        int64_t hash;
+        // index to block data list memory
+        int64_t block_data;
     } inode;
 
-    / ** represents [block id, data] for inodes */
+    /** represents [block id, data] for inodes */
     typedef struct block_data {
         uint64_t block_id;
-        uint8_t* data;
+        uint64_t size;
+        // index to data memory
+        int64_t data;
     } block_data;
 
 
-/** represents a tree structure containing inodes */
-typedef struct node {
+    /** represents a tree structure containing inodes */
+    typedef struct node {
+        int64_t left;
+        int64_t right;
+        inode ent;
+    } node;
 
-    int left;
-    int right;
-    inode ent;
-} node;
+    /** cache of mmap'd trees */
+    std::unordered_map<std::string, node*> file_to_tree_;
 
-/** cache of mmap'd trees */
-std::unordered_map<std::string, node*> file_to_tree_;
+    /** in memory structure */
+    TireFire mem_;
 
+    /** maintain pointer to root */
+    node* root_ptr_ = nullptr;
 
-// checks if there are any new trees on disk, globs
-void find_new_trees();
+    // checks if there are any new trees on disk, globs
+    void find_new_trees();
 };
 #endif
