@@ -25,7 +25,7 @@ class TireFire {
      * allocation is consecutive in the file, there is no free
      * only way to free is to make a new file
      */
-    uint32_t get_tire(size_t size);
+    uint64_t get_tire(size_t size);
 
     /**
      * gets the memory associated with the given index

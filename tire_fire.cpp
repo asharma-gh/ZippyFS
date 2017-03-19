@@ -12,7 +12,7 @@ TireFire::TireFire(string path)
 
 }
 
-uint32_t
+uint64_t
 TireFire::get_tire(size_t size) {
     uint64_t old_size = cur_size_;
     if (cur_ptr_ == nullptr) {
@@ -44,6 +44,7 @@ addtomap:
 
     return latest_index++;
 }
+
 void*
 TireFire::get_memory(uint32_t index) {
     if (index_to_ptr.find(index) == index_to_ptr.end())
@@ -74,4 +75,5 @@ TireFire::~TireFire() {
     close(fd_);
     // flush change
     msync(cur_ptr_, cur_size_, MS_INVALIDATE | MS_ASYNC);
+    munmap(cur_ptr_, cur_size_);
 }
