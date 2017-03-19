@@ -348,6 +348,11 @@ int
 BlockCache::flush_to_disk() {
     if (!has_changed_)
         return -1;
+    DiskIndex flusher;
+    for (auto ent : inode_idx_) {
+        flusher.add_inode(*get_inode_by_path(ent.first), dirty_block_[ent.second]);
+    }
+    return 0;
 
     /** map(path, (.file name, content)) */
     unordered_map<string, pair<string, string>> flushed_file_ents;

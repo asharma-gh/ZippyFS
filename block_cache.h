@@ -4,6 +4,7 @@
 #include "includes.h"
 #include "block.h"
 #include "inode.h"
+#include "disk_index.h"
 
 /**
  * represents an in-memory Block Cache
@@ -210,6 +211,8 @@ class BlockCache {
      * @return the latest inode from disk
      */
     disk_inode_info get_latest_inode(std::string path, bool get_data);
+
+
 
 };
 #endif

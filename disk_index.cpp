@@ -3,9 +3,10 @@
 using namespace std;
 
 DiskIndex::DiskIndex() {
+
     // generate name for this tree
     // generate path
-    string name = "/home/arvin/FileSystem/zipfs/o/dir/root/TREE-" + Util::generate_rand_hex_name();
+    string name = "/home/arvin/FileSystem/zipfs/o/dir/root/TREE-"; //+ Util::generate_rand_hex_name();
     // initialize memory zone
     mem_ = TireFire(name);
 }
@@ -104,4 +105,7 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
             cur_node = (node*)mem_.get_memory(cur_node->left);
         }
     }
+}
+DiskIndex::~DiskIndex() {
+    mem_.flush_head();
 }

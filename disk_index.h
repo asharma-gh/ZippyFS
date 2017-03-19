@@ -18,28 +18,6 @@ class DiskIndex {
 
   public:
 
-    /**
-     * Constructs a disk index structure
-     */
-    DiskIndex();
-
-    /**
-     * Adds the given inode to this disk index
-     * with the dirty blocks (block idx, block)
-     */
-    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks);
-
-    /**
-     * finds the given inode from this disk structure
-     */
-    void find_latest_inode(std::string path);
-
-    /**
-     * loads all new trees from disk to this struct
-     */
-    void load_trees();
-
-  private:
     /** represents an inode which is easily flushable to disk from memory */
     typedef struct inode {
 
@@ -71,17 +49,30 @@ class DiskIndex {
         int64_t right;
         inode ent;
     } node;
+    /**
+     * Constructs a disk index structure that flushes to the given path
+     */
+    DiskIndex();
 
-    /** cache of mmap'd trees */
-    std::unordered_map<std::string, node*> file_to_tree_;
+    /**
+     * Adds the given inode to this disk index
+     * with the dirty blocks (block idx, block)
+     */
+    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks);
+
+    /**
+     * finds the given inode from this disk structure
+     */
+    void find_latest_inode(std::string path);
+
+    ~DiskIndex();
+
+  private:
 
     /** in memory structure */
     TireFire mem_;
 
     /** maintain pointer to root */
     node* root_ptr_ = nullptr;
-
-    // checks if there are any new trees on disk, globs
-    void find_new_trees();
 };
 #endif
