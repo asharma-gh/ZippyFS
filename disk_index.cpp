@@ -72,10 +72,11 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
     uint64_t cur_node_idx = rootidx_;
     // keep going until we found a spot
     while (true) {
-        if (cur_node->left == -1 && cur_node->right == -1) {
+        if (cur_node->left == -1 && cur_node->right == -1 && !root_has_inode_) {
             // then it trivially goes here
             ist = (inode*)mem_.get_memory(inodeidx);
             cur_node->ent = *ist;
+            root_has_inode_ = true;
             break;
         }
         // if this isn't the case, then the root has something in it.
@@ -95,6 +96,7 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
 
             nmem->ent = *ist;
             cur_node->right = nnode;
+            cout << "SETTING RIGHT" << endl;
             break;
         } else if (cmphash && cur_node->right != -1) {
             // then there is something else here to explore
@@ -113,6 +115,7 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
             cur_node = (node*)mem_.get_memory(cur_node_idx);
             nmem->ent = *ist;
             cur_node->left = nnode;
+            cout << "SETTING LEFT" << endl;
             break;
         } else {
             // we need to explore the left

@@ -74,5 +74,6 @@ class DiskIndex {
     uint64_t rootidx_ = 0;
     /** maintain pointer to root */
     node* root_ptr_ = nullptr;
+    bool root_has_inode_ = false;
 };
 #endif

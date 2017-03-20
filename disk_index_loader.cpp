@@ -70,25 +70,24 @@ DiskIndexLoader::find_latest_inode(std::string path) {
     char phash[512] = {'\0'};
     string sthash = Util::crypto_hash(path);
     memcpy(phash, sthash.c_str(), sthash.size());
-
+    cout << "PHASH: " << phash << endl;
     // for each tree we got, find this path
     for (auto tree : file_to_mem_) {
         // traverse tree
         DiskIndex::node* cur = tree.second;
         uint64_t* hemem = file_to_headmem_[(tree.first + ".head")];
         while (true) {
-
+            cout << "Cur l: " << to_string(cur->left) << endl;
+            cout << "Cur r: " << to_string(cur->right) << endl;
             // check this node's inode's hash
             DiskIndex::inode inode = cur->ent;
             int64_t hashidx = inode.hash;
-            cout << "HASH IDX: " << to_string(hashidx) << endl;
             // find hash in memory
             uint64_t offset = hemem[hashidx];
-            cout << "OFFSET: " << to_string(offset) << endl;
             // get hash
             char* hash = (char*)tree.second + offset;
-            cout << "HASH: " << hash << endl;
-            int res = memcmp(hash, phash, 512);
+            cout << "THASH: " << hash << endl;
+            int res = memcmp(phash, hash, 512);
             cout << "RES: " << res << endl;
             // compare hashes, explore accordingly
             if (res == 0) {
@@ -99,9 +98,10 @@ DiskIndexLoader::find_latest_inode(std::string path) {
             if (res > 0 && cur->right == -1) {
                 cout << "not in tree, can't explore right" << endl;
                 break;
-            } else if (res == 1 && cur->right != -1) {
+            } else if (res > 0 && cur->right != -1) {
                 uint64_t noffset = hemem[cur->right];
-                cur = tree.second + noffset;
+                cout << "noffset: " << to_string(noffset) << endl;
+                cur = (DiskIndex::node*)((char*)tree.second + noffset);
                 // keep exploring
                 continue;
             }
@@ -110,9 +110,10 @@ DiskIndexLoader::find_latest_inode(std::string path) {
             if (res < 0 && cur->left == -1) {
                 cout << "not in tree, cant explore left" << endl;
                 break;
-            } else if (res == -1 && cur->left != -1) {
+            } else if (res < 0 && cur->left != -1) {
                 uint64_t loffset = hemem[cur->left];
-                cur = tree.second + loffset;
+                cout << "loffset: " << to_string(loffset) << endl;
+                cur = (DiskIndex::node*)((char*)tree.second + loffset);
                 continue;
             }
 
