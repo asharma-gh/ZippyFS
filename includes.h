@@ -33,4 +33,5 @@
 #include <unordered_set>
 #include <sodium.h>
 #include <glob.h>
+#include <cstring>
 #endif

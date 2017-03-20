@@ -8,6 +8,7 @@ using namespace std;
 // TODO: testing
 BlockCache::BlockCache(string path_to_disk) {
     path_to_disk_ = path_to_disk + "root/";
+    loader_ = DiskIndexLoader(path_to_disk_);
 }
 
 int
@@ -218,6 +219,7 @@ BlockCache::readdir(string path) {
 
 int
 BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
+
     cout << "Write " << to_string(size) << " ofst " << to_string(offset) << endl;
     if (in_cache(path) == -1) {
         cout << "loading from shdw " << path << endl;
@@ -346,14 +348,15 @@ BlockCache::get_refs(string path) {
  */
 int
 BlockCache::flush_to_disk() {
+    cout << "Flushing" << endl;
     if (!has_changed_)
         return -1;
     DiskIndex flusher;
     for (auto ent : inode_idx_) {
         flusher.add_inode(*get_inode_by_path(ent.first), dirty_block_[ent.second]);
     }
-    return 0;
 
+    return 0;
     /** map(path, (.file name, content)) */
     unordered_map<string, pair<string, string>> flushed_file_ents;
 
@@ -438,6 +441,8 @@ BlockCache::flush_to_disk() {
 
 int
 BlockCache::load_from_disk(string path) {
+    // testing
+
     cout << "LOADING " << path << " FROM DISK" << endl;
 
     std::shared_ptr<Inode> latest_inode;
@@ -515,11 +520,14 @@ BlockCache::get_all_meta_files(string path, bool is_parent) {
 
 BlockCache::disk_inode_info
 BlockCache::get_latest_inode(string path, bool get_data) {
+    cout << "Initiating the loader" << endl;
+    loader_.find_latest_inode(path);
+
     cout << "GETTING LATEST INODE FOR " << path << endl;
     auto meta_files = get_all_meta_files(path, false);
     disk_inode_info cur_inode;
     cur_inode.i_mtime = 0;
-
+    return cur_inode;
     for (auto meta : meta_files) {
         ifstream ifs(meta);
         string curline;

@@ -46,6 +46,7 @@ static void init_fuse_operations(struct fuse_operations* fuse_op) {
  */
 int
 main(int argc, char *argv[]) {
+    printf("PID:%d\n", getpid());
     static struct fuse_operations zippyfs_operations;
     init_fuse_operations(&zippyfs_operations);
     const char* zip_dir = argv[--argc];

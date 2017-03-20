@@ -5,7 +5,7 @@
 #include "block.h"
 #include "inode.h"
 #include "disk_index.h"
-
+#include "disk_index_loader.h"
 /**
  * represents an in-memory Block Cache
  * @author Arvin Sharma
@@ -212,7 +212,7 @@ class BlockCache {
      */
     disk_inode_info get_latest_inode(std::string path, bool get_data);
 
-
+    DiskIndexLoader loader_;
 
 };
 #endif

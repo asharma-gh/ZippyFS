@@ -61,7 +61,7 @@ TireFire::get_memory(int64_t index) {
 
 void
 TireFire::flush_head() {
-
+    cout << "FLUSHING HEAD" << endl;
     // make header file to offset into the other one
     string head = file_ + ".head";
 
@@ -73,14 +73,21 @@ TireFire::flush_head() {
         cout << "flushing " << to_string(ent.first) << " " << to_string(ent.second) << endl;
         mem[ent.first] = ent.second;
     }
-
+    cout << "wu lad" << endl;
     // destructor is called, will flush for us
+    fl.end();
 }
-
-TireFire::~TireFire() {
+void
+TireFire::end() {
     cout << "Destroying.." << endl;
-    close(fd_);
+
+    // close(fd_);
+    cout << "1" << endl;
     // flush change
-    msync(cur_ptr_, cur_size_, MS_INVALIDATE | MS_ASYNC);
-    munmap(cur_ptr_, cur_size_);
+    //msync(cur_ptr_, cur_size_, MS_INVALIDATE | MS_SYNC);
+    cout << "2" << endl;
+
+    //  munmap(cur_ptr_, cur_size_);
+    cout << "3" << endl;
+
 }

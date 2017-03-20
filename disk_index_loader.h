@@ -17,7 +17,7 @@ class DiskIndexLoader {
      * @param path is the path to the tree dir
      */
     DiskIndexLoader(std::string path);
-
+    DiskIndexLoader();
     /**
      * loads all new trees from disk to this struct
      */

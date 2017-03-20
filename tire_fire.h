@@ -38,8 +38,8 @@ class TireFire {
      * Closes the mmapped region, flushes the header for it
      */
     void flush_head();
-
-    ~TireFire();
+    void end();
+    // ~TireFire();
   private:
     std::string file_;
     int fd_;

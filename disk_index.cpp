@@ -15,8 +15,8 @@ void
 DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
     if (root_ptr_ == nullptr) {
         // construct root
-        int64_t rootidx = mem_.get_tire(sizeof(node));
-        root_ptr_ = (node*)mem_.get_memory(rootidx);
+        rootidx_ = mem_.get_tire(sizeof(node));
+        root_ptr_ = (node*)mem_.get_memory(rootidx_);
         root_ptr_->left = -1;
         root_ptr_->right = -1;
     }
@@ -31,12 +31,16 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
     ist->deleted = in.is_deleted();
 
     // construct hash for inode
+    // here lies a bug!
     int64_t hashidx = mem_.get_tire(sizeof(char) * 512);
     char* hash = (char*)mem_.get_memory(hashidx);
     memset(hash, '\0', 512 * sizeof(char));
+
     string shash = Util::crypto_hash(in.get_path());
     memcpy(hash,  shash.c_str(), shash.size());
 
+    // the above could have invalidated this pointer!!
+    ist = (inode*)mem_.get_memory(inodeidx);
     ist->hash = hashidx;
 
     // construct blocks dirty blocks for inode
@@ -58,15 +62,19 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
         }
         cur->block_id = bdataidx;
     }
-
-    ist-> block_data = blocksidx;
+    // the above could have invalidated these pointers!
+    ist = (inode*)mem_.get_memory(inodeidx);
+    root_ptr_ = (node*)mem_.get_memory(rootidx_);
+    ist->block_data = blocksidx;
 
     // find spot in tree for this inode, based on the hash
     node* cur_node = root_ptr_;
+    uint64_t cur_node_idx = rootidx_;
     // keep going until we found a spot
     while (true) {
         if (cur_node->left == -1 && cur_node->right == -1) {
             // then it trivially goes here
+            ist = (inode*)mem_.get_memory(inodeidx);
             cur_node->ent = *ist;
             break;
         }
@@ -82,12 +90,16 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
             node* nmem = (node*)mem_.get_memory(nnode);
             nmem->left = -1;
             nmem->right = -1;
+            ist = (inode*)mem_.get_memory(inodeidx);
+            cur_node = (node*)mem_.get_memory(cur_node_idx);
+
             nmem->ent = *ist;
             cur_node->right = nnode;
             break;
         } else if (cmphash && cur_node->right != -1) {
             // then there is something else here to explore
-            cur_node = (node*)mem_.get_memory(cur_node->right);
+            cur_node_idx = cur_node->right;
+            cur_node = (node*)mem_.get_memory(cur_node_idx);
             continue;
         }
         // if we reached here, then the hash is less than the current.
@@ -97,15 +109,22 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
             node* nmem = (node*)mem_.get_memory(nnode);
             nmem->left = -1;
             nmem->right = -1;
+            ist = (inode*)mem_.get_memory(inodeidx);
+            cur_node = (node*)mem_.get_memory(cur_node_idx);
             nmem->ent = *ist;
             cur_node->left = nnode;
             break;
         } else {
             // we need to explore the left
-            cur_node = (node*)mem_.get_memory(cur_node->left);
+            cur_node_idx = cur_node->left;
+            cur_node = (node*)mem_.get_memory(cur_node_idx);
         }
     }
 }
 DiskIndex::~DiskIndex() {
+
     mem_.flush_head();
+
+    mem_.end();
+
 }

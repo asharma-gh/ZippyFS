@@ -295,6 +295,8 @@ void
 zippyfs_destroy(void* private_data) {
     (void)private_data;
     // flush
+    cout << "We done" << endl;
     block_cache->flush_to_shdw(1);
-    free(zip_dir_name);
+    cout << "next" <<endl;
+    //free(zip_dir_name);
 }

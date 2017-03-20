@@ -71,7 +71,7 @@ class DiskIndex {
 
     /** in memory structure */
     TireFire mem_;
-
+    uint64_t rootidx_ = 0;
     /** maintain pointer to root */
     node* root_ptr_ = nullptr;
 };
