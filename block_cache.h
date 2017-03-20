@@ -100,7 +100,7 @@ class BlockCache {
     /**
      * determines if the thing in path is in cache
      * @param 0 if the file exists, -1 otherwise
-    */
+     */
     int in_cache(std::string path);
 
     /**
