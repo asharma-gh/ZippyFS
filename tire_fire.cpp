@@ -65,24 +65,7 @@ TireFire::get_offset(int64_t index) {
     return index_to_offset[index];
 }
 
-void
-TireFire::flush_head() {
-    cout << "FLUSHING HEAD" << endl;
-    // make header file to offset into the other one
-    string head = file_ + ".head";
 
-    TireFire fl(head);
-    cout << "num head bytes: " << to_string(index_to_offset.size() * sizeof(uint64_t)) << endl;
-    auto ar = fl.get_tire(index_to_offset.size() * sizeof(uint64_t));
-    uint64_t* mem = (uint64_t*)fl.get_memory(ar);
-    for (auto ent : index_to_offset) {
-        cout << "flushing " << to_string(ent.first) << " " << to_string(ent.second) << endl;
-        mem[ent.first] = ent.second;
-    }
-    cout << "wu lad" << endl;
-    // destructor is called, will flush for us
-    fl.end();
-}
 void
 TireFire::end() {
     cout << "Destroying.." << endl;

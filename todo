@@ -1,3 +1,5 @@
+
+
 indexing thru the file system is slow (using glob) when theres a large number of files
 
 - create a data structure which can be serialized as bytes to a file, using mmap

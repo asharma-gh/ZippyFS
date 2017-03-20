@@ -31,7 +31,6 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
     ist->deleted = in.is_deleted();
 
     // construct hash for inode
-    // here lies a bug!
     int64_t hashidx = mem_.get_tire(sizeof(char) * 512);
     char* hash = (char*)mem_.get_memory(hashidx);
     memset(hash, '\0', 512 * sizeof(char));
@@ -128,9 +127,6 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
     }
 }
 DiskIndex::~DiskIndex() {
-
-    //mem_.flush_head();
-
     mem_.end();
 
 }

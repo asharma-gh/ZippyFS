@@ -26,36 +26,24 @@ DiskIndexLoader::load_trees() {
 
         // we have a new tree file to map
         string fpath = path_ + ent;
-        // string hepath = fpath + ".head";
-        cout << "fpath: " << fpath << endl;
-        //cout << "hepath: " << hepath << endl;
-        int fd = ::open(fpath.c_str(), O_RDONLY);
-        // int headfd = ::open(hepath.c_str(), O_RDONLY);
-        file_to_fd_[fpath] = fd;
-        // file_to_fd_[hepath] = headfd;
 
+        cout << "fpath: " << fpath << endl;
+
+        int fd = ::open(fpath.c_str(), O_RDONLY);
+
+        file_to_fd_[fpath] = fd;
         // get file size
         struct stat st;
         stat(fpath.c_str(), &st);
         uint64_t fsize = st.st_size;
         file_to_size_[fpath] = fsize;
-        /*
-                memset(&st, 0, sizeof(struct stat));
-                stat(hepath.c_str(), &st);
-                uint64_t hsize = st.st_size;
-                file_to_size_[hepath] = hsize;
-                cout << "fsize: " << to_string(fsize) << endl;
-                cout << "hsize: " << to_string(hsize) << endl;
 
-        */
         // load memory
         DiskIndex::node* fmem = (DiskIndex::node*)mmap(0, fsize*sizeof(char), PROT_READ, MAP_SHARED, fd, 0);
 
-        //   uint64_t* hmem = (uint64_t*)mmap(0, hsize*sizeof(char), PROT_READ, MAP_SHARED, headfd, 0);
-
         // add pointer to map
         file_to_mem_[fpath] = fmem;
-        //   file_to_headmem_[hepath] = hmem;
+
     }
     closedir(tree_dir);
 }
@@ -75,7 +63,7 @@ DiskIndexLoader::find_latest_inode(std::string path) {
         cout << "TREE: " << tree.first << endl;
         // traverse tree
         DiskIndex::node* cur = tree.second;
-        //   uint64_t* hemem = file_to_headmem_[(tree.first + ".head")];
+
         while (true) {
             cout << "Cur l: " << to_string(cur->left) << endl;
             cout << "Cur r: " << to_string(cur->right) << endl;
@@ -83,7 +71,7 @@ DiskIndexLoader::find_latest_inode(std::string path) {
             DiskIndex::inode inode = cur->ent;
             int64_t hashoffset = inode.hash;
             // find hash in memory
-            //uint64_t offset = hemem[hashidx];
+
             // get hash
             char* hash = (char*)tree.second + hashoffset;
             cout << "THASH: " << hash << endl;
@@ -92,6 +80,8 @@ DiskIndexLoader::find_latest_inode(std::string path) {
             // compare hashes, explore accordingly
             if (res == 0) {
                 cout << "We found it!" << endl;
+                cout << "initializing inode..." << endl;
+                latest.set_mode(inode.mode);
                 break;
             }
 
@@ -136,10 +126,5 @@ DiskIndexLoader::~DiskIndexLoader() {
         close(file_to_fd_[ent.first]);
     }
     cout << "5" << endl;
-    // for (auto ent : file_to_headmem_) {
-    //   munmap(ent.second, file_to_size_[ent.first]);
-    //  close(file_to_fd_[ent.first]);
 
-    // }
-    cout << "6" << endl;
 }
