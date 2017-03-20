@@ -35,7 +35,7 @@ class DiskIndexLoader {
     /** cache of mmap'd trees */
     /** map(path, ptr), map(path, size), and map(path, file descriptor) */
     std::unordered_map<std::string, DiskIndex::node*> file_to_mem_;
-    std::unordered_map<std::string, uint64_t*> file_to_headmem_;
+    // std::unordered_map<std::string, uint64_t*> file_to_headmem_;
 
     std::unordered_map<std::string, uint64_t> file_to_size_;
 

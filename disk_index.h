@@ -39,7 +39,7 @@ class DiskIndex {
         uint64_t block_id;
         uint64_t size;
         // index to data memory
-        int64_t data;
+        int64_t data_offset;
     } block_data;
 
 

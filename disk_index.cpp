@@ -41,14 +41,14 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
 
     // the above could have invalidated this pointer!!
     ist = (inode*)mem_.get_memory(inodeidx);
-    ist->hash = hashidx;
+    ist->hash = mem_.get_offset(hashidx);
 
     // construct blocks dirty blocks for inode
     int64_t blocksidx = mem_.get_tire(sizeof(block_data) * dirty_blocks.size());
 
-    block_data* loblocks = (block_data*)mem_.get_memory(blocksidx);
 
     for (auto db : dirty_blocks) {
+        block_data* loblocks = (block_data*)mem_.get_memory(blocksidx);
         block_data* cur = loblocks + db.first;
         cur->block_id = db.first;
         cur->size = db.second->get_actual_size();
@@ -60,16 +60,18 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
         for (uint32_t ii = 0; ii < cur->size; ii++) {
             bdata[ii] = bytes[ii];
         }
-        cur->block_id = bdataidx;
+        loblocks = (block_data*)mem_.get_memory(blocksidx);
+        cur = loblocks + db.first;
+        cur->data_offset = mem_.get_offset(bdataidx);
     }
     // the above could have invalidated these pointers!
     ist = (inode*)mem_.get_memory(inodeidx);
     root_ptr_ = (node*)mem_.get_memory(rootidx_);
-    ist->block_data = blocksidx;
+    ist->block_data = mem_.get_offset(blocksidx);
 
     // find spot in tree for this inode, based on the hash
     node* cur_node = root_ptr_;
-    uint64_t cur_node_idx = rootidx_;
+    uint64_t cur_node_offset = rootidx_;
     // keep going until we found a spot
     while (true) {
         if (cur_node->left == -1 && cur_node->right == -1 && !root_has_inode_) {
@@ -82,7 +84,7 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
         // if this isn't the case, then the root has something in it.
         inode ent = cur_node->ent;
         // get ent hash to compare
-        char* ent_hash = (char*)mem_.get_memory(ent.hash);
+        char* ent_hash = (char*)mem_.get_memory(rootidx_) + ent.hash;
         // if this hash is greater than the current, it goes in the right, else left
         bool cmphash = strcmp(ent_hash, shash.c_str()) < 0;
         if (cmphash && cur_node->right == -1) {
@@ -92,16 +94,17 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
             nmem->left = -1;
             nmem->right = -1;
             ist = (inode*)mem_.get_memory(inodeidx);
-            cur_node = (node*)mem_.get_memory(cur_node_idx);
+            cur_node = (node*)((char*)mem_.get_memory(rootidx_) + cur_node_offset);
 
             nmem->ent = *ist;
-            cur_node->right = nnode;
+            cur_node->right = mem_.get_offset(nnode);
             cout << "SETTING RIGHT" << endl;
             break;
         } else if (cmphash && cur_node->right != -1) {
             // then there is something else here to explore
-            cur_node_idx = cur_node->right;
-            cur_node = (node*)mem_.get_memory(cur_node_idx);
+            cur_node_offset = cur_node->right;
+            cur_node = (node*)((char*)mem_.get_memory(rootidx_) + cur_node->right);
+            //cur_node = (node*)mem_.get_memory(cur_node_idx);
             continue;
         }
         // if we reached here, then the hash is less than the current.
@@ -112,21 +115,21 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
             nmem->left = -1;
             nmem->right = -1;
             ist = (inode*)mem_.get_memory(inodeidx);
-            cur_node = (node*)mem_.get_memory(cur_node_idx);
+            cur_node = (node*)((char*)mem_.get_memory(rootidx_) + cur_node_offset);
             nmem->ent = *ist;
-            cur_node->left = nnode;
+            cur_node->left = mem_.get_offset(nnode);
             cout << "SETTING LEFT" << endl;
             break;
         } else {
             // we need to explore the left
-            cur_node_idx = cur_node->left;
-            cur_node = (node*)mem_.get_memory(cur_node_idx);
+            cur_node_offset = cur_node->left;
+            cur_node = (node*)((char*)mem_.get_memory(rootidx_) + cur_node->left);
         }
     }
 }
 DiskIndex::~DiskIndex() {
 
-    mem_.flush_head();
+    //mem_.flush_head();
 
     mem_.end();
 

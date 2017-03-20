@@ -24,7 +24,7 @@ class TireFire {
     void set_path(std::string path);
     /**
      * @param size is the size of the requested memory
-     * @returns index to a pointer to memory
+     * @returns the offset into the file backed memory region
      * allocation is consecutive in the file, there is no free
      * only way to free is to make a new file
      */
@@ -37,6 +37,7 @@ class TireFire {
     /**
      * Closes the mmapped region, flushes the header for it
      */
+    int64_t get_offset(int64_t index);
     void flush_head();
     void end();
     // ~TireFire();
@@ -46,7 +47,7 @@ class TireFire {
     uint64_t cur_size_;
     void* cur_ptr_;
     uint64_t latest_index;
-    std::unordered_map<int64_t, uint64_t> index_to_offset;
+    std::unordered_map<int64_t, int64_t> index_to_offset;
     std::unordered_map<int64_t, void*> index_to_ptr;
 
 

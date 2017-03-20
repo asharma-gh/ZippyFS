@@ -21,7 +21,7 @@ TireFire::set_path(string path) {
 }
 int64_t
 TireFire::get_tire(size_t size) {
-    uint64_t old_size = cur_size_;
+    int64_t old_size = cur_size_;
     if (cur_ptr_ == nullptr) {
         fd_ = ::open(file_.c_str(), O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
         truncate(file_.c_str(), size);
@@ -58,6 +58,12 @@ TireFire::get_memory(int64_t index) {
         return nullptr;
     return index_to_ptr[index];
 }
+int64_t
+TireFire::get_offset(int64_t index) {
+    if (index_to_offset.find(index) == index_to_offset.end())
+        throw new domain_error("nope");
+    return index_to_offset[index];
+}
 
 void
 TireFire::flush_head() {
@@ -81,13 +87,13 @@ void
 TireFire::end() {
     cout << "Destroying.." << endl;
 
-    // close(fd_);
+    close(fd_);
     cout << "1" << endl;
     // flush change
-    //msync(cur_ptr_, cur_size_, MS_INVALIDATE | MS_SYNC);
+    msync(cur_ptr_, cur_size_, MS_INVALIDATE | MS_SYNC);
     cout << "2" << endl;
 
-    //  munmap(cur_ptr_, cur_size_);
+    munmap(cur_ptr_, cur_size_);
     cout << "3" << endl;
 
 }
