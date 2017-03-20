@@ -6,7 +6,7 @@ DiskIndex::DiskIndex() {
 
     // generate name for this tree
     // generate path
-    string name = "/home/arvin/FileSystem/zipfs/o/dir/root/TREE-"; //+ Util::generate_rand_hex_name();
+    string name = "/home/arvin/FileSystem/zipfs/o/dir/root/TREE-"+ Util::generate_rand_hex_name();
     // initialize memory zone
     mem_ = TireFire(name);
 }
@@ -66,7 +66,7 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
     // keep going until we found a spot
     while (true) {
         if (cur_node->left == -1 && cur_node->right == -1) {
-            // then it goes in the root
+            // then it trivially goes here
             cur_node->ent = *ist;
             break;
         }

@@ -14,8 +14,9 @@ class DiskIndexLoader {
 
     /**
      * Constructs a new Disk Index Loader
+     * @param path is the path to the tree dir
      */
-    DiskIndexLoader();
+    DiskIndexLoader(std::string path);
 
     /**
      * loads all new trees from disk to this struct
@@ -27,12 +28,24 @@ class DiskIndexLoader {
      */
     Inode find_latest_inode(std::string path);
 
+    ~DiskIndexLoader();
+
   private:
 
     /** cache of mmap'd trees */
-    std::unordered_map<std::string, DiskIndex::node*> file_to_tree_;
+    /** map(path, ptr), map(path, size), and map(path, file descriptor) */
+    std::unordered_map<std::string, DiskIndex::node*> file_to_mem_;
+    std::unordered_map<std::string, uint64_t*> file_to_headmem_;
 
+    std::unordered_map<std::string, uint64_t> file_to_size_;
+
+    std::unordered_map<std::string, int> file_to_fd_;
+
+    /** finds all the new trees */
     void find_new_trees();
+
+    /** path of the tree dir */
+    std::string path_;
 
 };
 #endif
