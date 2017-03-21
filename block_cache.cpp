@@ -118,7 +118,7 @@ BlockCache::getattr(string path, struct stat* st) {
     if (in_cache(path) == 0)
         return get_inode_by_path(path)->stat(st);
 
-    disk_inode_info di  = get_latest_inode(path, false);
+    DiskIndexLoader::disk_inode_info di  = get_latest_inode(path, false);
     if (di.i_mtime == 0)
         return -ENOENT;
 
@@ -183,7 +183,7 @@ BlockCache::readdir(string path) {
         if (strcmp(dirpath, path.c_str()) == 0) {
             free(dirpath);
             // find latest thing, add entry
-            disk_inode_info latest = get_latest_inode((string)ent_path, false);
+            DiskIndexLoader::disk_inode_info latest = get_latest_inode((string)ent_path, false);
             if ((added_names.find(ent_path) != added_names.end()
                     && added_names[ent_path].added_time < latest.i_mtime) || added_names.find(ent_path) == added_names.end()) {
                 // we have a later entry, update!
@@ -446,7 +446,7 @@ BlockCache::load_from_disk(string path) {
     cout << "LOADING " << path << " FROM DISK" << endl;
 
     std::shared_ptr<Inode> latest_inode;
-    disk_inode_info di = get_latest_inode(path, true);
+    DiskIndexLoader::disk_inode_info di = get_latest_inode(path, true);
     if (di.i_mtime == 0)
         // none exists
         return -1;
@@ -518,14 +518,14 @@ BlockCache::get_all_meta_files(string path, bool is_parent) {
     return meta_files;
 }
 
-BlockCache::disk_inode_info
+DiskIndexLoader::disk_inode_info
 BlockCache::get_latest_inode(string path, bool get_data) {
     cout << "Initiating the loader" << endl;
     loader_.find_latest_inode(path);
 
     cout << "GETTING LATEST INODE FOR " << path << endl;
     auto meta_files = get_all_meta_files(path, false);
-    disk_inode_info cur_inode;
+    DiskIndexLoader::disk_inode_info cur_inode;
     cur_inode.i_mtime = 0;
     return cur_inode;
     for (auto meta : meta_files) {

@@ -22,13 +22,30 @@ class DiskIndexLoader {
      * loads all new trees from disk to this struct
      */
     void load_trees();
-
+    /**
+     * Struct for retrieving inode info from disk
+     */
+    typedef struct {
+        std::string i_path;
+        std::string i_inode_id;
+        uint32_t i_mode;
+        uint32_t i_nlink;
+        unsigned long long i_mtime;
+        unsigned long long i_ctime;
+        uint64_t i_size;
+        int i_deleted;
+        /** map(block_id, block time) */
+        std::unordered_map<uint64_t, unsigned long long> i_block_time;
+        /** map(block_id, block ptr) */
+        std::unordered_map<uint64_t, std::shared_ptr<Block>> i_block_data;
+    } disk_inode_info;
     /**
      * finds the latest inode for the given path
      */
-    Inode find_latest_inode(std::string path);
+    disk_inode_info find_latest_inode(std::string path);
 
     ~DiskIndexLoader();
+
 
   private:
 

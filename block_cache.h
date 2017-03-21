@@ -187,30 +187,13 @@ class BlockCache {
      */
     std::unordered_set<std::string> get_all_meta_files(std::string path, bool is_parent);
 
-    /**
-     * Struct for retrieving inode info from disk
-     */
-    typedef struct {
-        std::string i_path;
-        std::string i_inode_id;
-        uint32_t i_mode;
-        uint32_t i_nlink;
-        unsigned long long i_mtime;
-        unsigned long long i_ctime;
-        uint64_t i_size;
-        int i_deleted;
-        /** map(block_id, block time) */
-        std::unordered_map<uint64_t, unsigned long long> i_block_time;
-        /** map(block_id, block ptr) */
-        std::unordered_map<uint64_t, std::shared_ptr<Block>> i_block_data;
-    } disk_inode_info;
 
     /**
      * @param path is the path to get from disk
      * @param data is whether to also retrieve the data
      * @return the latest inode from disk
      */
-    disk_inode_info get_latest_inode(std::string path, bool get_data);
+    DiskIndexLoader::disk_inode_info get_latest_inode(std::string path, bool get_data);
 
     DiskIndexLoader loader_;
 
