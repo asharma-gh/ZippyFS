@@ -1,4 +1,5 @@
-
+- restructure inode id's to be == to path hash
+- fully integrate loader into block_cache
 
 indexing thru the file system is slow (using glob) when theres a large number of files
 

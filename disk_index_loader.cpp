@@ -58,6 +58,7 @@ DiskIndexLoader::find_latest_inode(std::string path) {
     string sthash = Util::crypto_hash(path);
     memcpy(phash, sthash.c_str(), sthash.size());
     cout << "PHASH: " << phash << endl;
+    uint64_t latest_time = 0;
     // for each tree we got, find this path
     for (auto tree : file_to_mem_) {
         cout << "TREE: " << tree.first << endl;
@@ -81,8 +82,17 @@ DiskIndexLoader::find_latest_inode(std::string path) {
             if (res == 0) {
                 cout << "We found it!" << endl;
                 cout << "initializing inode..." << endl;
-                latest.set_mode(inode.mode);
-                break;
+                if (inode.mtime > latest_time) {
+                    latest.set_mode(inode.mode);
+                    latest.set_size(inode.size);
+                    latest.set_nlink(inode.nlink);
+                    latest.set_mtime(inode.mtime);
+                    latest.set_ctime(inode.ctime);
+                    if (inode.deleted)
+                        latest.delete_inode();
+
+                    break;
+                }
             }
 
             if (res > 0 && cur->right == -1) {

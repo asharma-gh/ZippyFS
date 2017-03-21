@@ -11,6 +11,7 @@ TireFire::TireFire(string path)
 
 
 }
+
 TireFire::TireFire() {
 
 }
@@ -19,6 +20,7 @@ void
 TireFire::set_path(string path) {
     file_ = path;
 }
+
 int64_t
 TireFire::get_tire(size_t size) {
     int64_t old_size = cur_size_;
@@ -58,13 +60,13 @@ TireFire::get_memory(int64_t index) {
         return nullptr;
     return index_to_ptr[index];
 }
+
 int64_t
 TireFire::get_offset(int64_t index) {
     if (index_to_offset.find(index) == index_to_offset.end())
         throw new domain_error("nope");
     return index_to_offset[index];
 }
-
 
 void
 TireFire::end() {
