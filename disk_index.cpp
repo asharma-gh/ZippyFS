@@ -56,11 +56,12 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
         int64_t bdataidx = mem_.get_tire(cur->size * sizeof(uint8_t));
         uint8_t* bdata = (uint8_t*)mem_.get_memory(bdataidx);
         auto bytes = db.second->get_data();
+        loblocks = (block_data*)mem_.get_memory(blocksidx);
+        cur = loblocks + db.first;
+
         for (uint32_t ii = 0; ii < cur->size; ii++) {
             bdata[ii] = bytes[ii];
         }
-        loblocks = (block_data*)mem_.get_memory(blocksidx);
-        cur = loblocks + db.first;
         cur->data_offset = mem_.get_offset(bdataidx);
     }
     // the above could have invalidated these pointers!

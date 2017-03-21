@@ -88,11 +88,11 @@ DiskIndexLoader::find_latest_inode(std::string path) {
                     latest.set_nlink(inode.nlink);
                     latest.set_mtime(inode.mtime);
                     latest.set_ctime(inode.ctime);
+                    latest.set_id(hash);
                     if (inode.deleted)
                         latest.delete_inode();
-
-                    break;
                 }
+                break;
             }
 
             if (res > 0 && cur->right == -1) {

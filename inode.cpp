@@ -15,7 +15,7 @@ Inode::Inode(string path)
     deleted_ = 0;
     dirty_ = 0;
     links_.insert(path);
-    inode_id_ = Util::generate_rand_hex_name();
+    inode_id_ = Util::crypto_hash(path);
 }
 
 Inode::Inode(string path, Inode that) {
@@ -36,7 +36,7 @@ Inode::Inode(string path, Inode that) {
     deleted_ = 0;
     dirty_ = 0;
     mode_ = that.get_mode();
-    inode_id_ = Util::generate_rand_hex_name();
+    inode_id_ = Util::crypto_hash(path);
 
 }
 
