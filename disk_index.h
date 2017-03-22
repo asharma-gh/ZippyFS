@@ -32,6 +32,8 @@ class DiskIndex {
         int64_t hash;
         // index to block data list memory
         int64_t block_data;
+        // total size of block data
+        uint64_t block_data_size;
     } inode;
 
     /** represents [block id, data] for inodes */

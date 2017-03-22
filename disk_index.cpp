@@ -42,8 +42,9 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks, ma
     ist = (inode*)mem_.get_memory(inodeidx);
     ist->hash = mem_.get_offset(hashidx);
 
+    uint64_t bd_size = sizeof(block_data) *  dirty_blocks.size();
     // construct blocks dirty blocks for inode
-    int64_t blocksidx = mem_.get_tire(sizeof(block_data) * dirty_blocks.size());
+    int64_t blocksidx = mem_.get_tire(bd_size);
 
 
     for (auto db : dirty_blocks) {
@@ -61,6 +62,7 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks, ma
 
         for (uint32_t ii = 0; ii < cur->size; ii++) {
             bdata[ii] = bytes[ii];
+
         }
         cur->data_offset = mem_.get_offset(bdataidx);
         cur->mtime = block_mtime[db.first];
@@ -68,7 +70,12 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks, ma
     // the above could have invalidated these pointers!
     ist = (inode*)mem_.get_memory(inodeidx);
     root_ptr_ = (node*)mem_.get_memory(rootidx_);
-    ist->block_data = mem_.get_offset(blocksidx);
+    if (bd_size > 0) {
+        ist->block_data = mem_.get_offset(blocksidx);
+        ist->block_data_size = bd_size;
+    } else
+        // no data
+        ist->block_data = -1;
 
     // find spot in tree for this inode, based on the hash
     node* cur_node = root_ptr_;

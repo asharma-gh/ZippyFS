@@ -61,9 +61,11 @@ DiskIndexLoader::find_latest_inode(std::string path, bool get_data) {
     memcpy(phash, sthash.c_str(), sthash.size());
     cout << "PHASH: " << phash << endl;
     uint64_t latest_time = 0;
+
     // for each tree we got, find this path
     for (auto tree : file_to_mem_) {
         cout << "TREE: " << tree.first << endl;
+
         // traverse tree
         DiskIndex::node* cur = tree.second;
 
@@ -73,7 +75,6 @@ DiskIndexLoader::find_latest_inode(std::string path, bool get_data) {
             // check this node's inode's hash
             DiskIndex::inode inode = cur->ent;
             int64_t hashoffset = inode.hash;
-            // find hash in memory
 
             // get hash
             char* hash = (char*)tree.second + hashoffset;
@@ -84,6 +85,8 @@ DiskIndexLoader::find_latest_inode(std::string path, bool get_data) {
             if (res == 0) {
                 cout << "We found it!" << endl;
                 cout << "initializing inode..." << endl;
+
+                // update inode info for newer version
                 if (inode.mtime > latest_time) {
                     latest.i_mode = inode.mode;
                     latest.i_size = inode.size;
@@ -92,11 +95,39 @@ DiskIndexLoader::find_latest_inode(std::string path, bool get_data) {
                     latest.i_ctime = inode.ctime;
                     latest.i_inode_id = hash;
                     latest.i_deleted = inode.deleted;
-                    // get blocks
-                    if (inode.deleted == 0 && get_data) {
+                    latest_time = inode.mtime;
+                }
 
+                // get blocks
+                if (get_data) {
+                    cout << "ADDDDING DATA!!!!!" << endl;
+                    int64_t bd_off = inode.block_data;
+                    if (bd_off == -1)
+                        // no data
+                        break;
+                    uint64_t bd_size = inode.block_data_size;
+                    cout << "BD OFF: " << to_string(bd_off) << " bd_size: " << to_string(bd_size) << endl;
+                    for (uint64_t ii = bd_off; ii < bd_off + bd_size; ii += sizeof(DiskIndex::block_data)) {
+                        // get block
+                        DiskIndex::block_data b = *(DiskIndex::block_data*)((char*)cur + ii);
+                        cout << "GETTING BLOCK!!!" <<endl;
+                        cout << "boff: " << to_string(b.data_offset) << " bsize: " << to_string (b.size);
+
+                        // add block if its a later version
+                        if (latest.i_block_time.find(b.block_id)
+                                == latest.i_block_time.end()
+                                || (latest.i_block_time.find(b.block_id) != latest.i_block_time.end()
+                                    && latest.i_block_time[b.block_id] <= b.mtime)) {
+                            // add it, its a new block!
+                            latest.i_block_time[b.block_id] = b.mtime;
+                            shared_ptr<Block> bp = make_shared<Block>((uint8_t*)((char*)cur + b.data_offset), b.size);
+
+                            latest.i_block_data[b.block_id] = bp;
+
+                        }
                     }
                 }
+
                 break;
             }
 

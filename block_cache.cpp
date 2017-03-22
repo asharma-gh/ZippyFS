@@ -463,6 +463,7 @@ BlockCache::load_from_disk(string path) {
 
     // add all blocks
     for (auto blk : di.i_block_data) {
+        cout << "ADDING BLOCK!!!" << endl;
         latest_inode->add_block(blk.first, blk.second);
     }
 
