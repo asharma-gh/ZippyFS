@@ -353,82 +353,8 @@ BlockCache::flush_to_disk() {
         return -1;
     DiskIndex flusher;
     for (auto ent : inode_idx_) {
-        flusher.add_inode(*get_inode_by_path(ent.first), dirty_block_[ent.second], dirty_block_mtime_[ent.second]);
-    }
-
-    return 0;
-    /** map(path, (.file name, content)) */
-    unordered_map<string, pair<string, string>> flushed_file_ents;
-
-    /** map(path, (.file name, data)) */
-    unordered_map<string, pair<string, string>> flushed_file_data;
-
-    /**
-     * This loop writes to the .node and .data files
-     * .head file is written to last.
-     */
-    for (auto ent : inode_idx_) {
-        shared_ptr<Inode> flushed_inode = get_inode_by_path(ent.first);
-        if (flushed_inode->is_dirty() == 0) {
-            cout << "Skipping " << ent.first << " because no changes were made..." << endl;
-            continue;
-        }
-
-        // file name for this inode
-        string file_name = Util::generate_fname(ent.first);
-
-        string inode_idx = ent.second;
-        string root_input;
-        // [path] [inode id] [mode] [#links] [mtime] [ctime] [size] deleted\n
-        // [block offset table]\n
-        root_input += "INODE: " + flushed_inode->get_flush_record();
-        // generate block offset table
-        // and gen block data for file
-        string data_entry;
-        string data_table;
-        uint64_t cur_offset = 0;
-        cout << "Flushing " << ent.first << endl;
-        if (flushed_inode->is_deleted() == 0) {
-            for (auto blck : dirty_block_[inode_idx]) {
-                auto block = blck.second;
-                uint64_t block_sz = block->get_actual_size();
-                auto block_data = block->get_data();
-                char buf[block_sz + 1] = {'\0'};
-                for (unsigned int ii = 0; ii < block_sz; ii++)
-                    buf[ii] = block_data[ii];
-                data_entry += buf;
-                data_table += to_string(blck.first) + " "
-                              + to_string(cur_offset) + " "
-                              + to_string(block_sz) + " "
-                              + to_string(dirty_block_mtime_[inode_idx][blck.first]) + "\n";
-                cur_offset += block_sz;
-            }
-            root_input += data_table;
-        }
-
-        flushed_file_ents[ent.first] = make_pair(file_name, root_input);
-        flushed_file_data[ent.first] = make_pair(Util::generate_dataname(file_name), data_entry);
-
-    }
-
-
-    // write .files
-    for (auto ent : flushed_file_ents) {
-        auto file = ent.second;
-        string fpath = path_to_disk_ + file.first;
-
-        int fd = ::open(fpath.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-        if (pwrite(fd, file.second.c_str(), file.second.size() * sizeof(char), 0) == -1)
-            cout << "Error writing to .meta ERRNO " << strerror(errno) << endl;
-        auto data_ent = flushed_file_data[ent.first];
-        string dataf = path_to_disk_ + data_ent.first;
-        int datafd = ::open(dataf.c_str(), O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-
-        if (pwrite(datafd, data_ent.second.c_str(), data_ent.second.size() * sizeof(char), 0) == -1)
-            cout << "Error writing to .data ERRNO " << strerror(errno) << endl;
-        close(datafd);
-        close(fd);
-
+        flusher.add_inode(*get_inode_by_path(ent.first),
+                          dirty_block_[ent.second], dirty_block_mtime_[ent.second]);
     }
 
     inode_idx_.clear();
