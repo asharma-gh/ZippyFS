@@ -37,6 +37,7 @@ class DiskIndex {
     /** represents [block id, data] for inodes */
     typedef struct block_data {
         uint64_t block_id;
+        uint64_t mtime;
         uint64_t size;
         // index to data memory
         int64_t data_offset;
@@ -58,7 +59,7 @@ class DiskIndex {
      * Adds the given inode to this disk index
      * with the dirty blocks (block idx, block)
      */
-    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks);
+    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks, std::map<uint64_t, unsigned long long> block_mtime);
 
     /**
      * finds the given inode from this disk structure

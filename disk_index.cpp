@@ -12,7 +12,7 @@ DiskIndex::DiskIndex() {
 }
 
 void
-DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
+DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks, map<uint64_t, unsigned long long> block_mtime) {
     if (root_ptr_ == nullptr) {
         // construct root
         rootidx_ = mem_.get_tire(sizeof(node));
@@ -63,6 +63,7 @@ DiskIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks) {
             bdata[ii] = bytes[ii];
         }
         cur->data_offset = mem_.get_offset(bdataidx);
+        cur->mtime = block_mtime[db.first];
     }
     // the above could have invalidated these pointers!
     ist = (inode*)mem_.get_memory(inodeidx);

@@ -353,7 +353,7 @@ BlockCache::flush_to_disk() {
         return -1;
     DiskIndex flusher;
     for (auto ent : inode_idx_) {
-        flusher.add_inode(*get_inode_by_path(ent.first), dirty_block_[ent.second]);
+        flusher.add_inode(*get_inode_by_path(ent.first), dirty_block_[ent.second], dirty_block_mtime_[ent.second]);
     }
 
     return 0;
@@ -520,81 +520,6 @@ BlockCache::get_all_meta_files(string path, bool is_parent) {
 
 DiskIndexLoader::disk_inode_info
 BlockCache::get_latest_inode(string path, bool get_data) {
-    cout << "Initiating the loader" << endl;
-    loader_.find_latest_inode(path);
-
-    cout << "GETTING LATEST INODE FOR " << path << endl;
-    auto meta_files = get_all_meta_files(path, false);
-    DiskIndexLoader::disk_inode_info cur_inode;
-    cur_inode.i_mtime = 0;
-    return cur_inode;
-    for (auto meta : meta_files) {
-        ifstream ifs(meta);
-        string curline;
-        // update cur_inode only if the mtime is greater
-        unsigned long long cur_mtime = 0;
-        // first line is always inode info
-        getline(ifs, curline);
-        char ent_path[PATH_MAX] = {'\0'};
-        char ent_id[2048] = {'\0'};
-        uint32_t ent_mode = 0;
-        uint32_t ent_nlink = 0;
-        unsigned long long ent_mtime = 0;
-        unsigned long long ent_ctime = 0;
-        uint64_t ent_size = 0;
-        int ent_deleted = 0;
-
-        sscanf(curline.c_str(),
-               "INODE: %s %s %" SCNd32 " %" SCNd32 " %llu %llu %" SCNd64 " %d",
-               ent_path, ent_id, &ent_mode, &ent_nlink,
-               &ent_mtime, &ent_ctime, &ent_size, &ent_deleted);
-        if (cur_mtime <= ent_mtime) {
-            // we have an updated entry
-            cur_inode.i_path = ent_path;
-            cur_inode.i_inode_id = ent_id;
-            cur_inode.i_mode = ent_mode;
-            cur_inode.i_nlink = ent_nlink;
-            cur_inode.i_mtime = ent_mtime;
-            cur_inode.i_ctime = ent_ctime;
-            cur_inode.i_size = ent_size;
-            cur_inode.i_deleted = ent_deleted;
-        }
-        // if we need the data too, then build up blocks
-        // need to add block time to blocks
-        if (get_data && !S_ISDIR(cur_inode.i_mode)) {
-            // make data file name
-            string dpath = meta.substr(0, meta.size() - 5) + ".data";
-
-            // open data file
-            int dfd = ::open(dpath.c_str(), O_RDONLY);
-            // copy over entries
-
-            while (getline(ifs, curline)) {
-                // retrieve stuff
-                uint64_t blckidx = 0;
-                uint64_t blckoffset = 0;
-                uint64_t blcksize = 0;
-                unsigned long long blckmtime = 0;
-
-                sscanf(curline.c_str(), "%" SCNd64" %" SCNd64" %" SCNd64" %llu",
-                       &blckidx, &blckoffset, &blcksize, &blckmtime);
-                // if this block is not updated, then skip it
-                if(cur_inode.i_block_time.find(blckidx) != cur_inode.i_block_time.end()
-                        && cur_inode.i_block_time[blckidx] > blckmtime)
-                    continue;
-
-                // clear to add it, extract data
-                uint8_t blckcontent[blcksize] = {'\0'};
-
-                if (pread(dfd, blckcontent, blcksize, blckoffset) == -1)
-                    cout << "Error reading data ERRNO: " << strerror(errno) << endl;
-                cur_inode.i_block_time[blckidx] = blckmtime;
-                cur_inode.i_block_data[blckidx] = shared_ptr<Block>(new Block(blckcontent, blcksize));
-
-            }
-            close(dfd);
-        }
-    }
-
-    return cur_inode;
+    cout << "Initiating the loader with " << path << endl;
+    return loader_.find_latest_inode(path, get_data);
 }

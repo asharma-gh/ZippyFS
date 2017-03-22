@@ -48,11 +48,13 @@ DiskIndexLoader::load_trees() {
     closedir(tree_dir);
 }
 
-Inode
-DiskIndexLoader::find_latest_inode(std::string path) {
+DiskIndexLoader::disk_inode_info
+DiskIndexLoader::find_latest_inode(std::string path, bool get_data) {
     load_trees();
-    Inode latest(path);
-
+    disk_inode_info latest;
+    latest.i_mtime = 0;
+    if (path.size() == 0)
+        return latest;
     // hash for comparisons
     char phash[512] = {'\0'};
     string sthash = Util::crypto_hash(path);
@@ -83,14 +85,17 @@ DiskIndexLoader::find_latest_inode(std::string path) {
                 cout << "We found it!" << endl;
                 cout << "initializing inode..." << endl;
                 if (inode.mtime > latest_time) {
-                    latest.set_mode(inode.mode);
-                    latest.set_size(inode.size);
-                    latest.set_nlink(inode.nlink);
-                    latest.set_mtime(inode.mtime);
-                    latest.set_ctime(inode.ctime);
-                    latest.set_id(hash);
-                    if (inode.deleted)
-                        latest.delete_inode();
+                    latest.i_mode = inode.mode;
+                    latest.i_size = inode.size;
+                    latest.i_nlink = inode.nlink;
+                    latest.i_mtime = inode.mtime;
+                    latest.i_ctime = inode.ctime;
+                    latest.i_inode_id = hash;
+                    latest.i_deleted = inode.deleted;
+                    // get blocks
+                    if (inode.deleted == 0 && get_data) {
+
+                    }
                 }
                 break;
             }

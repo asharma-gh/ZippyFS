@@ -1,5 +1,7 @@
-- restructure inode id's to be == to path hash
 - fully integrate loader into block_cache
+
+- refactor DiskIndex structure to be a B-tree
+- refactor DiskIndexLoader to read from the B-tree
 
 indexing thru the file system is slow (using glob) when theres a large number of files
 

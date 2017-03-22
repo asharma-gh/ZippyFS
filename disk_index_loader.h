@@ -22,6 +22,7 @@ class DiskIndexLoader {
      * loads all new trees from disk to this struct
      */
     void load_trees();
+
     /**
      * Struct for retrieving inode info from disk
      */
@@ -42,7 +43,7 @@ class DiskIndexLoader {
     /**
      * finds the latest inode for the given path
      */
-    disk_inode_info find_latest_inode(std::string path);
+    disk_inode_info find_latest_inode(std::string path, bool get_data);
 
     ~DiskIndexLoader();
 
