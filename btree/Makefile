@@ -6,9 +6,9 @@ OBJS := $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcard *.
 DEP = $(wildcard %.h)
 
 all:
-	(make -j file-system)
-file-system: $(OBJS)
-	g++ -o file-system $(OBJS) $(LDFLAGS)
+	(make -j bt)
+bt: $(OBJS)
+	g++ -o bt $(OBJS) $(LDFLAGS)
 
 %.o: %.c fuse_ops.h
 	gcc -c -o $@ -Wall $< $(CFLAGS)
@@ -17,4 +17,4 @@ file-system: $(OBJS)
 	g++ --std=gnu++11 -c -o $@ $< $(CFLAGS)
 
 clean:
-	rm file-system *.o
+	rm bt *.o

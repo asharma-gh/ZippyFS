@@ -21,26 +21,93 @@ BPLUSTree::insert(int key, int val) {
         return;
     }
     // else find node
-    // insert to node
+    node* target = find_node_to_store(key);
+
+    // check if node is full
+    if (target->num_elements == ORDER - 1) {
+        // it needs to be split
+        //node* fixed_node = split_insert_node(target, key, val);
+    }
 }
 
+BPLUSTree::node*
+BPLUSTree::split_insert_node(node* n, int k, int v) {
+    if (n->num_elements != ORDER - 1)
+        return n;
+
+    // get median idx
+    int med_idx = (ORDER / 2) - 1;
+
+    // check if this key belongs in the new left
+    bool is_left_part = n->keys[med_idx] < k;
+
+    // make new leaves
+    node* right = (node*)malloc(sizeof(node));
+    right->is_leaf = true;
+
+    // copy everything from [med, end] to new leaf
+    int ii;
+    for (ii = med_idx; ii < ORDER - 1; ii++) {
+        right->num_elements++;
+        right->keys[ii] = n->keys[ii];
+        right->children[ii] = n->children[ii];
+        right->values[ii] = n->values[ii];
+        // delete now duplicate entry
+        n->keys[ii] = -1;
+        n->children[ii] = NULL;
+    }
+    // get last child
+    right->children[ii] = n->children[ii];
+    n->children[ii] = NULL;
+
+    // now we split the leaf, insert into the proper side
+    if (is_left_part)
+        insert_into_node(n, k, v);
+    else
+        insert_into_node(right, k, v);
+
+    return right;
+
+}
+void
+BPLUSTree::insert_into_node(node* n, int k, int v) {
+    (void)n;
+    (void)k;
+    (void)v;
+    // find spot
+    int cur_idx = 0;
+    for (int ii = 0; ii < n->num_elements - 1; ii++) {
+        if (n->keys[ii] < k) {
+            cur_idx = ii;
+            break;
+        }
+    }
+    // move everything from cur_idx + 1 up
+    node temp = *n;
+    for (int ii = cur_idx; ii < n->num_elements - 1; ii++) {
+        n->keys[ii + 1] = temp.keys[ii];
+        n->children[ii + 1] = temp.children[ii];
+        n->values[ii + 1] = temp.values[ii];
+    }
+    // insert into fixed node
+    n->keys[cur_idx] = k;
+    record r;
+    r.value = v;
+    n->values[cur_idx] = r;
+    n->children[cur_idx] = NULL;
+    n->num_elements++;
+}
 
 BPLUSTree::node*
-BPLUSTree::find_node(int k) {
-    if (cur_root == NULL) {
-        return NULL;
-    }
+BPLUSTree::find_node_to_store(int k) {
+    if (cur_root == NULL)
+        throw domain_error ("tree is empty");
 
     node* cur = cur_root;
     for (;;) {
-        if (cur->is_leaf) {
-            // then the key must be in here
-            for (int key : cur->keys) {
-                if (key == k)
-                    return cur;
-            }
-            return NULL;
-        }
+        if (cur->is_leaf)
+            return cur;
+
 
         // is this key before all in  this node?
         if (k < cur->keys[0]) {
@@ -54,6 +121,7 @@ BPLUSTree::find_node(int k) {
             cur = after(cur, cur->num_elements - 1);
             continue;
         }
+
         // else it must be somewhere in between
         int cur_idx = 0;
         for (int ii = 1; ii < cur->num_elements - 1; ii++) {
@@ -67,13 +135,6 @@ BPLUSTree::find_node(int k) {
 
     return cur;
 }
-
-void
-BPLUSTree::insert_to_node(int k, int v) {
-    (void)k;
-    (void)v;
-}
-
 
 BPLUSTree::node*
 BPLUSTree::before(node* n, int k) {
