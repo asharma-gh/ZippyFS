@@ -22,6 +22,7 @@ class BPLUSTree {
     } record;
 
     /** node of a b+ tree */
+    // node* means childen is a node***!
     typedef struct node {
         node* parent = NULL;
         int num_elements = 0;
@@ -43,7 +44,8 @@ class BPLUSTree {
     node* find_node_to_store(int k);
 
     /** inserts the k,v in the given NON-EMPTY leaf-node, assuming ALL k's are UNIQUE */
-    void insert_into_node(node* n, int k, int v);
+    /** if n is not a leaf, the child is inserted instead */
+    void insert_into_node(node* n, int k, int v, node* child);
 
     /** splits the given node, inserts the given k,v
      * MODIFIES cur_root

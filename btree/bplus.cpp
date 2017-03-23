@@ -5,6 +5,7 @@
 using namespace std;
 void
 BPLUSTree::insert(int key, int val) {
+
     if (cur_root == NULL) {
         // initialize root with this element
         cur_root = (node*)malloc(sizeof(node));
@@ -35,8 +36,8 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     if (n->num_elements != ORDER - 1)
         return n;
 
-    // get median idx
-    int med_idx = (ORDER / 2) - 1;
+    // get median idx, assuming order is odd
+    int med_idx = (ORDER / 2) + 2;
 
     // check if this key belongs in the new left
     bool is_left_part = n->keys[med_idx] < k;
@@ -44,14 +45,14 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     // make new leaves
     node* right = (node*)malloc(sizeof(node));
     right->is_leaf = true;
-
     // copy everything from [med, end] to new leaf
     int ii;
-    for (ii = med_idx; ii < ORDER - 1; ii++) {
+    int cur_idx = 0;
+    for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
         right->num_elements++;
-        right->keys[ii] = n->keys[ii];
-        right->children[ii] = n->children[ii];
-        right->values[ii] = n->values[ii];
+        right->keys[cur_idx] = n->keys[ii];
+        right->children[cur_idx] = n->children[ii];
+        right->values[cur_idx] = n->values[ii];
         // delete now duplicate entry
         n->keys[ii] = -1;
         n->children[ii] = NULL;
@@ -59,21 +60,20 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     // get last child
     right->children[ii] = n->children[ii];
     n->children[ii] = NULL;
+    n->num_elements = med_idx - 1;
 
     // now we split the leaf, insert into the proper side
     if (is_left_part)
-        insert_into_node(n, k, v);
+        insert_into_node(n, k, v, NULL);
     else
-        insert_into_node(right, k, v);
+        insert_into_node(right, k, v, NULL);
 
+    // now we need to fix the parents if needed, and fix parent pointers
     return right;
-
 }
 void
-BPLUSTree::insert_into_node(node* n, int k, int v) {
-    (void)n;
-    (void)k;
-    (void)v;
+BPLUSTree::insert_into_node(node* n, int k, int v, node* child) {
+
     // find spot
     int cur_idx = 0;
     for (int ii = 0; ii < n->num_elements - 1; ii++) {
@@ -82,6 +82,7 @@ BPLUSTree::insert_into_node(node* n, int k, int v) {
             break;
         }
     }
+
     // move everything from cur_idx + 1 up
     node temp = *n;
     for (int ii = cur_idx; ii < n->num_elements - 1; ii++) {
@@ -89,13 +90,20 @@ BPLUSTree::insert_into_node(node* n, int k, int v) {
         n->children[ii + 1] = temp.children[ii];
         n->values[ii + 1] = temp.values[ii];
     }
-    // insert into fixed node
+
     n->keys[cur_idx] = k;
-    record r;
-    r.value = v;
-    n->values[cur_idx] = r;
-    n->children[cur_idx] = NULL;
     n->num_elements++;
+
+    if (n->is_leaf) {
+        // insert value into fixed node
+        record r;
+        r.value = v;
+        n->values[cur_idx] = r;
+        n->children[cur_idx] = NULL;
+    } else {
+        // insert child
+        n->children[cur_idx] = child;
+    }
 }
 
 BPLUSTree::node*
