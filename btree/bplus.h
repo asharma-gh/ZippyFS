@@ -12,7 +12,6 @@ class BPLUSTree {
     /** inserts the given key,val pair to this b+tree */
     void insert(int key, int val);
 
-    /** prints the b+tree */
     void print();
 
   private:
@@ -43,14 +42,18 @@ class BPLUSTree {
     /** finds the node to store the given key */
     node* find_node_to_store(int k);
 
-    /** inserts the k,v in the given NON-EMPTY leaf-node, assuming ALL k's are UNIQUE */
+    /** inserts the k,v in the given NON-EMPTY leaf-node, assuming ALL k's are UNIQUE
+     * @return the index that the k,v pair was inserted in*/
     /** if n is not a leaf, the child is inserted instead */
-    void insert_into_node(node* n, int k, int v, node* child);
+    int insert_into_node(node* n, int k, int v, bool isleft, node* child);
 
     /** splits the given node, inserts the given k,v
      * MODIFIES cur_root
-     * @return the node to insert the given key
+     * @return the new root of the tree with the k,v inserted
      */
+    /** if k,v == -1 then the node is split and the new root is returned */
     node* split_insert_node(node* n, int k, int v);
+    /** prints the b+tree */
+    void print(node* n);
 };
 #endif
