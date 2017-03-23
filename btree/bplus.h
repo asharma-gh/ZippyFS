@@ -8,9 +8,8 @@ class BPLUSTree {
 
   public:
 
-    void insert(int ent);
+    void insert(int key, int val);
 
-    int find(int key);
 
   private:
     /** value that for each key */
@@ -21,15 +20,21 @@ class BPLUSTree {
     /** node of a b+ tree */
     typedef struct node {
         int num_elements;
-        int keys [ORDER - 1];
-        /**children at key index gets u the node with keys < key, key index + 1 gets u the node with keys >= key */
-        node* children[ORDER - 1];
-        record** values;
+        bool is_leaf = false;
+        int keys [ORDER - 1] = {-1};
+        node* children[ORDER] = {NULL};
+        record values[ORDER];
 
     } node;
 
     node* cur_root = NULL;
 
+    /** returns the child for the given node and key */
+    node* before(node* n, int k);
+    node* after(node* n, int k);
 
+    node* find_node(int k);
+
+    void insert_to_node(int k, int v);
 };
 #endif
