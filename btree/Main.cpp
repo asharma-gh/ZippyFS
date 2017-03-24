@@ -5,7 +5,7 @@ int
 main() {
     BPLUSTree bpt;
 
-    for (int ii = 0; ii < 10; ii++)
+    for (int ii = 0; ii < 50; ii++)
         bpt.insert(ii,ii);
 
     bpt.print();

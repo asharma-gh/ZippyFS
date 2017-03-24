@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <iostream>
 #define ORDER 5
-/** this is prolly a memory leaking nightmare */
-// TODO: fix comments and function names
+/
+// TODO: fix records to be a contiguous block of memory that nodes point to, leaf[0] => first index in this [List-of records]
 class BPLUSTree {
 
   public:
@@ -28,7 +28,7 @@ class BPLUSTree {
         bool is_leaf = false;
         int keys [ORDER - 1] = {-1};
         node* children[ORDER] = {NULL};
-        record values[ORDER];
+        record* values[ORDER];
 
     } node;
 

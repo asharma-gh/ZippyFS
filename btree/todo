@@ -1,5 +1,0 @@
-Goal:
-
-- create a working b+tree implementation with keys and values as ints
-
-- this will be the foundation of the zippyfs data store, which will use path hashes and inodes as keys/values

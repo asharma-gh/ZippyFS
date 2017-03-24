@@ -15,8 +15,8 @@ BPLUSTree::insert(int key, int val) {
         nroot.is_leaf = true;
         nroot.keys[0] = key;
         nroot.num_elements = 1;
-        record v;
-        v.value = val;
+        record* v = (record*)malloc(sizeof(record));
+        v->value = val;
         nroot.values[0] = v;
         *cur_root = nroot;
         return;
@@ -45,6 +45,7 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     // make new leaves
     node* right = (node*)malloc(sizeof(node));
     right->is_leaf = true;
+
     // copy everything from [med, end] to new leaf
     int ii;
     int cur_idx = 0;
@@ -123,16 +124,14 @@ BPLUSTree::insert_into_node(node* n, int k, int v, bool isleft, node* child) {
             n->children[ii + 1] = temp.children[ii];
             n->values[ii + 1] = temp.values[ii];
         }
-
-
     }
     n->keys[cur_idx] = k;
     n->num_elements++;
 
     if (n->is_leaf) {
         // insert value into fixed node
-        record r;
-        r.value = v;
+        record* r = (record*)malloc(sizeof(record));
+        r->value = v;
         n->values[cur_idx] = r;
         n->children[cur_idx] = NULL;
     } else {
