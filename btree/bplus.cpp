@@ -33,9 +33,9 @@ BPLUSTree::insert(int key, int val) {
     }
     insert_into_node(target, key, val, false, NULL);
     //cout << "printing things in target post insert..." << endl;
-    for (int ii = 0; ii < target->num_elements; ii++) {
-        //  cout << "|" << to_string(target->keys[ii]) << "|";
-    }
+    //for (int ii = 0; ii < target->num_elements; ii++) {
+    //  cout << "|" << to_string(target->keys[ii]) << "|";
+    //}
     return;
 
 
@@ -84,30 +84,27 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
         nroot->num_elements = 1;
         nroot->is_leaf = false;
         // make median the only key in this new root
-        //nroot->keys[0] = right->keys[0];
+        nroot->keys[0] = right->keys[0];
         // add children to this new root
-        //nroot->children[0] = n;
-        //nroot->children[1] = right;
-        cout << "inserting into root..." << endl;
-        int idx = insert_into_node(nroot, right->keys[0], -1, true, n);
-        nroot->children[idx + 1] = right;
-        // split is complete.
-        //cur_root->is_leaf = false;
-        //insert_into_node(cur_root, -1, -1, false, nroot);
-        cout << "printing old root..." << endl;
+        nroot->children[0] = n;
+        nroot->children[1] = right;
+        cout << "PRINTIGN OLD ROOT" << endl;
         print(cur_root);
+        right->parent = nroot;
+        n->parent = nroot;
         cur_root = nroot;
         return nroot;
     }
     // if it isn't null, then we check if it has room
     if (pparent->num_elements == ORDER - 1) {
+        cout << "NO ROOM IN PARENT" << endl;
         // no room, need to split parent now
         split_insert_node(pparent, -1, -1);
+        //return;
     }
     // we can fit it in the parent
-    insert_into_node(pparent, k, v, false, right);
-
-
+    insert_into_node(pparent, right->keys[0], v, false, right);
+    right->parent = pparent;
 
     return pparent;
 }
@@ -221,7 +218,7 @@ BPLUSTree::print(node* n) {
         return;
     // print keys
     for (int ii = 0; ii < n->num_elements; ii++) {
-        cout << "---";
+        cout << "-";
     }
     cout << endl;
     for (int ii = 0; ii < n->num_elements; ii++) {
@@ -229,12 +226,13 @@ BPLUSTree::print(node* n) {
     }
     cout << endl;
     for (int ii = 0; ii < n->num_elements; ii++) {
-        cout << "---";
+        cout << "-";
     }
     cout << endl;
 
     // print each sub tree
-
+    if (n->is_leaf)
+        return;
     for (int ii = 0; ii < n->num_elements + 1; ii++) {
         print(n->children[ii]);
     }

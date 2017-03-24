@@ -2,7 +2,7 @@
 #define B_PLUS_H
 #include <cstdint>
 #include <iostream>
-#define ORDER 100
+#define ORDER 5
 /** this is prolly a memory leaking nightmare */
 // TODO: fix comments and function names
 class BPLUSTree {
