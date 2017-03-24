@@ -95,6 +95,7 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     // if it isn't null, then we check if it has room
     if (pparent->num_elements == ORDER - 1) {
         // no room, need to split parent now
+        // THE RULES FOR SPLITTING ARE DIFFERENT TODO!!!
         pparent = split_insert_node(pparent, -1, -1)->children[1];
     }
 
