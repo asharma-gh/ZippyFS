@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <iostream>
 #define ORDER 5
-/
+
 // TODO: fix records to be a contiguous block of memory that nodes point to, leaf[0] => first index in this [List-of records]
 class BPLUSTree {
 
@@ -13,6 +13,8 @@ class BPLUSTree {
     void insert(int key, int val);
 
     void print();
+
+    int find(int key);
 
   private:
     /** value that for each key */
@@ -28,7 +30,7 @@ class BPLUSTree {
         bool is_leaf = false;
         int keys [ORDER - 1] = {-1};
         node* children[ORDER] = {NULL};
-        record* values[ORDER];
+        record* values[ORDER - 1];
 
     } node;
 

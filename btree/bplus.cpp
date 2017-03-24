@@ -38,7 +38,12 @@ BPLUSTree::node*
 BPLUSTree::split_insert_node(node* n, int k, int v) {
     if (n->num_elements != ORDER - 1)
         return n;
-
+    cout << "inserting " << to_string(k) << endl;
+    cout << "splitting the following node" << endl;
+    for (int ii = 0; ii < n->num_elements; ii++) {
+        cout << "idx: " << to_string(ii) << " k " << n->keys[ii] << " ";
+    }
+    cout << endl;
     // get median idx, assuming order is odd
     int med_idx = ((ORDER-1) / 2);
 
@@ -49,20 +54,19 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     // copy everything from [med, end] to new leaf
     int ii;
     int cur_idx = 0;
-
+    cout << "Contents of right..." << endl;
     for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
         right->num_elements++;
         right->keys[cur_idx] = n->keys[ii];
         right->children[cur_idx] = n->children[ii];
         right->values[cur_idx] = n->values[ii];
+        cout << "idx: " << to_string(ii) << " key: " << to_string(n->keys[ii]);
+
         // delete now duplicate entry
         n->keys[ii] = -1;
-        n->children[ii] = NULL;
+        n->values[ii] = NULL;
     }
-
-    // get last child
-    right->children[ii] = n->children[ii];
-    n->children[ii] = NULL;
+    cout << endl;
     n->num_elements = med_idx;
 
     // now we split the leaf, insert into the proper side
@@ -91,7 +95,7 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     // if it isn't null, then we check if it has room
     if (pparent->num_elements == ORDER - 1) {
         // no room, need to split parent now
-        split_insert_node(pparent, -1, -1);
+        pparent = split_insert_node(pparent, -1, -1)->children[1];
     }
 
     // we can fit it in the parent
@@ -224,4 +228,16 @@ BPLUSTree::print(node* n) {
     }
 
     return;
+}
+int
+BPLUSTree::find(int key) {
+    node* l = find_node_to_store(key);
+    int idx = 0;
+    for (int ii = 0; ii < l->num_elements; ii++) {
+        if (l->keys[ii] == key) {
+            idx = ii;
+            break;
+        }
+    }
+    return l->values[idx]->value;
 }
