@@ -53,8 +53,10 @@ class BPLUSTree {
      * MODIFIES cur_root
      * @return the new root of the tree with the k,v inserted
      */
-    /** if k,v == -1 then the node is split and the new root is returned */
-    node* split_insert_node(node* n, int k, int v);
+    /** @params k,v == -1 then no k,v pair is inserted into the newly allocated node
+     *  @params isparent changes how this functon splits, assuming that it is splitting a parent node.
+     * */
+    node* split_insert_node(node* n, int k, int v, bool isparent, node* targ);
     /** prints the b+tree */
     void print(node* n);
 };

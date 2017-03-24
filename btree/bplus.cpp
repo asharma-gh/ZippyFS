@@ -5,7 +5,7 @@
 using namespace std;
 void
 BPLUSTree::insert(int key, int val) {
-
+    cout << "INSERTING " << to_string(key) << endl;
     if (cur_root == NULL) {
         // initialize root with this element
         cur_root = (node*)malloc(sizeof(node));
@@ -27,23 +27,33 @@ BPLUSTree::insert(int key, int val) {
     // check if node is full
     if (target->num_elements == ORDER - 1) {
         // it needs to be split and inserted
-        split_insert_node(target, key, val);
+        split_insert_node(target, key, val, false, NULL);
+        cout << "TREE" << endl;
+        print(cur_root);
         return;
     }
     insert_into_node(target, key, val, false, NULL);
+    cout << "TREE" << endl;
+    print(cur_root);
     return;
 }
 
 BPLUSTree::node*
-BPLUSTree::split_insert_node(node* n, int k, int v) {
+BPLUSTree::split_insert_node(node* n, int k, int v, bool isparent, node* targ) {
     if (n->num_elements != ORDER - 1)
         return n;
     cout << "inserting " << to_string(k) << endl;
     cout << "splitting the following node" << endl;
+
     for (int ii = 0; ii < n->num_elements; ii++) {
         cout << "idx: " << to_string(ii) << " k " << n->keys[ii] << " ";
+        cout << "with children" << endl;
+        print(n->children[ii]);
     }
+    cout << "with children" << endl;
+    print(n->children[n->num_elements]);
     cout << endl;
+    print(n);
     // get median idx, assuming order is odd
     int med_idx = ((ORDER-1) / 2);
 
@@ -54,36 +64,75 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     // copy everything from [med, end] to new leaf
     int ii;
     int cur_idx = 0;
-    cout << "Contents of right..." << endl;
-    for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
-        right->num_elements++;
-        right->keys[cur_idx] = n->keys[ii];
+    int med_ke = n->keys[med_idx];
+    if (isparent) {
+        //node* rleaf = (node*)malloc(sizeof(node));
+        // right child[0] == median + 1 child
+        cout << "Contents of right..." << endl;
+        for (ii = med_idx + 1; ii < ORDER - 1; ii++, cur_idx++) {
+            right->num_elements++;
+            right->keys[cur_idx] = n->keys[ii];
+            right->children[cur_idx] = n->children[ii];
+            //rleaf->keys[cur_idx] = n->keys[ii];
+            //rleaf->values[cur_idx] = n->values[ii];
+            cout << "idx: " << to_string(ii) << " key: " << to_string(n->keys[ii]);
+
+            n->keys[ii] = -1;
+            n->values[ii] = NULL;
+            n->num_elements--;
+        }
         right->children[cur_idx] = n->children[ii];
-        right->values[cur_idx] = n->values[ii];
-        cout << "idx: " << to_string(ii) << " key: " << to_string(n->keys[ii]);
+        cout << endl;
+        // remove med from left
+        n->keys[med_idx] = -1;
+        n->values[med_idx] = NULL;
+        n->num_elements--;
+        right->is_leaf = false;
+        insert_into_node(right, k, v, false, targ);
+        cout << "printing stuff in targ" << endl;
+        for (int jj = 0; jj < targ->num_elements; jj++) {
+            cout << "idx: " << to_string(jj) << " key: " << to_string(targ->keys[jj]);
 
-        // delete now duplicate entry
-        n->keys[ii] = -1;
-        n->values[ii] = NULL;
-    }
-    cout << endl;
-    n->num_elements = med_idx;
+        }
+        cout << endl;
+        targ->parent = right;
+        cout << "printing right's left child" << endl;
+        print(right->children[0]);
+        cout << "print right's right child" << endl;
+        print(right->children[1]);
+    } else {
+        for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
+            right->num_elements++;
+            right->keys[cur_idx] = n->keys[ii];
+            right->children[cur_idx] = n->children[ii];
+            right->values[cur_idx] = n->values[ii];
+            cout << "idx: " << to_string(ii) << " key: " << to_string(n->keys[ii]);
 
-    // now we split the leaf, insert into the proper side
-    if (k != -1 && v != -1) {
-        insert_into_node(right, k, v, false, NULL);
+            // delete now duplicate entry
+            n->keys[ii] = -1;
+            n->values[ii] = NULL;
+        }
+        cout << endl;
+        n->num_elements = med_idx;
+
+        // now we split the leaf, insert into the proper side
+        if (k != -1 && v != -1) {
+            insert_into_node(right, k, v, false, NULL);
+        }
     }
 
     // now we need to fix the parents if needed, and fix parent pointers
     node* pparent = n->parent;
-
+    int nkey = right->keys[0];
+    if (isparent)
+        nkey = med_ke;
     // make new root if parent is null
     if (pparent == NULL) {
         node* nroot = (node*)malloc(sizeof(node));
         nroot->num_elements = 1;
         nroot->is_leaf = false;
         // make median the only key in this new root
-        nroot->keys[0] = right->keys[0];
+        nroot->keys[0] = nkey;
         // add children to this new root
         nroot->children[0] = n;
         nroot->children[1] = right;
@@ -96,12 +145,13 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     if (pparent->num_elements == ORDER - 1) {
         // no room, need to split parent now
         // THE RULES FOR SPLITTING ARE DIFFERENT TODO!!!
-        pparent = split_insert_node(pparent, -1, -1)->children[1];
-    }
+        pparent = split_insert_node(pparent, right->keys[0], -1, true, right);
+    } else {
 
-    // we can fit it in the parent
-    insert_into_node(pparent, right->keys[0], v, false, right);
-    right->parent = pparent;
+        // we can fit it in the parent
+        insert_into_node(pparent, nkey, v, false, right);
+        right->parent = pparent;
+    }
 
     return pparent;
 }
@@ -219,7 +269,7 @@ BPLUSTree::print(node* n) {
         cout << "-";
     }
     cout << endl;
-
+    //cout <<" num elements? " << to_string(n->num_elements);
     // print each sub tree
     if (n->is_leaf)
         return;
