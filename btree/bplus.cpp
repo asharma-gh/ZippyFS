@@ -23,11 +23,8 @@ BPLUSTree::insert(int key, int val) {
     }
     // else find node
     node* target = find_node_to_store(key);
-    cout << "printing things in target..." << endl;
-    for (int ii = 0; ii < target->num_elements; ii++) {
-        cout << "|" << to_string(target->keys[ii]) << "|";
-    }
-    cout << endl;
+
+    //cout << endl;
     // check if node is full
     if (target->num_elements == ORDER - 1) {
         // it needs to be split and inserted
@@ -35,6 +32,10 @@ BPLUSTree::insert(int key, int val) {
         return;
     }
     insert_into_node(target, key, val, false, NULL);
+    //cout << "printing things in target post insert..." << endl;
+    for (int ii = 0; ii < target->num_elements; ii++) {
+        //  cout << "|" << to_string(target->keys[ii]) << "|";
+    }
     return;
 
 
@@ -46,10 +47,7 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
         return n;
 
     // get median idx, assuming order is odd
-    int med_idx = (ORDER / 2) + 2;
-
-    // check if this key belongs in the new left
-    bool is_left_part = n->keys[med_idx] < k;
+    int med_idx = ((ORDER-1) / 2) + 1;
 
     // make new leaves
     node* right = (node*)malloc(sizeof(node));
@@ -57,6 +55,7 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
     // copy everything from [med, end] to new leaf
     int ii;
     int cur_idx = 0;
+
     for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
         right->num_elements++;
         right->keys[cur_idx] = n->keys[ii];
@@ -65,19 +64,15 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
         // delete now duplicate entry
         n->keys[ii] = -1;
         n->children[ii] = NULL;
-        n->num_elements == 0 ? 0 : n->num_elements--;
     }
     // get last child
     right->children[ii] = n->children[ii];
     n->children[ii] = NULL;
-    n->num_elements = med_idx - 1;
+    n->num_elements = med_idx;
 
     // now we split the leaf, insert into the proper side
     if (k != -1 && v != -1) {
-        if (is_left_part)
-            insert_into_node(n, k, v, false, NULL);
-        else
-            insert_into_node(right, k, v, false, NULL);
+        insert_into_node(right, k, v, false, NULL);
     }
 
     // now we need to fix the parents if needed, and fix parent pointers
@@ -89,11 +84,18 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
         nroot->num_elements = 1;
         nroot->is_leaf = false;
         // make median the only key in this new root
-        nroot->keys[0] = right->keys[0];
+        //nroot->keys[0] = right->keys[0];
         // add children to this new root
-        nroot->children[0] = n;
-        nroot->children[1] = right;
+        //nroot->children[0] = n;
+        //nroot->children[1] = right;
+        cout << "inserting into root..." << endl;
+        int idx = insert_into_node(nroot, right->keys[0], -1, true, n);
+        nroot->children[idx + 1] = right;
         // split is complete.
+        //cur_root->is_leaf = false;
+        //insert_into_node(cur_root, -1, -1, false, nroot);
+        cout << "printing old root..." << endl;
+        print(cur_root);
         cur_root = nroot;
         return nroot;
     }
@@ -115,16 +117,16 @@ BPLUSTree::insert_into_node(node* n, int k, int v, bool isleft, node* child) {
 
     // find spot
     int cur_idx = 0;
-    cout << "num elements: " << to_string(n->num_elements) << endl;
-    cout << "Listing things: ";
+    // cout << "num elements: " << to_string(n->num_elements) << endl;
+    //  cout << "Listing things: ";
     for (int ii = 0; ii < n->num_elements - 1; ii++) {
-        cout << "|"<<to_string(n->keys[ii]) << "|";
+        // cout << "|"<<to_string(n->keys[ii]) << "|";
         if (n->keys[ii] > k) {
             cur_idx = ii;
         }
     }
-    cout << endl;
-    cout << "cur idx:" << to_string(cur_idx) << " for k:" << k << endl;
+    //cout << endl;
+    //cout << "cur idx:" << to_string(cur_idx) << " for k:" << k << endl;
 
     if (cur_idx == 0 && n->num_elements > 0) {
         cur_idx = n->num_elements;
@@ -165,14 +167,14 @@ BPLUSTree::find_node_to_store(int k) {
     node* cur = cur_root;
     for (;;) {
         if (cur->is_leaf) {
-            cout << "cur is leaf" << endl;
+            //    cout << "cur is leaf" << endl;
             return cur;
         }
 
         // is this key before all in  this node?
         if (k < cur->keys[0]) {
             cur = before(cur, 0);
-            cout << "cur is before" << endl;
+            //    cout << "cur is before" << endl;
             continue;
 
         }
@@ -180,7 +182,7 @@ BPLUSTree::find_node_to_store(int k) {
         // is this key after all of the ones in this node?
         if (k >= cur->keys[cur->num_elements - 1]) {
             cur = after(cur, cur->num_elements - 1);
-            cout << "cur is after" << endl;
+            //   cout << "cur is after" << endl;
             continue;
         }
 
@@ -207,10 +209,12 @@ BPLUSTree::node*
 BPLUSTree::after(node* n, int k) {
     return n->children[k + 1];
 }
+
 void
 BPLUSTree::print() {
     print(cur_root);
 }
+
 void
 BPLUSTree::print(node* n) {
     if (n == NULL)
@@ -232,7 +236,7 @@ BPLUSTree::print(node* n) {
     // print each sub tree
 
     for (int ii = 0; ii < n->num_elements + 1; ii++) {
-        print(n->children[0]);
+        print(n->children[ii]);
     }
     return;
 
