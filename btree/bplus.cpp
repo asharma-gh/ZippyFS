@@ -40,7 +40,7 @@ BPLUSTree::split_insert_node(node* n, int k, int v) {
         return n;
 
     // get median idx, assuming order is odd
-    int med_idx = ((ORDER-1) / 2) + 1;
+    int med_idx = ((ORDER-1) / 2);
 
     // make new leaves
     node* right = (node*)malloc(sizeof(node));
