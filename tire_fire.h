@@ -4,7 +4,7 @@
 
 /**
  * Represents an allocator which returns memory allocated
- * within a file on disk
+ * within a file on disk, using bump allocation.
  *
  * @author Arvin Sharma
  */

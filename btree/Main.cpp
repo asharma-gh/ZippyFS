@@ -1,6 +1,6 @@
 #include <iostream>
 #include "bplus.h"
-#define MAX 5000000
+#define MAX 15
 using namespace std;
 int
 main() {
@@ -26,4 +26,5 @@ main() {
 
     */
     // }
+    bpt.print();
 }
