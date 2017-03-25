@@ -4,6 +4,7 @@
 #include "inode.h"
 #include "tire_fire.h"
 #include "block.h"
+#define ORDER 1000
 /**
  * This class represents a memory-backed B+Tree used for indexing
  * inodes flushed from the in-memory file-system.
@@ -42,9 +43,34 @@ class BPLUSIndex {
         int64_t data_offset;
     } block_data;
 
+    /** represents a tree structure containing inodes */
+    typedef struct node {
+        int64_t parent = -1;
+        int64_t keys[ORDER - 1] = {-1};
+        int64_t num_keys = 0;
+        int is_leaf = 0;
+        /** child nodes */
+        int64_t children[ORDER] = {-1};
+        /** list of inodes if this node is a leaf */
+        int64_t inodes;
+        int64_t values_size = 0;
+    } node;
 
+    /** adds the given inode to this B+Tree */
+    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks, std::map<uint64_t, unsigned long long> block_mtime);
+
+    /** constructor and destructor */
+    BPLUSIndex();
+    ~BPLUSIndex();
 
   private:
+    /** in memory structure */
+    TireFire mem_;
+    uint64_t rootidx_ = 0;
+    /** maintain pointer to root */
+    node* root_ptr_ = nullptr;
+    bool root_has_inode_ = false;
+
 
 };
 #endif
