@@ -60,14 +60,25 @@ class BPLUSIndex {
     void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks,
                    std::map<uint64_t, unsigned long long> block_mtime);
 
-    /** constructor and destructor */
-    BPLUSIndex();
+    /**
+     * constructs a B+Tree
+     * @num_ents is the number of values that will exist in this B+tree
+     */
+    BPLUSIndex(uint64_t num_ents);
+
+    /**
+     * Destructor, flushes everything to disk
+     */
     ~BPLUSIndex();
 
   private:
+    /** number of entries*/
+    uint64_t num_ents_ = 0;
+    inode* inode_arr_ptr_ = nullptr;
+    int64_t inode_arr_idx_ = 0;
     /** in memory structure */
     TireFire mem_;
-    uint64_t rootidx_ = 0;
+    int64_t rootidx_ = 0;
     /** maintain pointer to root */
     node* root_ptr_ = nullptr;
     bool root_has_inode_ = false;
