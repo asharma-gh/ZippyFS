@@ -57,7 +57,8 @@ class BPLUSIndex {
     } node;
 
     /** adds the given inode to this B+Tree */
-    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks, std::map<uint64_t, unsigned long long> block_mtime);
+    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks,
+                   std::map<uint64_t, unsigned long long> block_mtime);
 
     /** constructor and destructor */
     BPLUSIndex();
