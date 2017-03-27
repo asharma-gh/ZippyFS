@@ -46,6 +46,7 @@ class BPLUSIndex {
     /** represents a tree structure containing inodes */
     typedef struct node {
         int64_t parent = -1;
+        /** array of pointers to char arrays */
         int64_t keys[ORDER - 1] = {-1};
         int64_t num_keys = 0;
         int is_leaf = 0;
@@ -76,6 +77,7 @@ class BPLUSIndex {
     uint64_t num_ents_ = 0;
     inode* inode_arr_ptr_ = nullptr;
     int64_t inode_arr_idx_ = 0;
+    int64_t cur_inode_arr_idx_ = 0;
     /** in memory structure */
     TireFire mem_;
     int64_t rootidx_ = 0;
@@ -83,6 +85,11 @@ class BPLUSIndex {
     node* root_ptr_ = nullptr;
     bool root_has_inode_ = false;
 
+    /** @returns the index of the node to store the given key */
+    int64_t find_node_to_store(std::string key);
 
+    /** helpers to find a child */
+    int64_t before(node* n, int64_t idx);
+    int64_t after(node* n, int64_t idx);
 };
 #endif
