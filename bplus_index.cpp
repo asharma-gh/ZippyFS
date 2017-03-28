@@ -127,24 +127,23 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64
             n->keys[ii + 1] = temp.keys[ii];
             n->children[ii + 1] = temp.children[ii];
             // get value ptr
-            // inode* lo_inode = (inode*)mem_.get_memory(n->inodes);
+            inode* lo_inode = (inode*)mem_.get_memory(n->inodes);
 
-            //lo_inode[ii + 1] = lo_inode[ii];
-            //n = (node*)mem_.get_memory(nodeidx);
+            lo_inode[ii + 1] = lo_inode[ii];
+            n = (node*)mem_.get_memory(nodeidx);
         }
     }
     n->keys[cur_idx] = k;
     n->num_keys++;
-    //n->values_size++;
+    n->values_size++;
 
     if (n->is_leaf) {
         // insert value into fixed node
-        /*
-        record* r = (record*)malloc(sizeof(record));
-        r->value = v;
-        n->values[cur_idx] = r;
-        n->children[cur_idx] = NULL;
-        */
+        inode* lo_inode = (inode*)mem_.get_memory(n->inodes);
+        n = (node*)mem_.get_memory(nodeidx);
+        lo_inode[cur_idx] = v;
+        n->children[cur_idx] = -1;
+
     } else {
         // insert child
         if (!isleft)
