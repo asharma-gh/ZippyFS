@@ -85,11 +85,30 @@ class BPLUSIndex {
     node* root_ptr_ = nullptr;
     bool root_has_inode_ = false;
 
+    /** contingeous list of inodes for this B+Tree */
+    int64_t inodes_idx_ = 0;
+
     /** @returns the index of the node to store the given key */
     int64_t find_node_to_store(std::string key);
 
     /** helpers to find a child */
     int64_t before(node* n, int64_t idx);
     int64_t after(node* n, int64_t idx);
+
+    /** inserts the k,v in the given NON-EMPTY leaf-node, assuming ALL k's are UNIQUE
+     * @return the index that the k,v pair was inserted in
+     * if n is not an internal node, the child is inserted instead
+     */
+    int insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64_t child);
+
+    /** splits the given node, inserts the given k,v
+     * MODIFIES cur_root
+     * @return the new root of the tree with the k,v inserted
+     */
+    /** @params k,v == -1 then no k,v pair is inserted into the newly allocated node
+     *  @params isparent changes how this functon splits, assuming that it is splitting a parent node.
+     *
+     */
+    int64_t split_insert_node(int64_t n, int k, inode v, bool isparent, int64_t targ);
 };
 #endif
