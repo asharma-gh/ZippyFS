@@ -38,10 +38,12 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         inode_arr_ptr_->ctime = in.get_ull_ctime();
         inode_arr_ptr_->size = in.get_size();
         inode_arr_ptr_->deleted = in.is_deleted();
-        root_ptr_->values_size = 1;
-        return;
     }
 
+    // TODO:
+    // construct inode
+    // initialize blocks
+    // insert into node w/ blocks info
     // else find a node to insert it
     int64_t target_idx = find_node_to_store(in.get_id());
 
@@ -62,7 +64,7 @@ BPLUSIndex::find_node_to_store(string key) {
     if (root_ptr_ == nullptr)
         throw domain_error("tree is empty");
 
-    node* cur = (node*)mem_.get_memory(rootidx_);
+    node* cur = nullptr;
     int64_t cur_idx = rootidx_;
 
     for (;;) {
@@ -123,14 +125,13 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64
     } else {
         // move everything from cur_idx + 1 up
         node temp = *n;
+        inode* lo_inode = (inode*)mem_.get_memory(n->inodes);
+
         for (int ii = cur_idx; ii < n->num_keys - 1; ii++) {
             n->keys[ii + 1] = temp.keys[ii];
             n->children[ii + 1] = temp.children[ii];
-            // get value ptr
-            inode* lo_inode = (inode*)mem_.get_memory(n->inodes);
-
             lo_inode[ii + 1] = lo_inode[ii];
-            n = (node*)mem_.get_memory(nodeidx);
+
         }
     }
     n->keys[cur_idx] = k;
@@ -140,7 +141,6 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64
     if (n->is_leaf) {
         // insert value into fixed node
         inode* lo_inode = (inode*)mem_.get_memory(n->inodes);
-        n = (node*)mem_.get_memory(nodeidx);
         lo_inode[cur_idx] = v;
         n->children[cur_idx] = -1;
 
@@ -152,6 +152,12 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64
     }
     return cur_idx;
 }
+/*
+int64_t
+BPLUSIndex::split_insert_node(int64_t n, int k, inode v, bool isparent, int64_t targ) {
+
+}
+*/
 BPLUSIndex::~BPLUSIndex() {
     mem_.end();
 }
