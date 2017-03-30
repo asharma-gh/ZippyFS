@@ -20,32 +20,66 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         root_ptr_ = (node*)mem_.get_memory(rootidx_);
         root_ptr_->is_leaf = 1;
         root_ptr_->num_keys = 1;
-        // construct key
-        int64_t key_idx = mem_.get_tire(256 * sizeof(char));
-        char* key = (char*)mem_.get_memory(key_idx);
-        memset(key, '\0', 256 * sizeof(char));
-        memcpy(key, in.get_id().c_str(), in.get_id().size());
+        cur_inode_arr_idx_ = 0;
         // allocate memory for all inodes
         inode_arr_idx_ = mem_.get_tire(sizeof(inode) * num_ents_);
         inode_arr_ptr_ = (inode*)mem_.get_memory(inode_arr_idx_);
-        // refresh ptr for root
-        root_ptr_ = (node*)mem_.get_memory(rootidx_);
-        // insert this inode into the root
-        cur_inode_arr_idx_ = 0;
-        inode_arr_ptr_->mode = in.get_mode();
-        inode_arr_ptr_->nlink = in.get_link();
-        inode_arr_ptr_->mtime = in.get_ull_mtime();
-        inode_arr_ptr_->ctime = in.get_ull_ctime();
-        inode_arr_ptr_->size = in.get_size();
-        inode_arr_ptr_->deleted = in.is_deleted();
     }
 
-    // TODO:
     // construct inode
+    // construct key
+    int64_t key_idx = mem_.get_tire(256 * sizeof(char));
+    char* key = (char*)mem_.get_memory(key_idx);
+    memset(key, '\0', 256 * sizeof(char));
+    memcpy(key, in.get_id().c_str(), in.get_id().size());
+    // insert this inode
+    inode_arr_ptr_ = (inode*)mem_.get_memory(inode_arr_idx_);
+    inode* cur_inode_ptr = inode_arr_ptr_ + cur_inode_arr_idx_;
+    cur_inode_ptr->mode = in.get_mode();
+    cur_inode_ptr->nlink = in.get_link();
+    cur_inode_ptr->mtime = in.get_ull_mtime();
+    cur_inode_ptr->ctime = in.get_ull_ctime();
+    cur_inode_ptr->size = in.get_size();
+    cur_inode_ptr->deleted = in.is_deleted();
     // initialize blocks
+    uint64_t bd_size = sizeof(block_data) *  dirty_blocks.size();
+    // construct blocks dirty blocks for inode
+    int64_t blocksidx = mem_.get_tire(bd_size);
+
+
+    for (auto db : dirty_blocks) {
+        block_data* loblocks = (block_data*)mem_.get_memory(blocksidx);
+        block_data* cur = loblocks + db.first;
+        cur->block_id = db.first;
+        cur->size = db.second->get_actual_size();
+
+        // construct data in memory
+        int64_t bdataidx = mem_.get_tire(cur->size * sizeof(uint8_t));
+        uint8_t* bdata = (uint8_t*)mem_.get_memory(bdataidx);
+        auto bytes = db.second->get_data();
+        loblocks = (block_data*)mem_.get_memory(blocksidx);
+        cur = loblocks + db.first;
+
+        for (uint32_t ii = 0; ii < cur->size; ii++) {
+            bdata[ii] = bytes[ii];
+
+        }
+        cur->data_offset = mem_.get_offset(bdataidx);
+        cur->mtime = block_mtime[db.first];
+    }
+    // add block to inode
+    inode_arr_ptr_ = (inode*)mem_.get_memory(inode_arr_idx_);
+    cur_inode_ptr = inode_arr_ptr_ + cur_inode_arr_idx_;
+    if (bd_size > 0) {
+        cur_inode_ptr->block_data = mem_.get_offset(blocksidx);
+        cur_inode_ptr->block_data_size = bd_size;
+    } else
+        cur_inode_ptr->block_data = -1;
+
     // insert into node w/ blocks info
     // else find a node to insert it
     int64_t target_idx = find_node_to_store(in.get_id());
+
 
     // check if the node is full
     node* tnode = (node*)mem_.get_memory(target_idx);
@@ -114,7 +148,8 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, inode v, bool isleft, i
     int cur_idx = 0;
     node * n = (node*)mem_.get_memory(nodeidx);
     for (int ii = 0; ii < n->num_keys - 1; ii++) {
-
+        // compare keys by string
+        // TODO:
         if (n->keys[ii] > k) {
             cur_idx = ii;
         }
