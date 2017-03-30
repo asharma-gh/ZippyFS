@@ -49,7 +49,7 @@ class BPLUSIndex {
         /** array of pointers to char arrays */
         int64_t keys[ORDER - 1] = {-1};
         int64_t num_keys = 0;
-        int is_leaf = 0;
+        bool is_leaf = 0;
         /** child nodes */
         int64_t children[ORDER] = {-1};
         /** list of inodes if this node is a leaf */
@@ -57,9 +57,10 @@ class BPLUSIndex {
         int64_t values_size = 0;
     } node;
 
+    /** TODO: interior node, leaf node */
+
     /** adds the given inode to this B+Tree */
-    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks,
-                   std::map<uint64_t, unsigned long long> block_mtime);
+    void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks, std::map<uint64_t, unsigned long long> block_mtime);
 
     /**
      * constructs a B+Tree

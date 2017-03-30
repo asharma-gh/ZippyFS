@@ -152,12 +152,76 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64
     }
     return cur_idx;
 }
-/*
+
 int64_t
 BPLUSIndex::split_insert_node(int64_t n, int k, inode v, bool isparent, int64_t targ) {
+    // get memory for node
+    node* nnode = (node*)mem_.get_memory(n);
 
+    // do nothing if the node is not full
+    if (nnode->num_keys != ORDER - 1)
+        return n;
+
+    // get median key index
+    uint64_t med_idx = ((ORDER - 1) / 2);
+
+    // make new leaves
+    int64_t rightidx = mem_.get_tire(sizeof(node));
+    node* right = (node*)mem_.get_memory(rightidx);
+    right->is_leaf = true;
+    // copy stuff from median to end over to new node
+    uint64_t ii;
+    uint64_t cur_idx = 0;
+    // refresh pointer
+    nnode = (node*)mem_.get_memory(n);
+    int64_t med_key_idx = nnode->keys[med_idx];
+    // if we are splitting a parent, don't include median on right
+    if (isparent) {
+        for (ii = med_idx + 1; ii < ORDER - 1; ii++, cur_idx++) {
+            right->num_keys++;
+            right->keys[cur_idx] = nnode->keys[ii];
+            right->children[cur_idx] = nnode->children[ii];
+            // delete now redundant entries
+            nnode->keys[ii] = -1;
+            nnode->num_keys--;
+        }
+        // remove med from left
+        nnode->keys[med_idx] = -1;
+        nnode->num_keys--;
+        // right side is also a parent, insert the target (carried up) node
+        right->is_leaf = false;
+        insert_into_node(rightidx, k, v, false, targ);
+        // set parent pointer in targ
+        node* target = (node*)mem_.get_memory(targ);
+        target->parent = rightidx;
+
+
+
+
+    } else {
+        // we are splitting a child
+        for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
+            right->num_keys++;
+            right->keys[cur_idx] = nnode->keys[ii];
+            right->children[cur_idx] = nnode->children[ii];
+            // copy values over
+            inode* vals = (inode*)mem_.get_memory(right->inodes);
+            inode* oldvals = (inode*)mem_.get_memory(nnode->inodes);
+            vals[cur_idx] = oldvals[ii];
+
+            // delete redundant entries
+            nnode->keys[ii] = -1;
+        }
+        nnode->num_keys = med_idx;
+
+        // now that the leaf is split, insert into new side
+        insert_into_node(rightidx, k, v, false, -1);
+    }
+
+    // make new leaf and split
+    return -1;
 }
-*/
+
 BPLUSIndex::~BPLUSIndex() {
     mem_.end();
 }

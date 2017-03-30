@@ -1,3 +1,7 @@
+- finish b+tree implementation in file system, get loads and flush to work
+
+- separate internal node and leaf nodes
+
 - fully integrate loader into block_cache
 
 - refactor DiskIndex structure to be a B-tree
