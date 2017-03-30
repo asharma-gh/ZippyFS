@@ -55,7 +55,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         return;
     }
     // or else we can just insert it
-    // insert_into_node(target, key, val, false, NULL);
+    //insert_into_node(target_idx, k, v, false, NULL);
 
 }
 
@@ -109,7 +109,7 @@ BPLUSIndex::after(node* n, int64_t idx) {
     return n->children[idx];
 }
 int
-BPLUSIndex::insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64_t child) {
+BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, inode v, bool isleft, int64_t child) {
     // find spot
     int cur_idx = 0;
     node * n = (node*)mem_.get_memory(nodeidx);
@@ -154,7 +154,7 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64
 }
 
 int64_t
-BPLUSIndex::split_insert_node(int64_t n, int k, inode v, bool isparent, int64_t targ) {
+BPLUSIndex::split_insert_node(int64_t n, int64_t k, inode v, bool isparent, int64_t targ) {
     // get memory for node
     node* nnode = (node*)mem_.get_memory(n);
 
@@ -195,9 +195,6 @@ BPLUSIndex::split_insert_node(int64_t n, int k, inode v, bool isparent, int64_t 
         node* target = (node*)mem_.get_memory(targ);
         target->parent = rightidx;
 
-
-
-
     } else {
         // we are splitting a child
         for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
@@ -217,8 +214,40 @@ BPLUSIndex::split_insert_node(int64_t n, int k, inode v, bool isparent, int64_t 
         // now that the leaf is split, insert into new side
         insert_into_node(rightidx, k, v, false, -1);
     }
+    // fix parent pointers
+    int64_t paridx = nnode->parent;
 
-    // make new leaf and split
+    int nkey = right->keys[0];
+    if (isparent)
+        nkey = med_key_idx;
+    // make new root if parent is null
+    if (paridx == -1) {
+        // make new root
+        int64_t nrootidx = mem_.get_tire(sizeof(node));
+        node* nroot = (node*)mem_.get_memory(nrootidx);
+        nroot->num_keys = 1;
+        nroot->is_leaf = false;
+        nroot->keys[0] = nkey;
+        nroot->children[0] = n;
+        nroot->children[1] = rightidx;
+        right = (node*)mem_.get_memory(rightidx);
+        right->parent = nrootidx;
+        nnode = (node*)mem_.get_memory(n);
+        nnode->parent = nrootidx;
+        rootidx_ = nrootidx;
+        return nrootidx;
+    }
+    // parent exists
+    node* pparent = (node*)mem_.get_memory(paridx);
+    right = (node*)mem_.get_memory(rightidx);
+
+    if (pparent->num_keys == ORDER - 1) {
+        // no room, need to split
+        paridx = split_insert_node(paridx, right->keys[0], v, true, rightidx);
+    } else {
+        insert_into_node(paridx, nkey, v, false, rightidx);
+        right->parent = paridx;
+    }
     return -1;
 }
 

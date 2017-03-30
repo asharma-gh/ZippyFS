@@ -100,7 +100,7 @@ class BPLUSIndex {
      * @return the index that the k,v pair was inserted in
      * if n is not an internal node, the child is inserted instead
      */
-    int insert_into_node(int64_t nodeidx, int k, inode v, bool isleft, int64_t child);
+    int insert_into_node(int64_t nodeidx, int64_t k, inode v, bool isleft, int64_t child);
 
     /** splits the given node, inserts the given k,v
      * MODIFIES cur_root
@@ -110,6 +110,6 @@ class BPLUSIndex {
      *  @params isparent changes how this functon splits, assuming that it is splitting a parent node.
      *
      */
-    int64_t split_insert_node(int64_t n, int k, inode v, bool isparent, int64_t targ);
+    int64_t split_insert_node(int64_t n, int64_t k, inode v, bool isparent, int64_t targ);
 };
 #endif
