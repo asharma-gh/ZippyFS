@@ -84,13 +84,14 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
 
     // check if the node is full
     node* tnode = (node*)mem_.get_memory(target_idx);
+    uint64_t inode_of = ((cur_inode_arr_idx_ - 1) * sizeof(inode)) + mem_.get_offset(inodes_idx_);
     if (tnode->num_keys == ORDER - 1) {
         // needs to split the node to fit this item
-        split_insert_node(target_idx, key_idx, ((cur_inode_arr_idx_ - 1) * sizeof(inode)) + mem_.get_offset(inodes_idx_), false, -1);
+        split_insert_node(target_idx, key_idx, inode_of, false, -1);
         return;
     }
     // or else we can just insert it
-    //insert_into_node(target_idx, k, v, false, NULL);
+    insert_into_node(target_idx, key_idx, inode_of, false, -1);
 
 }
 
@@ -151,14 +152,16 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, int64_t v, bool isleft,
     for (int ii = 0; ii < n->num_keys - 1; ii++) {
         // compare keys by string
         // TODO:
-        if (n->keys[ii] > k) {
+        char* oldk = (char*)mem_.get_memory(n->keys[ii]);
+        char* newk = (char*)mem_.get_memory(k);
+        if (strcmp(oldk, newk) > 0)
             cur_idx = ii;
-        }
+
     }
 
-    if (cur_idx == 0 && n->num_keys > 0) {
+    if (cur_idx == 0 && n->num_keys > 0)
         cur_idx = n->num_keys;
-    } else {
+    else {
         // move everything from cur_idx + 1 up
         node temp = *n;
         for (int ii = cur_idx; ii < n->num_keys - 1; ii++) {

@@ -2,6 +2,7 @@
 #include "util.h"
 #include "inode.h"
 #include "fuse_ops.h"
+#include "bplus_index.h"
 #include "includes.h"
 using namespace std;
 
@@ -351,7 +352,7 @@ BlockCache::flush_to_disk() {
     cout << "Flushing" << endl;
     if (!has_changed_)
         return -1;
-    DiskIndex flusher;
+    BPLUSIndex flusher(inode_idx_.size());
     for (auto ent : inode_idx_) {
         flusher.add_inode(*get_inode_by_path(ent.first),
                           dirty_block_[ent.second], dirty_block_mtime_[ent.second]);
