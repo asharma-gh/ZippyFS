@@ -44,7 +44,6 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
 
     // construct inode
     // construct key
-    //int64_t key_idx = mem_.get_tire(256 * sizeof(char));
     char* key = (char*)mem_.get_memory(hash_arr_idx_) + cur_hash_arr_idx_;
     memset(key, '\0', HASH_SIZE * sizeof(char));
     memcpy(key, in.get_id().c_str(), in.get_id().size());
@@ -70,7 +69,6 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         cur->size = db.second->get_actual_size();
 
         // construct data in memory
-        //int64_t bdataidx = mem_.get_tire(cur->size * sizeof(uint8_t));
         uint8_t* bdata = (uint8_t*)mem_.get_memory(block_arr_idx_) + cur_block_arr_idx_;
         auto bytes = db.second->get_data();
         loblocks = (block_data*)mem_.get_memory(blocksidx);
@@ -191,24 +189,17 @@ BPLUSIndex::after(node* n, int64_t idx) {
 }
 int
 BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isleft, int64_t child) {
-    //cout << "Inserting " << to_string(nodeoffset) << endl;
     // find spot
     int cur_idx = 0;
     node * n = (node*)((char*)mem_.get_root() + nodeoffset);
-    //cout << "NUM KEYS: " << to_string(n->num_keys) << endl;
     for (int ii = 0; ii < n->num_keys; ii++) {
         // compare keys by string
-        // TODO:
-        // cout << "Offset: " << to_string(n->keys[ii]) << endl;
-        //cout << "child: " << to_string(n->children[ii]) << endl;
         char* oldk = (char*)mem_.get_root() + n->keys[ii];
         char* newk = (char*)mem_.get_root() + k;
-        //cout << "oldk: " << oldk << endl;
-        // cout << "newk: " << newk << endl;
         if (strcmp(oldk, newk) > 0)
             cur_idx = ii;
     }
-    //cout << "child: " << to_string(n->children[n->num_keys]) << endl;
+
     if (cur_idx == 0 && n->num_keys > 0)
         cur_idx = n->num_keys;
     else {
@@ -223,34 +214,19 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
         }
         n->children[ii + 1] = temp.children[ii];
     }
-    //cout << "PUTTING K IN " << to_string(cur_idx) << endl;
     n->keys[cur_idx] = k;
     n->num_keys++;
 
     if (n->is_leaf) {
         // insert value into fixed node
         n->values[cur_idx] = v;
-        //n->children[cur_idx] = 0;
 
     } else {
         // insert child
         if (!isleft)
             cur_idx++;
-        //  cout << "Is child at " << to_string (cur_idx) << " of: " << to_string(child) << endl;
         n->children[cur_idx] = child;
     }
-    // cout << "NEW NUM KEYS: " << to_string(n->num_keys) << endl;
-    // cout << "NEW LIST OF KEYS" << endl;
-//   for (int ii = 0; ii < n->num_keys; ii++) {
-    //  cout << "child: " << to_string(n->children[ii]) << endl;
-    //char* oldk = (char*)mem_.get_root() + n->keys[ii];
-
-    //    cout << "oldk: " << oldk << endl;
-
-//  }
-    // cout << "child: " << to_string(n->children[n->num_keys]) << endl;
-
-
     return cur_idx;
 }
 

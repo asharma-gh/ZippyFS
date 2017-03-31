@@ -1,4 +1,3 @@
-- debug search, print entire tree and look at it
 - finish b+tree implementation in file system, get loads and flush to work
 
 - separate internal node and leaf nodes
