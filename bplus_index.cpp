@@ -125,9 +125,10 @@ BPLUSIndex::find_node_to_store(string key) {
             cur = (node*)((char*)mem_.get_root() + cur_offset);
         cout << "cur_offset: " << to_string(cur_offset) << endl;
         cout << "num keys? " << to_string(cur->num_keys) << endl;
+        cout << "isleaf? " << to_string(cur->is_leaf) << endl;
         if (cur->is_leaf)
             return cur_offset;
-        cout << "isleaf? " << to_string(cur->is_leaf) << endl;
+
         // is this key before all of the ones in this node?
         char* cur_key = (char*)mem_.get_root() + cur->keys[0];
         if (strcmp(key.c_str(), cur_key) < 0) {
@@ -173,6 +174,7 @@ BPLUSIndex::after(node* n, int64_t idx) {
 }
 int
 BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isleft, int64_t child) {
+    cout << "Inserting " << to_string(nodeoffset) << endl;
     // find spot
     int cur_idx = 0;
     node * n = (node*)((char*)mem_.get_root() + nodeoffset);
@@ -181,6 +183,7 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
         // compare keys by string
         // TODO:
         cout << "Offset: " << to_string(n->keys[ii]) << endl;
+        cout << "child: " << to_string(n->children[ii]) << endl;
         char* oldk = (char*)mem_.get_root() + n->keys[ii];
         char* newk = (char*)mem_.get_root() + k;
         cout << "oldk: " << oldk << endl;
@@ -188,18 +191,20 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
         if (strcmp(oldk, newk) > 0)
             cur_idx = ii;
     }
-
+    cout << "child: " << to_string(n->children[n->num_keys]) << endl;
     if (cur_idx == 0 && n->num_keys > 0)
         cur_idx = n->num_keys;
     else {
         // move everything from cur_idx + 1 up
         node temp = *n;
-        for (int ii = cur_idx; ii < n->num_keys; ii++) {
+        int ii = cur_idx;
+        for (; ii < n->num_keys; ii++) {
             n->keys[ii + 1] = temp.keys[ii];
             n->children[ii + 1] = temp.children[ii];
             n->values[ii + 1] = temp.values[ii];
 
         }
+        n->children[ii + 1] = temp.children[ii];
     }
     cout << "PUTTING K IN " << to_string(cur_idx) << endl;
     n->keys[cur_idx] = k;
@@ -214,9 +219,21 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
         // insert child
         if (!isleft)
             cur_idx++;
+        cout << "Is child at " << to_string (cur_idx) << " of: " << to_string(child) << endl;
         n->children[cur_idx] = child;
     }
     cout << "NEW NUM KEYS: " << to_string(n->num_keys) << endl;
+    cout << "NEW LIST OF KEYS" << endl;
+    for (int ii = 0; ii < n->num_keys; ii++) {
+        cout << "child: " << to_string(n->children[ii]) << endl;
+        char* oldk = (char*)mem_.get_root() + n->keys[ii];
+
+        cout << "oldk: " << oldk << endl;
+
+    }
+    cout << "child: " << to_string(n->children[n->num_keys]) << endl;
+
+
     return cur_idx;
 }
 
@@ -242,7 +259,7 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
     uint64_t cur_idx = 0;
     // refresh pointer
     nnode = (node*)((char*)mem_.get_root() + nodeoffset);
-    int64_t med_key_idx = nnode->keys[med_idx];
+    int64_t med_key_of = nnode->keys[med_idx];
     // if we are splitting a parent, don't include median on right
     if (isparent) {
         cout << "MED IDX" << to_string(med_idx) << endl;
@@ -290,7 +307,7 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
 
     int64_t nkey = right->keys[0];
     if (isparent)
-        nkey = med_key_idx;
+        nkey = med_key_of;
     // make new root if parent is null
     if (paridx == -1) {
         // make new root
