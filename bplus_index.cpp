@@ -41,6 +41,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     cur_inode_ptr->ctime = in.get_ull_ctime();
     cur_inode_ptr->size = in.get_size();
     cur_inode_ptr->deleted = in.is_deleted();
+    cur_inode_arr_idx_++;
     // initialize blocks
     uint64_t bd_size = sizeof(block_data) *  dirty_blocks.size();
     // construct blocks dirty blocks for inode
@@ -85,7 +86,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     node* tnode = (node*)mem_.get_memory(target_idx);
     if (tnode->num_keys == ORDER - 1) {
         // needs to split the node to fit this item
-        //split_insert_node(target, key, val, false, NULL);
+        split_insert_node(target_idx, key_idx, ((cur_inode_arr_idx_ - 1) * sizeof(inode)) + mem_.get_offset(inodes_idx_), false, -1);
         return;
     }
     // or else we can just insert it
@@ -143,7 +144,7 @@ BPLUSIndex::after(node* n, int64_t idx) {
     return n->children[idx];
 }
 int
-BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, inode v, bool isleft, int64_t child) {
+BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, int64_t v, bool isleft, int64_t child) {
     // find spot
     int cur_idx = 0;
     node * n = (node*)mem_.get_memory(nodeidx);
@@ -160,12 +161,10 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, inode v, bool isleft, i
     } else {
         // move everything from cur_idx + 1 up
         node temp = *n;
-        inode* lo_inode = (inode*)mem_.get_memory(n->inodes);
-
         for (int ii = cur_idx; ii < n->num_keys - 1; ii++) {
             n->keys[ii + 1] = temp.keys[ii];
             n->children[ii + 1] = temp.children[ii];
-            lo_inode[ii + 1] = lo_inode[ii];
+            n->values[ii + 1] = temp.values[ii];
 
         }
     }
@@ -175,8 +174,7 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, inode v, bool isleft, i
 
     if (n->is_leaf) {
         // insert value into fixed node
-        inode* lo_inode = (inode*)mem_.get_memory(n->inodes);
-        lo_inode[cur_idx] = v;
+        n->values[cur_idx] = v;
         n->children[cur_idx] = -1;
 
     } else {
@@ -189,7 +187,7 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, inode v, bool isleft, i
 }
 
 int64_t
-BPLUSIndex::split_insert_node(int64_t n, int64_t k, inode v, bool isparent, int64_t targ) {
+BPLUSIndex::split_insert_node(int64_t n, int64_t k, int64_t v, bool isparent, int64_t targ) {
     // get memory for node
     node* nnode = (node*)mem_.get_memory(n);
 
@@ -237,9 +235,7 @@ BPLUSIndex::split_insert_node(int64_t n, int64_t k, inode v, bool isparent, int6
             right->keys[cur_idx] = nnode->keys[ii];
             right->children[cur_idx] = nnode->children[ii];
             // copy values over
-            inode* vals = (inode*)mem_.get_memory(right->inodes);
-            inode* oldvals = (inode*)mem_.get_memory(nnode->inodes);
-            vals[cur_idx] = oldvals[ii];
+            right->values[cur_idx] = nnode->values[ii];
 
             // delete redundant entries
             nnode->keys[ii] = -1;
