@@ -26,8 +26,8 @@ class BPLUSIndex {
         uint64_t ctime;
         uint64_t size;
         int deleted;
-        // index to hash memory, always 512 size char*
-        int64_t hash;
+        // offset to hash memory, always 512 size char*
+        uint64_t hash;
         // index to block data list memory
         int64_t block_data;
         // total size of block data
@@ -46,12 +46,12 @@ class BPLUSIndex {
     /** represents a tree structure containing inodes */
     typedef struct node {
         int64_t parent = -1;
-        /** array of pointers to char arrays */
+        /** array of offsets to char arrays */
         int64_t keys[ORDER - 1] = {-1};
         int64_t num_keys = 0;
         bool is_leaf = 0;
-        /** child nodes */
-        int64_t children[ORDER] = {-1};
+        /** offset to child nodes */
+        uint64_t children[ORDER] = {0};
         /** list of offsets for inodes if this node is a leaf */
         int64_t values[ORDER] = {-1};
         int64_t values_size = 0;
@@ -82,6 +82,7 @@ class BPLUSIndex {
     /** in memory structure */
     TireFire mem_;
     int64_t rootidx_ = 0;
+    int64_t first_root_ = 0;
     /** maintain pointer to root */
     node* root_ptr_ = nullptr;
     bool root_has_inode_ = false;
@@ -100,7 +101,7 @@ class BPLUSIndex {
      * @return the index that the k,v pair was inserted in
      * if n is not an internal node, the child is inserted instead
      */
-    int insert_into_node(int64_t nodeidx, int64_t k, int64_t v, bool isleft, int64_t child);
+    int insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isleft, int64_t child);
 
     /** splits the given node, inserts the given k,v
      * MODIFIES cur_root
@@ -110,6 +111,6 @@ class BPLUSIndex {
      *  @params isparent changes how this functon splits, assuming that it is splitting a parent node.
      *
      */
-    int64_t split_insert_node(int64_t n, int64_t k, int64_t v, bool isparent, int64_t targ);
+    int64_t split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isparent, int64_t targ);
 };
 #endif

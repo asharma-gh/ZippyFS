@@ -3,6 +3,7 @@
 using namespace std;
 BPLUSIndex::BPLUSIndex(uint64_t num_ents) {
     num_ents_ = num_ents;
+    cout << "NUM ENTS: " << to_string(num_ents) << endl;
     // generate path
     string name = "/home/arvin/FileSystem/zipfs/o/dir/root/TREE-"+ Util::generate_rand_hex_name();
     // initialize memory zone
@@ -18,6 +19,9 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     if (root_ptr_ == NULL) {
         rootidx_ = mem_.get_tire(sizeof(node));
         root_ptr_ = (node*)mem_.get_memory(rootidx_);
+        cout << "ROOT OFFSET: " << to_string(mem_.get_offset(rootidx_));
+        cout << "SIZEOF NODE: " << to_string(sizeof(node)) << endl;
+        first_root_ = rootidx_;
         root_ptr_->is_leaf = 1;
         root_ptr_->num_keys = 1;
         cur_inode_arr_idx_ = 0;
@@ -34,13 +38,14 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     memcpy(key, in.get_id().c_str(), in.get_id().size());
     // insert this inode
     inode_arr_ptr_ = (inode*)mem_.get_memory(inode_arr_idx_);
-    inode* cur_inode_ptr = inode_arr_ptr_ + cur_inode_arr_idx_;
+    inode* cur_inode_ptr = (inode*)mem_.get_memory(inode_arr_idx_) + cur_inode_arr_idx_;
     cur_inode_ptr->mode = in.get_mode();
     cur_inode_ptr->nlink = in.get_link();
     cur_inode_ptr->mtime = in.get_ull_mtime();
     cur_inode_ptr->ctime = in.get_ull_ctime();
     cur_inode_ptr->size = in.get_size();
     cur_inode_ptr->deleted = in.is_deleted();
+    cur_inode_ptr->hash = mem_.get_offset(key_idx);
     cur_inode_arr_idx_++;
     // initialize blocks
     uint64_t bd_size = sizeof(block_data) *  dirty_blocks.size();
@@ -79,19 +84,19 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
 
     // insert into node w/ blocks info
     // else find a node to insert it
-    int64_t target_idx = find_node_to_store(in.get_id());
+    uint64_t target_offset = find_node_to_store(in.get_id());
 
 
     // check if the node is full
-    node* tnode = (node*)mem_.get_memory(target_idx);
+    node* tnode = (node*)((char*)mem_.get_memory(first_root_) + target_offset);
     uint64_t inode_of = ((cur_inode_arr_idx_ - 1) * sizeof(inode)) + mem_.get_offset(inodes_idx_);
     if (tnode->num_keys == ORDER - 1) {
         // needs to split the node to fit this item
-        split_insert_node(target_idx, key_idx, inode_of, false, -1);
+        split_insert_node(target_offset, key_idx, inode_of, false, -1);
         return;
     }
     // or else we can just insert it
-    insert_into_node(target_idx, key_idx, inode_of, false, -1);
+    insert_into_node(target_offset, key_idx, inode_of, false, -1);
 
 }
 
@@ -101,24 +106,23 @@ BPLUSIndex::find_node_to_store(string key) {
         throw domain_error("tree is empty");
 
     node* cur = nullptr;
-    int64_t cur_idx = rootidx_;
-
+    int64_t cur_offset = mem_.get_offset(first_root_);
     for (;;) {
-        cur = (node*)mem_.get_memory(cur_idx);
+        cur = (node*)((char*)mem_.get_memory(first_root_) + cur_offset);
         if (cur->is_leaf)
-            return cur_idx;
+            return cur_offset;
 
         // is this key before all of the ones in this node?
         char* cur_key = (char*)mem_.get_memory(cur->keys[0]);
-        if (key.c_str() < cur_key) {
-            cur_idx = before(cur, 0);
+        if (strcmp(key.c_str(), cur_key) < 0) {
+            cur_offset = before(cur, 0);
             continue;
         }
 
         // is this key after the ones in this node?
         cur_key = (char*)mem_.get_memory(cur->keys[cur->num_keys - 1]);
-        if (key.c_str() >= cur_key) {
-            cur_idx = after(cur, cur->num_keys - 1);
+        if (strcmp(key.c_str(), cur_key) >= 0) {
+            cur_offset = after(cur, cur->num_keys - 1);
             continue;
         }
 
@@ -127,11 +131,11 @@ BPLUSIndex::find_node_to_store(string key) {
         for (int ii = 1; ii < cur->num_keys - 1; ii++) {
             char* prev = (char*)mem_.get_memory(cur->keys[ii]);
             char* post = (char*)mem_.get_memory(cur->keys[ii + 1]);
-            if (prev <= key.c_str()
-                    && key.c_str() < post)
+            if (strcmp(prev, key.c_str()) <= 0
+                    && strcmp(key.c_str(), post) < 0)
                 inneridx = ii;
         }
-        cur_idx = after(cur, inneridx);
+        cur_offset = after(cur, inneridx);
     }
 }
 
@@ -145,10 +149,10 @@ BPLUSIndex::after(node* n, int64_t idx) {
     return n->children[idx];
 }
 int
-BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, int64_t v, bool isleft, int64_t child) {
+BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isleft, int64_t child) {
     // find spot
     int cur_idx = 0;
-    node * n = (node*)mem_.get_memory(nodeidx);
+    node * n = (node*)((char*)mem_.get_memory(first_root_) + nodeoffset);
     for (int ii = 0; ii < n->num_keys - 1; ii++) {
         // compare keys by string
         // TODO:
@@ -156,7 +160,6 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, int64_t v, bool isleft,
         char* newk = (char*)mem_.get_memory(k);
         if (strcmp(oldk, newk) > 0)
             cur_idx = ii;
-
     }
 
     if (cur_idx == 0 && n->num_keys > 0)
@@ -178,25 +181,25 @@ BPLUSIndex::insert_into_node(int64_t nodeidx, int64_t k, int64_t v, bool isleft,
     if (n->is_leaf) {
         // insert value into fixed node
         n->values[cur_idx] = v;
-        n->children[cur_idx] = -1;
+        n->children[cur_idx] = 0;
 
     } else {
         // insert child
         if (!isleft)
             cur_idx++;
-        n->children[cur_idx] = child;
+        n->children[cur_idx] = mem_.get_offset(child);
     }
     return cur_idx;
 }
 
 int64_t
-BPLUSIndex::split_insert_node(int64_t n, int64_t k, int64_t v, bool isparent, int64_t targ) {
+BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isparent, int64_t targ) {
     // get memory for node
-    node* nnode = (node*)mem_.get_memory(n);
+    node* nnode = (node*)((char*)mem_.get_memory(first_root_) + nodeoffset);
 
     // do nothing if the node is not full
     if (nnode->num_keys != ORDER - 1)
-        return n;
+        return nodeoffset;
 
     // get median key index
     uint64_t med_idx = ((ORDER - 1) / 2);
@@ -209,7 +212,7 @@ BPLUSIndex::split_insert_node(int64_t n, int64_t k, int64_t v, bool isparent, in
     uint64_t ii;
     uint64_t cur_idx = 0;
     // refresh pointer
-    nnode = (node*)mem_.get_memory(n);
+    nnode = (node*)((char*)mem_.get_memory(first_root_) + nodeoffset);
     int64_t med_key_idx = nnode->keys[med_idx];
     // if we are splitting a parent, don't include median on right
     if (isparent) {
@@ -229,7 +232,7 @@ BPLUSIndex::split_insert_node(int64_t n, int64_t k, int64_t v, bool isparent, in
         insert_into_node(rightidx, k, v, false, targ);
         // set parent pointer in targ
         node* target = (node*)mem_.get_memory(targ);
-        target->parent = rightidx;
+        target->parent = mem_.get_offset(rightidx);
 
     } else {
         // we are splitting a child
@@ -262,11 +265,11 @@ BPLUSIndex::split_insert_node(int64_t n, int64_t k, int64_t v, bool isparent, in
         nroot->num_keys = 1;
         nroot->is_leaf = false;
         nroot->keys[0] = nkey;
-        nroot->children[0] = n;
-        nroot->children[1] = rightidx;
+        nroot->children[0] = nodeoffset;
+        nroot->children[1] = mem_.get_offset(rightidx);
         right = (node*)mem_.get_memory(rightidx);
         right->parent = nrootidx;
-        nnode = (node*)mem_.get_memory(n);
+        nnode = (node*)((char*)mem_.get_memory(first_root_) + nodeoffset);
         nnode->parent = nrootidx;
         rootidx_ = nrootidx;
         return nrootidx;
