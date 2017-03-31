@@ -338,7 +338,7 @@ BlockCache::flush_to_shdw(int on_close) {
 
 vector<string>
 BlockCache::get_refs(string path) {
-    if(in_cache(path) == -1)
+    if (in_cache(path) == -1)
         throw domain_error("thing not here");
     return get_inode_by_path(path)->get_refs();
 }
@@ -352,8 +352,15 @@ BlockCache::flush_to_disk() {
     cout << "Flushing" << endl;
     if (!has_changed_)
         return -1;
-    BPLUSIndex flusher(inode_idx_.size());
+    // preprocess number of blocks
+    uint64_t block_size = 0;
+    for (auto ent : dirty_block_) {
+        for (auto bl : ent.second)
+            block_size += bl.second->get_actual_size();
+    }
+    BPLUSIndex flusher(inode_idx_.size(), block_size);
     for (auto ent : inode_idx_) {
+        cout << "Flushing " << ent.first << endl;
         flusher.add_inode(*get_inode_by_path(ent.first),
                           dirty_block_[ent.second], dirty_block_mtime_[ent.second]);
     }

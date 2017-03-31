@@ -4,7 +4,7 @@
 #include "inode.h"
 #include "tire_fire.h"
 #include "block.h"
-#define ORDER 10
+#define ORDER 1000
 /**
  * This class represents a memory-backed B+Tree used for indexing
  * inodes flushed from the in-memory file-system.
@@ -65,7 +65,7 @@ class BPLUSIndex {
      * constructs a B+Tree
      * @num_ents is the number of values that will exist in this B+tree
      */
-    BPLUSIndex(uint64_t num_ents);
+    BPLUSIndex(uint64_t num_ents, uint64_t block_size);
 
     /**
      * Destructor, flushes everything to disk
@@ -87,6 +87,15 @@ class BPLUSIndex {
 
     /** contingeous list of inodes for this B+Tree */
     int64_t inodes_idx_ = 0;
+    /** contingeous list of blocks for inodes -- done to speed up allocation */
+    int64_t block_size_ = 0;
+    int64_t block_arr_idx_ = 0;
+    int64_t cur_block_arr_idx_ = 0;
+
+    /** contingeous list of hashes for inodes
+     * size is = hashsize * num_ents */
+    int64_t hash_arr_idx_ = 0;
+    int64_t cur_hash_arr_idx_ = 0;
 
     /** @returns the index of the node to store the given key */
     int64_t find_node_to_store(std::string key);
