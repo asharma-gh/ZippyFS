@@ -53,7 +53,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     // construct blocks dirty blocks for inode
     int64_t blocksidx = mem_.get_tire(bd_size);
 
-
+    cout << "1" << endl;
     for (auto db : dirty_blocks) {
         block_data* loblocks = (block_data*)mem_.get_memory(blocksidx);
         block_data* cur = loblocks + db.first;
@@ -74,7 +74,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         cur->data_offset = mem_.get_offset(bdataidx);
         cur->mtime = block_mtime[db.first];
     }
-
+    cout << "2" << endl;
     cur_inode_ptr = (inode*)mem_.get_memory(inode_arr_idx_) + cur_inode_arr_idx_;
     if (bd_size > 0) {
         cur_inode_ptr->block_data = mem_.get_offset(blocksidx);
@@ -86,7 +86,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     uint64_t inode_of = (cur_inode_arr_idx_ * sizeof(inode)) + mem_.get_offset(inodes_idx_);
     uint64_t key_of = mem_.get_offset(key_idx);
     cur_inode_arr_idx_++;
-
+    cout << "3" << endl;
     // insert into node w/ blocks info
     if (isroot) {
         root_ptr_ = (node*)mem_.get_memory(rootidx_);
@@ -97,6 +97,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
 
     // else find a node to insert it
     uint64_t target_offset = find_node_to_store(in.get_id());
+    cout << "4" << endl;
     // check if the node is full
     node* tnode = (node*)((char*)mem_.get_root() + target_offset);
     if (tnode->num_keys == ORDER - 1) {
@@ -106,7 +107,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     }
     // or else we can just insert it
     insert_into_node(target_offset, key_of, inode_of, false, -1);
-
+    cout << "5" << endl;
 }
 
 int64_t
@@ -122,12 +123,15 @@ BPLUSIndex::find_node_to_store(string key) {
             cur = (node*)mem_.get_memory(rootidx_);
         else
             cur = (node*)((char*)mem_.get_root() + cur_offset);
+        cout << "cur_offset: " << to_string(cur_offset) << endl;
+        cout << "num keys? " << to_string(cur->num_keys) << endl;
         if (cur->is_leaf)
             return cur_offset;
-
+        cout << "isleaf? " << to_string(cur->is_leaf) << endl;
         // is this key before all of the ones in this node?
         char* cur_key = (char*)mem_.get_root() + cur->keys[0];
         if (strcmp(key.c_str(), cur_key) < 0) {
+            cout << "before" << endl;
             cur_offset = before(cur, 0);
             change = true;
             continue;
@@ -135,23 +139,26 @@ BPLUSIndex::find_node_to_store(string key) {
 
         // is this key after the ones in this node?
         cur_key = (char*)mem_.get_root() + cur->keys[cur->num_keys - 1];
-        if (strcmp(key.c_str(), cur_key) >= 0) {
+        if (strcmp(key.c_str(), cur_key) > 0) {
             cur_offset = after(cur, cur->num_keys - 1);
+            cout << "after" << endl;
+
             change = true;
             continue;
         }
 
         // else it must be somewhere in between
         uint64_t inneridx = 0;
-        for (int ii = 1; ii < cur->num_keys - 1; ii++) {
+        for (int ii = 1; ii < cur->num_keys; ii++) {
             char* prev = (char*)mem_.get_root() + cur->keys[ii];
             char* post = (char*)mem_.get_root() + cur->keys[ii + 1];
-            if (strcmp(prev, key.c_str()) <= 0
+            if (strcmp(prev, key.c_str()) < 0
                     && strcmp(key.c_str(), post) < 0)
                 inneridx = ii;
         }
         cur_offset = after(cur, inneridx);
         change = true;
+
     }
 }
 
@@ -162,7 +169,7 @@ BPLUSIndex::before(node* n, int64_t idx) {
 
 int64_t
 BPLUSIndex::after(node* n, int64_t idx) {
-    return n->children[idx];
+    return n->children[idx + 1];
 }
 int
 BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isleft, int64_t child) {
@@ -201,7 +208,7 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
     if (n->is_leaf) {
         // insert value into fixed node
         n->values[cur_idx] = v;
-        n->children[cur_idx] = 0;
+        //n->children[cur_idx] = 0;
 
     } else {
         // insert child
