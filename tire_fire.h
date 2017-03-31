@@ -39,6 +39,11 @@ class TireFire {
      */
     int64_t get_offset(int64_t index);
 
+    /**
+     * @return the current location of this page
+     */
+    void* get_root();
+
     void end();
     // ~TireFire();
   private:

@@ -67,6 +67,10 @@ TireFire::get_offset(int64_t index) {
         throw new domain_error("nope");
     return index_to_offset[index];
 }
+void*
+TireFire::get_root() {
+    return cur_ptr_;
+}
 
 void
 TireFire::end() {
