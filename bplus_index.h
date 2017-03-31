@@ -76,7 +76,7 @@ class BPLUSIndex {
   private:
     /** number of entries*/
     uint64_t num_ents_ = 0;
-    inode* inode_arr_ptr_ = nullptr;
+    //inode* inode_arr_ptr_ = nullptr;
     int64_t inode_arr_idx_ = 0;
     int64_t cur_inode_arr_idx_ = 0;
     /** in memory structure */

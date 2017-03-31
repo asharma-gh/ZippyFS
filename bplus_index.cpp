@@ -25,9 +25,10 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         root_ptr_->is_leaf = 1;
         root_ptr_->num_keys = 1;
         cur_inode_arr_idx_ = 0;
+
         // allocate memory for all inodes
         inode_arr_idx_ = mem_.get_tire(sizeof(inode) * num_ents_);
-        inode_arr_ptr_ = (inode*)mem_.get_memory(inode_arr_idx_);
+
     }
 
     // construct inode
@@ -36,8 +37,8 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     char* key = (char*)mem_.get_memory(key_idx);
     memset(key, '\0', 256 * sizeof(char));
     memcpy(key, in.get_id().c_str(), in.get_id().size());
+
     // insert this inode
-    inode_arr_ptr_ = (inode*)mem_.get_memory(inode_arr_idx_);
     inode* cur_inode_ptr = (inode*)mem_.get_memory(inode_arr_idx_) + cur_inode_arr_idx_;
     cur_inode_ptr->mode = in.get_mode();
     cur_inode_ptr->nlink = in.get_link();
@@ -73,9 +74,8 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         cur->data_offset = mem_.get_offset(bdataidx);
         cur->mtime = block_mtime[db.first];
     }
-    // add block to inode
-    inode_arr_ptr_ = (inode*)mem_.get_memory(inode_arr_idx_);
-    cur_inode_ptr = inode_arr_ptr_ + cur_inode_arr_idx_;
+
+    cur_inode_ptr = (inode*)mem_.get_memory(inode_arr_idx_) + cur_inode_arr_idx_;
     if (bd_size > 0) {
         cur_inode_ptr->block_data = mem_.get_offset(blocksidx);
         cur_inode_ptr->block_data_size = bd_size;
@@ -89,7 +89,8 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
 
     // check if the node is full
     node* tnode = (node*)((char*)mem_.get_memory(first_root_) + target_offset);
-    uint64_t inode_of = ((cur_inode_arr_idx_ - 1) * sizeof(inode)) + mem_.get_offset(inodes_idx_);
+    uint64_t inode_of = (cur_inode_arr_idx_ * sizeof(inode)) + mem_.get_offset(inodes_idx_);
+    cur_inode_arr_idx_++;
     if (tnode->num_keys == ORDER - 1) {
         // needs to split the node to fit this item
         split_insert_node(target_offset, key_idx, inode_of, false, -1);
