@@ -6,4 +6,5 @@ test/
 fscpp/something
 /something
 .out
+*.txt
 output*
