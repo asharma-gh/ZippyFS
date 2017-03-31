@@ -170,7 +170,7 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
     int cur_idx = 0;
     node * n = (node*)((char*)mem_.get_root() + nodeoffset);
     cout << "NUM KEYS: " << to_string(n->num_keys) << endl;
-    for (int ii = 0; ii < n->num_keys - 1; ii++) {
+    for (int ii = 0; ii < n->num_keys; ii++) {
         // compare keys by string
         // TODO:
         cout << "Offset: " << to_string(n->keys[ii]) << endl;
@@ -187,7 +187,7 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
     else {
         // move everything from cur_idx + 1 up
         node temp = *n;
-        for (int ii = cur_idx; ii < n->num_keys - 1; ii++) {
+        for (int ii = cur_idx; ii < n->num_keys; ii++) {
             n->keys[ii + 1] = temp.keys[ii];
             n->children[ii + 1] = temp.children[ii];
             n->values[ii + 1] = temp.values[ii];
@@ -209,7 +209,7 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
             cur_idx++;
         n->children[cur_idx] = child;
     }
-    cout << "NEW NUM KEYS: " << to_string(n->num_keys);
+    cout << "NEW NUM KEYS: " << to_string(n->num_keys) << endl;
     return cur_idx;
 }
 
@@ -260,6 +260,7 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
 
     } else {
         // we are splitting a child
+        cout << "NUMBER OF KEYS IN HOST: " << to_string(nnode->num_keys) << endl;
         for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
             right->num_keys++;
             right->keys[cur_idx] = nnode->keys[ii];
@@ -273,6 +274,7 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
         nnode->num_keys = med_idx;
 
         // now that the leaf is split, insert into new side
+        cout << "Split leaf insert" << endl;
         if (v != -1)
             insert_into_node(mem_.get_offset(rightidx), k, v, false, -1);
     }
