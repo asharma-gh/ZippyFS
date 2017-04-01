@@ -1,6 +1,6 @@
 - finish b+tree implementation in file system, get loads and flush to work
-
-- separate internal node and leaf nodes
+- finish loader
+- separate root node and internal, leaf nodes
 
 - fully integrate loader into block_cache
 

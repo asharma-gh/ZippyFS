@@ -5,6 +5,7 @@
 #include "tire_fire.h"
 #include "block.h"
 #define ORDER 1000
+#define HASH_SIZE 256
 /**
  * This class represents a memory-backed B+Tree used for indexing
  * inodes flushed from the in-memory file-system.
@@ -85,8 +86,6 @@ class BPLUSIndex {
     node* root_ptr_ = nullptr;
     bool root_has_inode_ = false;
 
-    /** contingeous list of inodes for this B+Tree */
-    int64_t inodes_idx_ = 0;
     /** contingeous list of blocks for inodes -- done to speed up allocation */
     int64_t block_size_ = 0;
     int64_t block_arr_idx_ = 0;

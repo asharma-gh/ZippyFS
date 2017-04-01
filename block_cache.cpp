@@ -358,6 +358,7 @@ BlockCache::flush_to_disk() {
         for (auto bl : ent.second)
             block_size += bl.second->get_actual_size();
     }
+    //DiskIndex flusher;
     BPLUSIndex flusher(inode_idx_.size(), block_size);
     for (auto ent : inode_idx_) {
         cout << "Flushing " << ent.first << endl;

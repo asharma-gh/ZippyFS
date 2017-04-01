@@ -1,6 +1,6 @@
 #include "bplus_index.h"
 #include "util.h"
-#define HASH_SIZE 256
+
 using namespace std;
 BPLUSIndex::BPLUSIndex(uint64_t num_ents, uint64_t blocksize) {
     num_ents_ = num_ents;
@@ -10,7 +10,7 @@ BPLUSIndex::BPLUSIndex(uint64_t num_ents, uint64_t blocksize) {
     string name = "/home/arvin/FileSystem/zipfs/o/dir/root/TREE-"+ Util::generate_rand_hex_name();
     // initialize memory zone
     mem_ = TireFire(name);
-    inodes_idx_ = mem_.get_tire(sizeof(inode) * num_ents_);
+
 }
 
 void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks,
@@ -23,6 +23,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     if (root_ptr_ == NULL) {
         rootidx_ = mem_.get_tire(sizeof(node));
         root_ptr_ = (node*)mem_.get_memory(rootidx_);
+
         cout << "ROOT OFFSET: " << to_string(mem_.get_offset(rootidx_));
         cout << "SIZEOF NODE: " << to_string(sizeof(node)) << endl;
         root_ptr_->is_leaf = 1;
@@ -90,7 +91,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     } else
         cur_inode_ptr->block_data = -1;
     // compute offsets, inc inode array idx
-    uint64_t inode_of = (cur_inode_arr_idx_ * sizeof(inode)) + mem_.get_offset(inodes_idx_);
+    uint64_t inode_of = (cur_inode_arr_idx_ * sizeof(inode)) + mem_.get_offset(inode_arr_idx_);
     uint64_t key_of = mem_.get_offset(hash_arr_idx_) + cur_hash_arr_idx_;
     // increment current positions to fresh memory
     cur_inode_arr_idx_++;

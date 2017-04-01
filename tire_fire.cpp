@@ -24,6 +24,7 @@ TireFire::set_path(string path) {
 int64_t
 TireFire::get_tire(size_t size) {
     int64_t old_size = cur_size_;
+    cout << "OLD SIZE: " << to_string(old_size) << endl;
     if (cur_ptr_ == nullptr) {
         fd_ = ::open(file_.c_str(), O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
         truncate(file_.c_str(), size);
