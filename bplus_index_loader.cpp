@@ -17,5 +17,28 @@ BPLUSIndexLoader::load_trees() {
         //
         //
         // mmap it to the unordered map
+        string ent = entry->d_name;
+        if (ent.substr(0,5).compare("TREE-") != 0)
+            continue;
+        if (file_to_mem_.find(ent) != file_to_mem_.end())
+            continue;
+
+        string fpath = path_ + ent;
+
+        cout << "fpath: " << fpath << endl;
+        int fd = ::open(fpath.c_str(), O_RDONLY);
+
+        file_to_fd_[fpath] = fd;
+        // get file size
+        struct stat st;
+        stat(fpath.c_str(), &st);
+        uint64_t fsize = st.st_size;
+        file_to_size_[fpath] = fsize;
+
+        // load memory
+        BPLUSIndex::node* fmem = (BPLUSIndex::node*)mmap(0, fsize*sizeof(char), PROT_READ, MAP_SHARED, fd, 0);
+
+        // add pointer to map
+        file_to_mem_[fpath] = fmem;
     }
 }

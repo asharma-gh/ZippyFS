@@ -45,5 +45,9 @@ class BPLUSIndexLoader {
   private:
     std::string path_;
     std::unordered_map<std::string, BPLUSIndex::node*> file_to_mem_;
+
+    std::unordered_map<std::string, int> file_to_fd_;
+
+    std::unordered_map<std::string, uint64_t> file_to_size_;
 };
 #endif
