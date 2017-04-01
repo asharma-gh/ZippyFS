@@ -71,14 +71,11 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
 
         // construct data in memory
         uint8_t* bdata = (uint8_t*)mem_.get_memory(block_arr_idx_) + cur_block_arr_idx_;
-        auto bytes = db.second->get_data();
+        auto bytes = db.second->get_data_ar();
         loblocks = (block_data*)mem_.get_memory(blocksidx);
         cur = loblocks + db.first;
+        memcpy(bdata, &bytes, cur->size);
 
-        for (uint32_t ii = 0; ii < cur->size; ii++) {
-            bdata[ii] = bytes[ii];
-
-        }
         cur->data_offset = mem_.get_offset(block_arr_idx_) + cur_block_arr_idx_;
         cur_block_arr_idx_ += cur->size;
         cur->mtime = block_mtime[db.first];
@@ -166,7 +163,7 @@ BPLUSIndex::find_node_to_store(string key) {
 
         // else it must be somewhere in between
         uint64_t inneridx = 0;
-        for (int ii = 1; ii < cur->num_keys; ii++) {
+        for (int64_t ii = 1; ii < cur->num_keys; ii++) {
             char* prev = (char*)mem_.get_root() + cur->keys[ii];
             char* post = (char*)mem_.get_root() + cur->keys[ii + 1];
             if (strcmp(prev, key.c_str()) < 0
@@ -193,7 +190,7 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
     // find spot
     int cur_idx = 0;
     node * n = (node*)((char*)mem_.get_root() + nodeoffset);
-    for (int ii = 0; ii < n->num_keys; ii++) {
+    for (int64_t ii = 0; ii < n->num_keys; ii++) {
         // compare keys by string
         char* oldk = (char*)mem_.get_root() + n->keys[ii];
         char* newk = (char*)mem_.get_root() + k;
@@ -206,7 +203,7 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
     else {
         // move everything from cur_idx + 1 up
         node temp = *n;
-        int ii = cur_idx;
+        int64_t ii = cur_idx;
         for (; ii < n->num_keys; ii++) {
             n->keys[ii + 1] = temp.keys[ii];
             n->children[ii + 1] = temp.children[ii];

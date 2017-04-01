@@ -1,6 +1,7 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 #include "includes.h"
+#define SIZE_ 4096
 /**
  * Represents a block of data for a file
  * @author Arvin Sharma
@@ -34,7 +35,7 @@ class Block {
      * @return the data of this block as a string
      */
     std::vector<uint8_t> get_data();
-
+    const std::array<uint8_t, SIZE_> get_data_ar();
     /**
      * set this block as dirty
      */
@@ -61,7 +62,7 @@ class Block {
     }
 
   private:
-    static const uint64_t SIZE_ = 4096;
+    //static const uint64_t SIZE_ = 4096;
     uint64_t actual_size_;
     std::array<uint8_t, SIZE_> data_;
     bool dirty_;

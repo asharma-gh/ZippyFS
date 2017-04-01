@@ -1,8 +1,8 @@
 CC = g++
 CFLAGS := -Wall `pkg-config fuse --cflags` -lsodium -g -D_FILE_OFFSET_BITS=64
 LDFLAGS := -g `pkg-config fuse --libs` -lsodium -D_FILE_OFFSET_BITS=64
-SRCS := $(wildcard %.c) $(wildcard %.cpp)
-OBJS := $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+SRCS := $(wildcard %.c) $(wildcard %.cpp) $(wildcard src/*.cpp) $(wildcard src/*.c)
+OBJS := $(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcard src/*.cpp))
 DEP = $(wildcard %.h)
 
 all:

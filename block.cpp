@@ -33,7 +33,11 @@ Block::insert_data(const uint8_t* data, uint64_t size, uint64_t offset) {
 
 
 }
-
+const
+array<uint8_t, SIZE_>
+Block::get_data_ar() {
+    return data_;
+}
 void
 Block::set_dirty() {
     dirty_ = true;

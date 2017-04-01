@@ -5,7 +5,7 @@
 #include "tire_fire.h"
 #include "block.h"
 #define ORDER 1000
-#define HASH_SIZE 256
+#define HASH_SIZE 128
 /**
  * This class represents a memory-backed B+Tree used for indexing
  * inodes flushed from the in-memory file-system.
