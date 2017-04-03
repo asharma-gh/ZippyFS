@@ -4,8 +4,8 @@
 #include "includes.h"
 #include "block.h"
 #include "inode.h"
-#include "disk_index.h"
-#include "disk_index_loader.h"
+#include "bplus_index.h"
+#include "bplus_index_loader.h"
 /**
  * represents an in-memory Block Cache
  * @author Arvin Sharma
@@ -193,9 +193,9 @@ class BlockCache {
      * @param data is whether to also retrieve the data
      * @return the latest inode from disk
      */
-    DiskIndexLoader::disk_inode_info get_latest_inode(std::string path, bool get_data);
+    BPLUSIndexLoader::disk_inode_info get_latest_inode(std::string path, bool get_data);
 
-    DiskIndexLoader loader_;
+    BPLUSIndexLoader loader_;
 
 };
 #endif

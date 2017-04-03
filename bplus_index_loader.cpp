@@ -8,6 +8,10 @@ BPLUSIndexLoader::BPLUSIndexLoader(string path) {
     load_trees();
 }
 
+BPLUSIndexLoader::BPLUSIndexLoader() {
+
+}
+
 void
 BPLUSIndexLoader::load_trees() {
     DIR* tree_dir = opendir(path_.c_str());
@@ -44,7 +48,7 @@ BPLUSIndexLoader::load_trees() {
 BPLUSIndexLoader::disk_inode_info
 BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
     load_trees();
-    cout << "finding inode for " << path << "getdata? " << to_string(get_data) << endl;
+    cout << "finding inode for " << path << " getdata? " << to_string(get_data) << endl;
     disk_inode_info latest;
     latest.i_mtime = 0;
     if (path.size() == 0)
@@ -73,8 +77,9 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
                 if (strcmp(kmem, phash) == 0) {
                     // we found it
                     if (cur->is_leaf) {
+                        cout << "FOUND IT " << endl;
                         inodeoff = cur->values[ii];
-                        break;
+                        goto make_inode;
                     } else {
                         // its in a child
                         int64_t childof = cur->children[ii + 1];
@@ -84,6 +89,9 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
                     }
                 }
             }
+            if (cur->is_leaf)
+                // then we will never get to it
+                return latest;
             // this node does not have the key, find the correct child
             char* prev = (char*)tree.second + cur->keys[0];
             if (strcmp(phash, prev) < 0) {
@@ -107,6 +115,7 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
             }
             throw domain_error("we will never terminate");
         }
+make_inode:
         // we found the entry
         // create inode
         BPLUSIndex::inode inode = *(BPLUSIndex::inode*)((char*)tree.second + inodeoff);
@@ -130,7 +139,7 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
             cout << "BD OFF: " << to_string(bd_off) << " bd_size: " << to_string(bd_size) << endl;
             for (uint64_t ii = bd_off; ii < bd_off + bd_size; ii += sizeof(BPLUSIndex::block_data)) {
                 // get block
-                BPLUSIndex::block_data b = *(BPLUSIndex::block_data*)((char*)cur + ii);
+                BPLUSIndex::block_data b = *(BPLUSIndex::block_data*)((char*)tree.second + ii);
                 cout << "GETTING BLOCK!!!" <<endl;
                 cout << "boff: " << to_string(b.data_offset) << " bsize: " << to_string (b.size);
 

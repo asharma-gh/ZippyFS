@@ -16,7 +16,7 @@ class BPLUSIndexLoader {
      * @param path is the path of the tree dir
      */
     BPLUSIndexLoader(std::string path);
-
+    BPLUSIndexLoader();
     /** loads all the new trees from disk to this struct */
     void load_trees();
 

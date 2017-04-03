@@ -3,13 +3,14 @@
 #include "inode.h"
 #include "fuse_ops.h"
 #include "bplus_index.h"
+#include "bplus_index_loader.h"
 #include "includes.h"
 using namespace std;
 
 // TODO: testing
 BlockCache::BlockCache(string path_to_disk) {
     path_to_disk_ = path_to_disk + "root/";
-    loader_ = DiskIndexLoader(path_to_disk_);
+    loader_ = BPLUSIndexLoader(path_to_disk_);
 }
 
 int
@@ -119,7 +120,7 @@ BlockCache::getattr(string path, struct stat* st) {
     if (in_cache(path) == 0)
         return get_inode_by_path(path)->stat(st);
 
-    DiskIndexLoader::disk_inode_info di  = get_latest_inode(path, false);
+    BPLUSIndexLoader::disk_inode_info di  = get_latest_inode(path, false);
     if (di.i_mtime == 0)
         return -ENOENT;
 
@@ -184,7 +185,7 @@ BlockCache::readdir(string path) {
         if (strcmp(dirpath, path.c_str()) == 0) {
             free(dirpath);
             // find latest thing, add entry
-            DiskIndexLoader::disk_inode_info latest = get_latest_inode((string)ent_path, false);
+            BPLUSIndexLoader::disk_inode_info latest = get_latest_inode((string)ent_path, false);
             if ((added_names.find(ent_path) != added_names.end()
                     && added_names[ent_path].added_time < latest.i_mtime) || added_names.find(ent_path) == added_names.end()) {
                 // we have a later entry, update!
@@ -381,7 +382,7 @@ BlockCache::load_from_disk(string path) {
     cout << "LOADING " << path << " FROM DISK" << endl;
 
     std::shared_ptr<Inode> latest_inode;
-    DiskIndexLoader::disk_inode_info di = get_latest_inode(path, true);
+    BPLUSIndexLoader::disk_inode_info di = get_latest_inode(path, true);
     if (di.i_mtime == 0)
         // none exists
         return -1;
@@ -454,7 +455,7 @@ BlockCache::get_all_meta_files(string path, bool is_parent) {
     return meta_files;
 }
 
-DiskIndexLoader::disk_inode_info
+BPLUSIndexLoader::disk_inode_info
 BlockCache::get_latest_inode(string path, bool get_data) {
     cout << "Initiating the loader with " << path << endl;
     return loader_.find_latest_inode(path, get_data);
