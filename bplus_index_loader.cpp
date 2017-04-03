@@ -61,6 +61,8 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
 
         // traverse thru tree
         BPLUSIndex::node* cur = (BPLUSIndex::node*)tree.second;
+        int64_t inodeidx = 0;
+
         for(;;) {
             // check if this node contains this key
             for (int64_t ii = 0; ii < cur->num_keys; ii++) {
@@ -70,9 +72,10 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
 
                 if (strcmp(kmem, phash) == 0) {
                     // we found it
-                    if (cur->is_leaf)
+                    if (cur->is_leaf) {
+                        inodeidx = cur->values[ii];
                         break;
-                    else {
+                    } else {
                         // its in a child
                         int64_t childof = cur->children[ii + 1];
                         cur = (BPLUSIndex::node*)((char*)tree.second + childof);
@@ -81,7 +84,33 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
                     }
                 }
             }
+            // this node does not have the key, find the correct child
+            char* prev = (char*)tree.second + cur->keys[0];
+            if (strcmp(phash, prev) < 0) {
+                cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[0]);
+                continue;
+            }
+            char* post = (char*)tree.second + cur->keys[cur->num_keys - 1];
+            if (strcmp(phash, post) > 0) {
+                cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[cur->num_keys - 1]);
+                continue;
+            }
+            // then it must be somewhere in the middle
+            for (int ii = 0; ii < cur->num_keys - 1; ii++ ) {
+                char* pprev = (char*)tree.second + cur->keys[ii];
+                char* ppost = (char*)tree.second + cur->keys[ii + 1];
+                if (strcmp(pprev, phash) < 0
+                        && strcmp(phash, ppost) < 0) {
+                    cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[ii + 1]);
+                    continue;
+                }
+            }
+            throw domain_error("we will never terminate");
         }
+        // we found the entry
+        // create inode
+
+
     }
     return latest;
 }
