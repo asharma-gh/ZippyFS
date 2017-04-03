@@ -32,6 +32,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         root_ptr_->parent = -1;
         // allocate memory for all inodes
         inode_arr_idx_ = mem_.get_tire(sizeof(inode) * num_ents_);
+        cur_inode_arr_idx_ = 0;
         isroot = true;
 
         // allocate memory for all blocks

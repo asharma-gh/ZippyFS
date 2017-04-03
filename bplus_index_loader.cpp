@@ -61,7 +61,7 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
 
         // traverse thru tree
         BPLUSIndex::node* cur = (BPLUSIndex::node*)tree.second;
-        int64_t inodeidx = 0;
+        int64_t inodeoff = 0;
 
         for(;;) {
             // check if this node contains this key
@@ -73,7 +73,7 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
                 if (strcmp(kmem, phash) == 0) {
                     // we found it
                     if (cur->is_leaf) {
-                        inodeidx = cur->values[ii];
+                        inodeoff = cur->values[ii];
                         break;
                     } else {
                         // its in a child
@@ -109,8 +109,53 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
         }
         // we found the entry
         // create inode
+        BPLUSIndex::inode inode = *(BPLUSIndex::inode*)((char*)tree.second + inodeoff);
+        if (inode.mtime > latest_time) {
+            latest.i_mode = inode.mode;
+            latest.i_size = inode.size;
+            latest.i_nlink = inode.nlink;
+            latest.i_mtime = inode.mtime;
+            latest.i_ctime = inode.ctime;
+            latest.i_inode_id = phash;
+            latest.i_deleted = inode.deleted;
+            latest_time = inode.mtime;
+        }
+        if (get_data) {
+            cout << "Getting data..." << endl;
+            int64_t bd_off = inode.block_data;
+            if (bd_off == -1)
+                // no data
+                break;
+            uint64_t bd_size = inode.block_data_size;
+            cout << "BD OFF: " << to_string(bd_off) << " bd_size: " << to_string(bd_size) << endl;
+            for (uint64_t ii = bd_off; ii < bd_off + bd_size; ii += sizeof(BPLUSIndex::block_data)) {
+                // get block
+                BPLUSIndex::block_data b = *(BPLUSIndex::block_data*)((char*)cur + ii);
+                cout << "GETTING BLOCK!!!" <<endl;
+                cout << "boff: " << to_string(b.data_offset) << " bsize: " << to_string (b.size);
 
+                // add block if its a later version
+                if (latest.i_block_time.find(b.block_id)
+                        == latest.i_block_time.end()
+                        || (latest.i_block_time.find(b.block_id) != latest.i_block_time.end()
+                            && latest.i_block_time[b.block_id] <= b.mtime)) {
+                    // add it, its a new block!
+                    latest.i_block_time[b.block_id] = b.mtime;
+                    shared_ptr<Block> bp = make_shared<Block>((uint8_t*)((char*)cur + b.data_offset), b.size);
 
+                    latest.i_block_data[b.block_id] = bp;
+                }
+            }
+        }
     }
     return latest;
+}
+
+BPLUSIndexLoader::~BPLUSIndexLoader() {
+    cout << "destroying loader.." << endl;
+    for (auto ent : file_to_mem_) {
+        munmap(ent.second, file_to_size_[ent.first]);
+        close(file_to_fd_[ent.first]);
+    }
+
 }
