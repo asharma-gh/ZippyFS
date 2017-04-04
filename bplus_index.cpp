@@ -2,8 +2,9 @@
 #include "util.h"
 
 using namespace std;
-BPLUSIndex::BPLUSIndex(uint64_t num_ents, uint64_t blocksize) {
+BPLUSIndex::BPLUSIndex(uint64_t num_ents, uint64_t blocksize, uint64_t num_blocks) {
     num_ents_ = num_ents;
+    num_blocks_ = num_blocks;
     block_size_ = blocksize;
     cout << "NUM ENTS: " << to_string(num_ents) << endl;
     // generate path
@@ -21,8 +22,13 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     unsigned long long sttime = Util::get_time();
     bool isroot = false;
     if (root_ptr_ == NULL) {
+        int64_t headeridx = mem_.get_tire(sizeof(header));
+        header* header_ptr = (header*)mem_.get_memory(headeridx);
+        header_ptr->num_inodes = num_ents_;
         rootidx_ = mem_.get_tire(sizeof(node));
         root_ptr_ = (node*)mem_.get_memory(rootidx_);
+        header_ptr = (header*)mem_.get_memory(headeridx);
+        header_ptr->root = mem_.get_offset(rootidx_);
 
         cout << "ROOT OFFSET: " << to_string(mem_.get_offset(rootidx_));
         cout << "SIZEOF NODE: " << to_string(sizeof(node)) << endl;
@@ -31,15 +37,20 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         cur_inode_arr_idx_ = 0;
         root_ptr_->parent = -1;
         // allocate memory for all inodes
+        cout << "initializing inodes" << endl;
         inode_arr_idx_ = mem_.get_tire(sizeof(inode) * num_ents_);
         cur_inode_arr_idx_ = 0;
         isroot = true;
 
         // allocate memory for all blocks
+        cout << "initializing blocks" << endl;
         block_arr_idx_ = mem_.get_tire(block_size_ * sizeof(uint8_t));
         cur_block_arr_idx_ = 0;
+        cout << "initializing block data" << endl;
+        bd_arr_idx_ = mem_.get_tire(num_blocks_ * sizeof(block_data));
 
         // allocate memory for all hashes
+        cout << "initializing hashes" << endl;
         hash_arr_idx_ = mem_.get_tire(num_ents_ * HASH_SIZE * sizeof(char));
         cur_hash_arr_idx_ = 0;
     }
@@ -62,10 +73,10 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     // initialize blocks
     uint64_t bd_size = sizeof(block_data) *  dirty_blocks.size();
     // construct blocks dirty blocks for inode
-    int64_t blocksidx = mem_.get_tire(bd_size);
+    //int64_t blocksidx = mem_.get_tire(bd_size);
     cout << "1TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) <<"ms" << endl;
     for (auto db : dirty_blocks) {
-        block_data* loblocks = (block_data*)mem_.get_memory(blocksidx);
+        block_data* loblocks = (block_data*)mem_.get_memory(bd_arr_idx_) + cur_bd_arr_idx_;
         block_data* cur = loblocks + db.first;
         cur->block_id = db.first;
         cur->size = db.second->get_actual_size();
@@ -73,7 +84,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         // construct data in memory
         uint8_t* bdata = (uint8_t*)mem_.get_memory(block_arr_idx_) + cur_block_arr_idx_;
         auto bytes = db.second->get_data_ar();
-        loblocks = (block_data*)mem_.get_memory(blocksidx);
+        loblocks = (block_data*)mem_.get_memory(bd_arr_idx_) + cur_bd_arr_idx_;
         cur = loblocks + db.first;
         memcpy(bdata, &bytes, cur->size);
 
@@ -84,8 +95,10 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     cur_inode_ptr = (inode*)mem_.get_memory(inode_arr_idx_) + cur_inode_arr_idx_;
     cout << "2TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) <<"ms" << endl;
     if (bd_size > 0) {
-        cur_inode_ptr->block_data = mem_.get_offset(blocksidx);
+        cur_inode_ptr->block_data = mem_.get_offset(bd_arr_idx_) + (cur_bd_arr_idx_ * sizeof(block_data));
         cur_inode_ptr->block_data_size = bd_size;
+        cout << "BD OFF" << to_string(mem_.get_offset(bd_arr_idx_) + (cur_bd_arr_idx_ * sizeof(block_data))) << " BD SIZE " << to_string(bd_size) << endl;
+
     } else
         cur_inode_ptr->block_data = -1;
     // compute offsets, inc inode array idx

@@ -4,7 +4,7 @@
 #include "inode.h"
 #include "tire_fire.h"
 #include "block.h"
-#define ORDER 1000
+#define ORDER 3
 #define HASH_SIZE 128
 /**
  * This class represents a memory-backed B+Tree used for indexing
@@ -17,6 +17,10 @@
 class BPLUSIndex {
 
   public:
+    typedef struct header {
+        uint64_t num_inodes;
+        int64_t root;
+    } header;
     /** represents an inode which is easily flushable to disk from memory */
     typedef struct inode {
 
@@ -66,7 +70,7 @@ class BPLUSIndex {
      * constructs a B+Tree
      * @num_ents is the number of values that will exist in this B+tree
      */
-    BPLUSIndex(uint64_t num_ents, uint64_t block_size);
+    BPLUSIndex(uint64_t num_ents, uint64_t block_size, uint64_t num_blocks);
 
     /**
      * Destructor, flushes everything to disk
@@ -76,6 +80,8 @@ class BPLUSIndex {
   private:
     /** number of entries*/
     uint64_t num_ents_ = 0;
+    uint64_t num_blocks_ = 0;
+
     int64_t inode_arr_idx_ = 0;
     int64_t cur_inode_arr_idx_ = 0;
     /** in memory structure */
@@ -91,6 +97,8 @@ class BPLUSIndex {
     int64_t block_arr_idx_ = 0;
     int64_t cur_block_arr_idx_ = 0;
 
+    int64_t bd_arr_idx_ = 0;
+    int64_t cur_bd_arr_idx_ = 0;
     /** contingeous list of hashes for inodes
      * size is = hashsize * num_ents */
     int64_t hash_arr_idx_ = 0;

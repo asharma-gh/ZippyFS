@@ -121,8 +121,10 @@ BlockCache::getattr(string path, struct stat* st) {
         return get_inode_by_path(path)->stat(st);
 
     BPLUSIndexLoader::disk_inode_info di  = get_latest_inode(path, false);
-    if (di.i_mtime == 0)
+    if (di.i_mtime == 0) {
+        cout << "dne" << endl;
         return -ENOENT;
+    }
 
     st->st_mode = di.i_mode;
     st->st_nlink = di.i_nlink;
@@ -353,14 +355,17 @@ BlockCache::flush_to_disk() {
     cout << "Flushing" << endl;
     if (!has_changed_)
         return -1;
-    // preprocess number of blocks
+    // preprocess size and number of blocks
     uint64_t block_size = 0;
+    uint64_t num_blocks = 0;
     for (auto ent : dirty_block_) {
-        for (auto bl : ent.second)
+        for (auto bl : ent.second) {
             block_size += bl.second->get_actual_size();
+            num_blocks++;
+        }
     }
     //DiskIndex flusher;
-    BPLUSIndex flusher(inode_idx_.size(), block_size);
+    BPLUSIndex flusher(inode_idx_.size(), block_size, num_blocks);
     for (auto ent : inode_idx_) {
         cout << "Flushing " << ent.first << endl;
         flusher.add_inode(*get_inode_by_path(ent.first),

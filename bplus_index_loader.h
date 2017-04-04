@@ -41,6 +41,9 @@ class BPLUSIndexLoader {
     /** finds the latest inode for the given path */
     disk_inode_info find_latest_inode(std::string path, bool get_data);
 
+    /** gets all the direct child inodes for the given path */
+    std::unordered_set<std::string> get_children(std::string path);
+
     ~BPLUSIndexLoader();
 
   private:

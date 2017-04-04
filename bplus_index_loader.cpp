@@ -64,7 +64,7 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
         cout << "TREE: " << tree.first << endl;
 
         // traverse thru tree
-        BPLUSIndex::node* cur = (BPLUSIndex::node*)tree.second;
+        BPLUSIndex::node* cur = (BPLUSIndex::node*)((char*)tree.second + ((BPLUSIndex::header*)tree.second)->root);
         int64_t inodeoff = 0;
 
         for(;;) {
@@ -141,7 +141,7 @@ make_inode:
                 // get block
                 BPLUSIndex::block_data b = *(BPLUSIndex::block_data*)((char*)tree.second + ii);
                 cout << "GETTING BLOCK!!!" <<endl;
-                cout << "boff: " << to_string(b.data_offset) << " bsize: " << to_string (b.size);
+                cout << "boff: " << to_string(b.data_offset) << " bsize: " << to_string (b.size) << endl;
 
                 // add block if its a later version
                 if (latest.i_block_time.find(b.block_id)
@@ -150,7 +150,8 @@ make_inode:
                             && latest.i_block_time[b.block_id] <= b.mtime)) {
                     // add it, its a new block!
                     latest.i_block_time[b.block_id] = b.mtime;
-                    shared_ptr<Block> bp = make_shared<Block>((uint8_t*)((char*)cur + b.data_offset), b.size);
+
+                    shared_ptr<Block> bp = make_shared<Block>((uint8_t*)((char*)tree.second + b.data_offset), b.size);
 
                     latest.i_block_data[b.block_id] = bp;
                 }
@@ -158,6 +159,13 @@ make_inode:
         }
     }
     return latest;
+}
+
+unordered_set<string>
+BPLUSIndexLoader::get_children(string path) {
+    (void)path;
+    unordered_set<string> names;
+    return names;
 }
 
 BPLUSIndexLoader::~BPLUSIndexLoader() {

@@ -154,6 +154,20 @@ class Util {
 
     }
 
+    static
+    std::string
+    generate_inode_hash(std::string path) {
+        std::string hash = crypto_hash(path);
+
+        // get parent
+        std::string p = path.substr(0, path.find_last_of("/"));
+        if (p.size() == 0)
+            p = "ROOT";
+        std::string phash = crypto_hash(p);
+
+        return phash + "-" + hash;
+    }
+
     /**
      * constructs a file name in the form of
      * [hash-of-parent].[hash-of-path]-[random 128 hex].meta
