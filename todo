@@ -1,3 +1,5 @@
+- fix memory leak on hash space
+
 - finish b+tree implementation in file system, get loads and flush to work
 - finish loader
 - separate root node and internal, leaf nodes

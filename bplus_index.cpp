@@ -106,6 +106,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         cur->data_offset = mem_.get_offset(block_arr_idx_) + cur_block_arr_idx_;
         cur_block_arr_idx_ += cur->size;
         cur->mtime = block_mtime[db.first];
+        cur_bd_arr_idx_++;
     }
     cur_inode_ptr = (inode*)mem_.get_memory(inode_arr_idx_) + cur_inode_arr_idx_;
     cout << "2TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) <<"ms" << endl;

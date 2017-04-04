@@ -72,8 +72,9 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
             for (int64_t ii = 0; ii < cur->num_keys; ii++) {
                 // find this key
                 int64_t keyof = cur->keys[ii];
-                char* kmem = (char*)tree.second + keyof;
-
+                char kmem[HASH_SIZE + 1] = {'\0'};
+                memcpy(kmem, (char*)tree.second + keyof, HASH_SIZE);
+                cout << "Checking " << kmem << endl;
                 if (strcmp(kmem, phash) == 0) {
                     // we found it
                     if (cur->is_leaf) {
