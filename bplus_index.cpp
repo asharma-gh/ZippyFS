@@ -115,7 +115,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         cur_bd_arr_idx_++;
 
     }
-    debug();
+
     cur_inode_ptr = (inode*)mem_.get_memory(inode_arr_idx_) + cur_inode_arr_idx_;
     cout << "2TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) << "ms" << endl;
     if (bd_size > 0) {
@@ -161,6 +161,12 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     insert_into_node(target_offset, key_of, inode_of, false, -1);
 
     cout << "Time to fully insert: " << to_string(Util::get_time() - sttime) << "ms" << endl;
+    cout << "Printing all inodes..." << endl;
+    for (int64_t ii = 0; ii < cur_inode_arr_idx_ - 1; ii++) {
+        char p[250] = {'\0'};
+        memcpy(p, (char*)mem_.get_root() + (((inode*)mem_.get_memory(inode_arr_idx_) + ii)->path), 50);
+        cout << "Path: |" << p << "|" << endl;
+    }
 }
 
 int64_t
@@ -378,10 +384,7 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
     }
     return -1;
 }
-void
-BPLUSIndex::debug() {
 
-}
 BPLUSIndex::~BPLUSIndex() {
     mem_.end();
 }

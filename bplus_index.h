@@ -135,6 +135,6 @@ class BPLUSIndex {
      */
     int64_t split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isparent, int64_t targ);
 
-    void debug();
+    void print();
 };
 #endif

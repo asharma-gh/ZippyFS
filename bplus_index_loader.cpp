@@ -82,14 +82,12 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
                         inodeoff = cur->values[ii];
                         goto make_inode;
                     } else {
-                        // its in a child
-                        int64_t childof = cur->children[ii + 1];
-                        cur = (BPLUSIndex::node*)((char*)tree.second + childof);
-                        continue;
+                        break;
 
                     }
                 }
             }
+
             if (cur->is_leaf)
                 // then we will never get to it
                 return latest;
@@ -172,7 +170,8 @@ BPLUSIndexLoader::get_children(string path) {
         BPLUSIndex::header* head = (BPLUSIndex::header*)tree.second;
 
         // iterate thru each inode
-        for (uint32_t ii = head->inode_list; ii < head->inode_list + head->num_inodes; ii += sizeof(BPLUSIndex::inode)) {
+        for (uint32_t ii = head->inode_list; ii < head->inode_list + (head->num_inodes * sizeof(BPLUSIndex::inode)); ii += sizeof(BPLUSIndex::inode)) {
+
             BPLUSIndex::inode* cur_inode = (BPLUSIndex::inode*)((char*)tree.second + ii);
 
             // check path
@@ -182,6 +181,7 @@ BPLUSIndexLoader::get_children(string path) {
             string strpath = ppath;
             cout << "Checking " << strpath << endl;
             string parent = strpath.substr(0, strpath.find_last_of("/"));
+            cout << "Parent: " << parent << endl;
             index_entry child;
             child.mtime = cur_inode->mtime;
             child.deleted = cur_inode->deleted;
@@ -193,7 +193,7 @@ BPLUSIndexLoader::get_children(string path) {
             }
 
             if (parent.compare(path) == 0) {
-                child.path = path;
+                child.path = ppath;
                 names.push_back(child);
             }
         }
