@@ -32,6 +32,7 @@
 #include <unordered_map>
 #include "util.h"
 #include "block_cache.h"
+#include "bplus_index_loader.h"
 #include "block.h"
 using namespace std;
 
@@ -89,11 +90,11 @@ zippyfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     (void) offset;
     (void) fi;
 
-    map<string, BlockCache::index_entry> added_names;
+    map<string, BPLUSIndexLoader::index_entry> added_names;
 
     auto vec = block_cache->readdir(path);
     for (auto ent : vec) {
-        printf("ADDING %s %llu %dFROM CACHE\n", ent.path.c_str(), ent.added_time, ent.deleted);
+        printf("ADDING %s %llu %dFROM CACHE\n", ent.path.c_str(), ent.mtime, ent.deleted);
         added_names[ent.path] = ent;
     }
 

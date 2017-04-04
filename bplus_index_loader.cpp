@@ -161,10 +161,43 @@ make_inode:
     return latest;
 }
 
-unordered_set<string>
+vector<BPLUSIndexLoader::index_entry>
 BPLUSIndexLoader::get_children(string path) {
-    (void)path;
-    unordered_set<string> names;
+    load_trees();
+    cout << "Getting children for " << path << endl;
+    vector<index_entry> names;
+    // iterate thru each tree
+    for (auto tree : file_to_mem_) {
+        BPLUSIndex::header* head = (BPLUSIndex::header*)tree.second;
+
+        // iterate thru each inode
+        for (uint32_t ii = head->inode_list; ii < head->inode_list + head->num_inodes; ii += sizeof(BPLUSIndex::inode)) {
+            BPLUSIndex::inode* cur_inode = (BPLUSIndex::inode*)((char*)tree.second + ii);
+
+            // check path
+            // inode path is hashed in form $parentpath-$fullpath
+            char ppath[cur_inode->path_size + 1] = {'\0'};
+            memcpy(ppath, (char*)tree.second + cur_inode->path, cur_inode->path_size);
+            string strpath = ppath;
+            cout << "Checking " << strpath << endl;
+            string parent = strpath.substr(0, strpath.find_last_of("/"));
+            index_entry child;
+            child.mtime = cur_inode->mtime;
+            child.deleted = cur_inode->deleted;
+
+            if (parent.size() == 0 && path.compare("/") == 0) {
+                child.path = ppath;
+                names.push_back(child);
+                continue;
+            }
+
+            if (parent.compare(path) == 0) {
+                child.path = path;
+                names.push_back(child);
+            }
+        }
+    }
+
     return names;
 }
 

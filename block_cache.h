@@ -60,16 +60,12 @@ class BlockCache {
 
 
     // helper struct for storing entries for readdir
-    typedef struct index_entry {
-        std::string path;
-        unsigned long long added_time;
-        int deleted;
-    } index_entry;
+
 
     /**
      * @return list of names of things in path
      */
-    std::vector<index_entry> readdir(std::string path);
+    std::vector<BPLUSIndexLoader::index_entry> readdir(std::string path);
 
     /**
      * returns the attributes of the thing in path
@@ -179,13 +175,6 @@ class BlockCache {
 
     /** has a file changed? */
     bool has_changed_ = false;
-
-    /**
-     * gets all the .meta files associated with the given path
-     * @param path is the path of the file to fetch .meta files for
-     * @param bool is if this path is a parent, in which all the children of this parent are retrieved
-     */
-    std::unordered_set<std::string> get_all_meta_files(std::string path, bool is_parent);
 
 
     /**

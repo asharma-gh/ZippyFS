@@ -4,7 +4,7 @@
 #include "inode.h"
 #include "tire_fire.h"
 #include "block.h"
-#define ORDER 3
+#define ORDER 64
 #define HASH_SIZE 128
 /**
  * This class represents a memory-backed B+Tree used for indexing
@@ -19,6 +19,8 @@ class BPLUSIndex {
   public:
     typedef struct header {
         uint64_t num_inodes;
+        // offset into inode list
+        int64_t inode_list;
         int64_t root;
     } header;
     /** represents an inode which is easily flushable to disk from memory */
@@ -31,9 +33,12 @@ class BPLUSIndex {
         uint64_t ctime;
         uint64_t size;
         int deleted;
-        // offset to hash memory, always 512 size char*
+        // offset to the path in memory
+        uint64_t path;
+        uint64_t path_size;
+        // offset to hash in memory
         uint64_t hash;
-        // index to block data list memory
+        // index to block data list in memory
         int64_t block_data;
         // total size of block data
         uint64_t block_data_size;
@@ -70,7 +75,7 @@ class BPLUSIndex {
      * constructs a B+Tree
      * @num_ents is the number of values that will exist in this B+tree
      */
-    BPLUSIndex(uint64_t num_ents, uint64_t block_size, uint64_t num_blocks);
+    BPLUSIndex(uint64_t num_ents, uint64_t block_size, uint64_t num_blocks, uint64_t paths_size);
 
     /**
      * Destructor, flushes everything to disk
@@ -81,13 +86,16 @@ class BPLUSIndex {
     /** number of entries*/
     uint64_t num_ents_ = 0;
     uint64_t num_blocks_ = 0;
-
+    uint64_t path_size_ = 0;
+    int64_t path_arr_idx_ = 0;
+    int64_t cur_path_idx_ = 0;
     int64_t inode_arr_idx_ = 0;
     int64_t cur_inode_arr_idx_ = 0;
     /** in memory structure */
     TireFire mem_;
     int64_t rootidx_ = 0;
-    //int64_t first_root_ = 0;
+
+    int64_t headeridx_ = 0;
     /** maintain pointer to root */
     node* root_ptr_ = nullptr;
     bool root_has_inode_ = false;

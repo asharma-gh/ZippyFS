@@ -143,15 +143,15 @@ BlockCache::getattr(string path, struct stat* st) {
  * - if it is an updated version
  * - if the latest version is a deletion, it dne
  */
-vector<BlockCache::index_entry>
+vector<BPLUSIndexLoader::index_entry>
 BlockCache::readdir(string path) {
     // map (path, index ent)
-    map<string, BlockCache::index_entry> added_names;
+    map<string, BPLUSIndexLoader::index_entry> added_names;
 
     unsigned long long time = Util::get_time();
     // first check the cache, add stuff that's updated (checking for deletions)
     // load_from_disk("/mm");
-    vector<BlockCache::index_entry> ents;
+    /*
     for (auto entry : inode_idx_) {
         cout << "Checking " << entry.first << endl;
         char* dirpath = strdup(entry.first.c_str());
@@ -161,50 +161,30 @@ BlockCache::readdir(string path) {
             cout << "ADDING SHIT TO MAP" << endl;
             struct stat st;
             get_inode_by_path(entry.first)->stat(&st);
-            index_entry ent;
+            BPLUSIndexLoader::index_entry ent;
             ent.path = entry.first;
             ent.deleted = get_inode_by_path(entry.first)->is_deleted();
-            ent.added_time = get_inode_by_path(entry.first)->get_ull_mtime();
+            ent.mtime = get_inode_by_path(entry.first)->get_ull_mtime();
             added_names[entry.first] = ent;
         }
         free(dirpath);
     }
+    */
     unsigned long long dtime = Util::get_time();
 
     // check stuff on disk
-    auto disk_ents = get_all_meta_files(path, true);
+    auto disk_ents = loader_.get_children(path);
 
     for (auto disk_ent : disk_ents) {
-        // read path from disk_ent
-        ifstream df(disk_ent);
-        string ent_line;
-        getline(df, ent_line);
-        char ent_path[PATH_MAX] = {'\0'};
-        sscanf(ent_line.c_str(), "INODE: %s ", ent_path);
-        cout << "ENTRY PATH " << ent_path << endl;
-        char* dirpath = strdup(ent_path);
-        dirpath = dirname(dirpath);
-        if (strcmp(dirpath, path.c_str()) == 0) {
-            free(dirpath);
-            // find latest thing, add entry
-            BPLUSIndexLoader::disk_inode_info latest = get_latest_inode((string)ent_path, false);
-            if ((added_names.find(ent_path) != added_names.end()
-                    && added_names[ent_path].added_time < latest.i_mtime) || added_names.find(ent_path) == added_names.end()) {
-                // we have a later entry, update!
-                cout << "UPDATING ENTRY IN READDIR" << endl;
-                index_entry up_ie;
-                up_ie.path = latest.i_path;
-                up_ie.added_time = latest.i_mtime;
-                up_ie.deleted = latest.i_deleted;
-                added_names[ent_path] = up_ie;
-            }
-
-        } else {
-            if (!dirpath)
-                free(dirpath);
+        if (added_names.find(disk_ent.path) == added_names.end()) {
+            added_names[disk_ent.path] = disk_ent;
             continue;
         }
+        if (added_names[disk_ent.path].mtime > disk_ent.mtime)
+            continue;
+        added_names[disk_ent.path] = disk_ent;
     }
+    vector<BPLUSIndexLoader::index_entry> ents;
 
     // temporarily doing this for testing
     for (auto thing : added_names) {
@@ -355,6 +335,7 @@ BlockCache::flush_to_disk() {
     cout << "Flushing" << endl;
     if (!has_changed_)
         return -1;
+
     // preprocess size and number of blocks
     uint64_t block_size = 0;
     uint64_t num_blocks = 0;
@@ -364,8 +345,15 @@ BlockCache::flush_to_disk() {
             num_blocks++;
         }
     }
+
+    // preprocess total siz eof paths
+    uint64_t psize = 0;
+    for (auto ent : inode_idx_) {
+        psize += ent.first.size();
+    }
+
     //DiskIndex flusher;
-    BPLUSIndex flusher(inode_idx_.size(), block_size, num_blocks);
+    BPLUSIndex flusher(inode_idx_.size(), block_size, num_blocks, psize);
     for (auto ent : inode_idx_) {
         cout << "Flushing " << ent.first << endl;
         flusher.add_inode(*get_inode_by_path(ent.first),
@@ -422,46 +410,8 @@ BlockCache::load_from_disk(string path) {
     return 0;
 }
 
-unordered_set<string>
-BlockCache::get_all_meta_files(string path, bool is_parent) {
-    (void)path;
-    (void)is_parent;
-    unordered_set<string> meta_files;
-    string hashname;
-    string pattern;
-    glob_t res;
-    cout << "GETTING ALL META FILES FOR " << path << " IS PARENT? " << to_string(is_parent) << endl;
-    if (!is_parent) {
-        // cout << "FINDING MATCHING META FILES..." << endl;
-        // add - to end to avoid collision w/ rand section
-        hashname = "*." + Util::crypto_hash(path) + "-";
-        pattern = path_to_disk_ + hashname + "*";
-    } else {
-        if (path.compare("/") == 0)
-            path = "ROOT";
-
-        hashname = Util::crypto_hash(path);
-        pattern  = path_to_disk_ + hashname + ".*";
-    }
-    glob(pattern.c_str(), GLOB_NOSORT, NULL, &res);
-    cout << "SIZE: " << to_string(res.gl_pathc) << endl;
-    if (res.gl_pathc == 0)
-        return meta_files;
-
-    // check thru glob stuff
-    for (uint64_t ii = 0; ii < res.gl_pathc; ii++) {
-        string fpath = res.gl_pathv[ii];
-        if (strstr(fpath.c_str(), ".data"))
-            continue;
-        // we have a hit
-        meta_files.insert(fpath);
-    }
-
-    return meta_files;
-}
-
 BPLUSIndexLoader::disk_inode_info
 BlockCache::get_latest_inode(string path, bool get_data) {
-    cout << "Initiating the loader with " << path << endl;
+    cout << "Looking for thing with loader: " << path << endl;
     return loader_.find_latest_inode(path, get_data);
 }

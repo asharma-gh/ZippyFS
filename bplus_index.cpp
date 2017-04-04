@@ -2,9 +2,10 @@
 #include "util.h"
 
 using namespace std;
-BPLUSIndex::BPLUSIndex(uint64_t num_ents, uint64_t blocksize, uint64_t num_blocks) {
+BPLUSIndex::BPLUSIndex(uint64_t num_ents, uint64_t blocksize, uint64_t num_blocks, uint64_t path_size) {
     num_ents_ = num_ents;
     num_blocks_ = num_blocks;
+    path_size_ = path_size;
     block_size_ = blocksize;
     cout << "NUM ENTS: " << to_string(num_ents) << endl;
     // generate path
@@ -22,12 +23,15 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     unsigned long long sttime = Util::get_time();
     bool isroot = false;
     if (root_ptr_ == NULL) {
-        int64_t headeridx = mem_.get_tire(sizeof(header));
-        header* header_ptr = (header*)mem_.get_memory(headeridx);
+
+        headeridx_ = mem_.get_tire(sizeof(header));
+        header* header_ptr = (header*)mem_.get_memory(headeridx_);
         header_ptr->num_inodes = num_ents_;
+
         rootidx_ = mem_.get_tire(sizeof(node));
         root_ptr_ = (node*)mem_.get_memory(rootidx_);
-        header_ptr = (header*)mem_.get_memory(headeridx);
+
+        header_ptr = (header*)mem_.get_memory(headeridx_);
         header_ptr->root = mem_.get_offset(rootidx_);
 
         cout << "ROOT OFFSET: " << to_string(mem_.get_offset(rootidx_));
@@ -42,6 +46,9 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         cur_inode_arr_idx_ = 0;
         isroot = true;
 
+        header_ptr = (header*)mem_.get_memory(headeridx_);
+        header_ptr->inode_list = mem_.get_offset(inode_arr_idx_);
+
         // allocate memory for all blocks
         cout << "initializing blocks" << endl;
         block_arr_idx_ = mem_.get_tire(block_size_ * sizeof(uint8_t));
@@ -53,7 +60,14 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         cout << "initializing hashes" << endl;
         hash_arr_idx_ = mem_.get_tire(num_ents_ * HASH_SIZE * sizeof(char));
         cur_hash_arr_idx_ = 0;
+
+        // allocate memory for paths
+        cout << "initializing paths" << endl;
+        path_arr_idx_ = mem_.get_tire(path_size_ * sizeof(char));
+        cur_path_idx_ = 0;
     }
+    // add inode path to memory
+    memcpy(((char*)mem_.get_memory(path_arr_idx_) + cur_path_idx_), in.get_path().c_str(), in.get_path().size());
 
     // construct inode
     // construct key
@@ -70,10 +84,11 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     cur_inode_ptr->size = in.get_size();
     cur_inode_ptr->deleted = in.is_deleted();
     cur_inode_ptr->hash = mem_.get_offset(hash_arr_idx_) + cur_hash_arr_idx_;
+    cur_inode_ptr->path = mem_.get_offset(path_arr_idx_) + cur_path_idx_;
+    cur_inode_ptr->path_size = in.get_path().size();
     // initialize blocks
     uint64_t bd_size = sizeof(block_data) *  dirty_blocks.size();
     // construct blocks dirty blocks for inode
-    //int64_t blocksidx = mem_.get_tire(bd_size);
     cout << "1TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) <<"ms" << endl;
     for (auto db : dirty_blocks) {
         block_data* loblocks = (block_data*)mem_.get_memory(bd_arr_idx_) + cur_bd_arr_idx_;
@@ -107,6 +122,8 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     // increment current positions to fresh memory
     cur_inode_arr_idx_++;
     cur_hash_arr_idx_ += HASH_SIZE;
+    cur_path_idx_ += in.get_path().size();
+
     cout << "3TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) <<"ms" << endl;
 
     // insert into node w/ blocks info
@@ -146,6 +163,7 @@ BPLUSIndex::find_node_to_store(string key) {
     int64_t cur_offset = mem_.get_offset(rootidx_);
     bool change = false;
     for (;;) {
+
         if (!change)
             cur = (node*)mem_.get_memory(rootidx_);
         else
@@ -203,11 +221,15 @@ int
 BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isleft, int64_t child) {
     // find spot
     int cur_idx = 0;
-    node * n = (node*)((char*)mem_.get_root() + nodeoffset);
+    node* n = (node*)((char*)mem_.get_root() + nodeoffset);
     for (int64_t ii = 0; ii < n->num_keys; ii++) {
         // compare keys by string
-        char* oldk = (char*)mem_.get_root() + n->keys[ii];
-        char* newk = (char*)mem_.get_root() + k;
+        char oldk[HASH_SIZE + 1] = {'\0'};
+        memcpy(oldk, (char*)mem_.get_root() + n->keys[ii], HASH_SIZE);
+        cout << "old key: " << oldk << endl;
+        char newk[HASH_SIZE + 1] = {'\0'};
+        memcpy(newk, (char*)mem_.get_root() + k, HASH_SIZE);
+        cout << "new key: " << newk << endl;
         if (strcmp(oldk, newk) > 0)
             cur_idx = ii;
     }
@@ -328,6 +350,10 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
         nnode = (node*)((char*)mem_.get_root() + nodeoffset);
         nnode->parent = nrootidx;
         rootidx_ = nrootidx;
+
+        header* header_ptr = (header*)mem_.get_memory(headeridx_);
+        header_ptr->root = mem_.get_offset(rootidx_);
+
         return nrootidx;
     }
     // parent exists
