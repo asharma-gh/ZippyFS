@@ -54,8 +54,10 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         block_arr_idx_ = mem_.get_tire(block_size_ * sizeof(uint8_t));
         cur_block_arr_idx_ = 0;
         cout << "initializing block data" << endl;
-        bd_arr_idx_ = mem_.get_tire(num_blocks_ * sizeof(block_data));
-
+        bd_arr_idx_ = mem_.get_tire((num_blocks_) * sizeof(block_data));
+        cout << "Num Blocks: " << to_string(num_blocks_) << endl;
+        cout << "Size: " << to_string(num_blocks_ * sizeof(block_data)) << endl;
+        cout << "Offset: " << to_string(mem_.get_offset(bd_arr_idx_)) << endl;
         // allocate memory for all hashes
         cout << "initializing hashes" << endl;
         hash_arr_idx_ = mem_.get_tire(num_ents_ * HASH_SIZE * sizeof(char));
@@ -72,6 +74,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     // construct inode
     // construct key
     char* key = (char*)mem_.get_memory(hash_arr_idx_) + cur_hash_arr_idx_;
+    cout << "Hash offset: " << to_string(mem_.get_offset(hash_arr_idx_) + cur_hash_arr_idx_) << endl;
     memset(key, '\0', HASH_SIZE * sizeof(char));
     memcpy(key, in.get_id().c_str(), in.get_id().size());
     cout << "MADE KEY! " << key << endl;
@@ -86,34 +89,39 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     cur_inode_ptr->hash = mem_.get_offset(hash_arr_idx_) + cur_hash_arr_idx_;
     cur_inode_ptr->path = mem_.get_offset(path_arr_idx_) + cur_path_idx_;
     cur_inode_ptr->path_size = in.get_path().size();
+
     // initialize blocks
     uint64_t bd_size = sizeof(block_data) *  dirty_blocks.size();
+    uint64_t initial_bdidx = cur_bd_arr_idx_;
     // construct blocks dirty blocks for inode
     cout << "1TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) <<"ms" << endl;
     for (auto db : dirty_blocks) {
-        block_data* loblocks = (block_data*)mem_.get_memory(bd_arr_idx_) + cur_bd_arr_idx_;
-        block_data* cur = loblocks + db.first;
-        cur->block_id = db.first;
-        cur->size = db.second->get_actual_size();
+        block_data* cur_bd = (block_data*)mem_.get_memory(bd_arr_idx_) + cur_bd_arr_idx_;
+
+        cur_bd->block_id = db.first;
+        cur_bd->size = db.second->get_actual_size();
 
         // construct data in memory
         uint8_t* bdata = (uint8_t*)mem_.get_memory(block_arr_idx_) + cur_block_arr_idx_;
         auto bytes = db.second->get_data_ar();
-        loblocks = (block_data*)mem_.get_memory(bd_arr_idx_) + cur_bd_arr_idx_;
-        cur = loblocks + db.first;
-        memcpy(bdata, &bytes, cur->size);
+        memcpy(bdata, &bytes, cur_bd->size);
 
-        cur->data_offset = mem_.get_offset(block_arr_idx_) + cur_block_arr_idx_;
-        cur_block_arr_idx_ += cur->size;
-        cur->mtime = block_mtime[db.first];
+        cur_bd->data_offset = mem_.get_offset(block_arr_idx_) + cur_block_arr_idx_;
+        cur_block_arr_idx_ += cur_bd->size;
+        cur_bd->mtime = block_mtime[db.first];
+        cout << "BD ARR " << to_string(cur_bd_arr_idx_) << endl;
+
+
         cur_bd_arr_idx_++;
+
     }
+    debug();
     cur_inode_ptr = (inode*)mem_.get_memory(inode_arr_idx_) + cur_inode_arr_idx_;
-    cout << "2TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) <<"ms" << endl;
+    cout << "2TIME TO MAKE inode+BLOCKS: " << to_string(Util::get_time() - sttime) << "ms" << endl;
     if (bd_size > 0) {
-        cur_inode_ptr->block_data = mem_.get_offset(bd_arr_idx_) + (cur_bd_arr_idx_ * sizeof(block_data));
+        cur_inode_ptr->block_data = mem_.get_offset(bd_arr_idx_) + (initial_bdidx * sizeof(block_data));
         cur_inode_ptr->block_data_size = bd_size;
-        cout << "BD OFF" << to_string(mem_.get_offset(bd_arr_idx_) + (cur_bd_arr_idx_ * sizeof(block_data))) << " BD SIZE " << to_string(bd_size) << endl;
+        //    cout << "BD OFF" << to_string(mem_.get_offset(bd_arr_idx_) + (cur_bd_arr_idx_ * sizeof(block_data))) << " BD SIZE " << to_string(bd_size) << endl;
 
     } else
         cur_inode_ptr->block_data = -1;
@@ -370,7 +378,10 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
     }
     return -1;
 }
+void
+BPLUSIndex::debug() {
 
+}
 BPLUSIndex::~BPLUSIndex() {
     mem_.end();
 }
