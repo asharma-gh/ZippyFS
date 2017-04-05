@@ -68,6 +68,7 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
         int64_t inodeoff = 0;
 
         for(;;) {
+start:
             // check if this node contains this key
             for (int64_t ii = 0; ii < cur->num_keys; ii++) {
                 // find this key
@@ -82,8 +83,9 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
                         inodeoff = cur->values[ii];
                         goto make_inode;
                     } else {
-                        break;
+                        cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[ii + 1]);
 
+                        goto start;
                     }
                 }
             }
@@ -102,6 +104,7 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
                 cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[cur->num_keys - 1]);
                 continue;
             }
+
             // then it must be somewhere in the middle
             for (int ii = 0; ii < cur->num_keys - 1; ii++ ) {
                 char* pprev = (char*)tree.second + cur->keys[ii];

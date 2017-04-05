@@ -140,6 +140,8 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         root_ptr_ = (node*)mem_.get_memory(rootidx_);
         root_ptr_->keys[0] = key_of;
         root_ptr_->values[0] = inode_of;
+        cout << "Printing TREE" << endl;
+        print(mem_.get_offset(rootidx_));
         return;
     }
     unsigned long long stime = Util::get_time();
@@ -154,6 +156,8 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         // needs to split the node to fit this item
         split_insert_node(target_offset, key_of, inode_of, false, -1);
         cout << "TIME TO SPLIT PARENTS: " << to_string(Util::get_time( ) - ptime) << "ms" << endl;
+        cout << "Printing TREE" << endl;
+        print(mem_.get_offset(rootidx_));
         return;
     }
 
@@ -161,12 +165,8 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     insert_into_node(target_offset, key_of, inode_of, false, -1);
 
     cout << "Time to fully insert: " << to_string(Util::get_time() - sttime) << "ms" << endl;
-    cout << "Printing all inodes..." << endl;
-    for (int64_t ii = 0; ii < cur_inode_arr_idx_ - 1; ii++) {
-        char p[250] = {'\0'};
-        memcpy(p, (char*)mem_.get_root() + (((inode*)mem_.get_memory(inode_arr_idx_) + ii)->path), 50);
-        cout << "Path: |" << p << "|" << endl;
-    }
+    cout << "Printing TREE" << endl;
+    print(mem_.get_offset(rootidx_));
 }
 
 int64_t
@@ -249,10 +249,10 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
             cur_idx = ii;
     }
 
-    if (cur_idx == 0 && n->num_keys > 0)
+    if (cur_idx == 0 && n->num_keys > 1)
         cur_idx = n->num_keys;
     else {
-        // move everything from cur_idx + 1 up
+        // move everything from cur_idx up
         node temp = *n;
         int64_t ii = cur_idx;
         for (; ii < n->num_keys; ii++) {
@@ -384,7 +384,35 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
     }
     return -1;
 }
+void
+BPLUSIndex::print(int64_t n) {
+    node* nn = (node*)((char*)mem_.get_root() + n);
+    int64_t ii;
+    for (ii = 0; ii < nn->num_keys; ii++) {
+        cout << "-";
 
+    }
+    cout << endl;
+    for (ii = 0; ii < nn->num_keys; ii++) {
+        cout << ((char*)mem_.get_root() + nn->keys[ii]) << endl;
+    }
+    for (ii = 0; ii < nn->num_keys; ii++) {
+        cout << "-";
+    }
+    cout << endl;
+
+    if (nn->is_leaf) {
+        cout << "isleaf" << endl;
+        return;
+    }
+
+    for (ii = 0; ii < nn->num_keys + 1; ii++) {
+        print(nn->children[ii]);
+    }
+    return;
+
+
+}
 BPLUSIndex::~BPLUSIndex() {
     mem_.end();
 }

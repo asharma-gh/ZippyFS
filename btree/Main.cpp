@@ -1,6 +1,6 @@
 #include <iostream>
 #include "bplus.h"
-#define MAX 15
+#define MAX 5
 using namespace std;
 int
 main() {
@@ -8,10 +8,11 @@ main() {
     //      cout << "JJ"<<to_string(jj) << endl;
     BPLUSTree bpt;
 
-    for (int ii = 0; ii <= MAX; ii++)
+    for (int ii = 0; ii <= MAX; ii++) {
         bpt.insert(ii,ii);
 
-    //bpt.print();
+        bpt.print();
+    }
     for (int ii = 0; ii <= MAX; ii++)
         cout << to_string(bpt.find(ii)) << endl;
     /*

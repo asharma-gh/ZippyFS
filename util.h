@@ -5,6 +5,7 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <cstring>
+#include <string>
 #include <iostream>
 #include <linux/random.h>
 
@@ -118,7 +119,6 @@ class Util {
         }
         return std::string(hex_name);
     }
-
     /**
      * generates a hash of the given content
      * returns a string representation of the hex bytes

@@ -176,7 +176,7 @@ class BlockCache {
     /** has a file changed? */
     bool has_changed_ = false;
 
-
+    int t = 0;
     /**
      * @param path is the path to get from disk
      * @param data is whether to also retrieve the data

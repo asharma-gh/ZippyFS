@@ -289,6 +289,7 @@ Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     // cout << "Bytes: " << buf << endl;
     return size;
 }
+
 string
 Inode::get_id() {
     return inode_id_;

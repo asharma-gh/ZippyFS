@@ -98,6 +98,8 @@ int
 BlockCache::make_file(string path, mode_t mode, bool dirty) {
     shared_ptr<Inode> ptr(new Inode(path));
     ptr->set_mode(mode);
+    //ptr->set_id(to_string(t));
+    //t++;
     if (dirty)
         ptr->set_dirty();
     size_++;

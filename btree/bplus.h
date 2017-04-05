@@ -2,7 +2,7 @@
 #define B_PLUS_H
 #include <cstdint>
 #include <iostream>
-#define ORDER 5
+#define ORDER 4
 
 // TODO: fix records to be a contiguous block of memory that nodes point to, leaf[0] => first index in this [List-of records]
 //

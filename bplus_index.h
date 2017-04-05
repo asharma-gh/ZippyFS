@@ -4,7 +4,7 @@
 #include "inode.h"
 #include "tire_fire.h"
 #include "block.h"
-#define ORDER 64
+#define ORDER 4
 #define HASH_SIZE 128
 /**
  * This class represents a memory-backed B+Tree used for indexing
@@ -135,6 +135,6 @@ class BPLUSIndex {
      */
     int64_t split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isparent, int64_t targ);
 
-    void print();
+    void print(int64_t n);
 };
 #endif
