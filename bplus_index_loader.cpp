@@ -67,9 +67,10 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
         BPLUSIndex::node* cur = (BPLUSIndex::node*)((char*)tree.second + ((BPLUSIndex::header*)tree.second)->root);
         int64_t inodeoff = 0;
 
-        for(;;) {
+        for (;;) {
 start:
             // check if this node contains this key
+            cout << "CUR NUM KEYS: " << to_string(cur->num_keys) << endl;
             for (int64_t ii = 0; ii < cur->num_keys; ii++) {
                 // find this key
                 int64_t keyof = cur->keys[ii];
@@ -95,11 +96,15 @@ start:
                 return latest;
             // this node does not have the key, find the correct child
             char* prev = (char*)tree.second + cur->keys[0];
+            cout << "PREV " << prev << endl;
+            cout << "COMP W/ PREV: " << to_string(strcmp(phash, prev)) << endl;
             if (strcmp(phash, prev) < 0) {
                 cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[0]);
                 continue;
             }
             char* post = (char*)tree.second + cur->keys[cur->num_keys - 1];
+            cout << "POST " << post << endl;
+            cout << "COMP W/ POST: " << to_string(strcmp(phash, post)) << endl;
             if (strcmp(phash, post) > 0) {
                 cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[cur->num_keys - 1]);
                 continue;
@@ -109,10 +114,15 @@ start:
             for (int ii = 0; ii < cur->num_keys - 1; ii++ ) {
                 char* pprev = (char*)tree.second + cur->keys[ii];
                 char* ppost = (char*)tree.second + cur->keys[ii + 1];
+                cout << "PPREV: " << pprev << endl;
+                cout << "PPOST: " << ppost << endl;
+                cout << "COMP PPREV: " << to_string(strcmp(pprev, phash)) << endl;
+                cout << "COMP PHASH,POST: " << to_string(strcmp(phash, ppost)) << endl;
                 if (strcmp(pprev, phash) < 0
                         && strcmp(phash, ppost) < 0) {
+                    cout << "found new child" << endl;
                     cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[ii + 1]);
-                    continue;
+                    goto start;
                 }
             }
             throw domain_error("we will never terminate");
