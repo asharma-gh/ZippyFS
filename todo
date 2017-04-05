@@ -1,3 +1,4 @@
+- fix finding on deep trees
 - refactor finding in the loader, remove all those goto's
 - finish b+tree implementation in file system, get loads and flush to work
 - finish loader

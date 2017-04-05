@@ -240,7 +240,7 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
     int cur_idx = 0;
     node* n = (node*)((char*)mem_.get_root() + nodeoffset);
     cout << "num keys in given node: " << to_string(n->num_keys) << endl;
-    bool gotidx = false;
+    bool found_pos = false;
     for (int64_t ii = 0; ii < n->num_keys; ii++) {
         // compare keys by string
         char oldk[HASH_SIZE + 1] = {'\0'};
@@ -252,12 +252,12 @@ BPLUSIndex::insert_into_node(uint64_t nodeoffset, int64_t k, int64_t v, bool isl
         cout << "CMP RES: " << to_string(strcmp(newk, oldk)) << endl;
         if (strcmp(newk, oldk) < 0) {
             cur_idx = ii;
-            gotidx = true;
+            found_pos = true;
             break;
         }
     }
 
-    if (gotidx == false)
+    if (found_pos == false)
         // tack to end
         cur_idx = n->num_keys;
 
@@ -443,6 +443,19 @@ BPLUSIndex::print(int64_t n) {
     return;
 
 
+}
+bool
+BPLUSIndex::find(string p) {
+    int64_t noff = find_node_to_store(p);
+    if (noff == 0 || noff == -1)
+        return false;
+    node* n = (node*)((char*)mem_.get_root() + noff);
+    for (int ii = 0; ii < n->num_keys; ii++) {
+        if (strcmp((char*)mem_.get_root() + n->keys[ii], p.c_str()) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 BPLUSIndex::~BPLUSIndex() {
     mem_.end();

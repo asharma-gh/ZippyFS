@@ -361,7 +361,8 @@ BlockCache::flush_to_disk() {
         flusher.add_inode(*get_inode_by_path(ent.first),
                           dirty_block_[ent.second], dirty_block_mtime_[ent.second]);
     }
-
+    //cout << "Checking...: " << Util::crypto_hash("/mm") << endl;
+    //assert(flusher.find(Util::crypto_hash("/mm")));
     inode_idx_.clear();
     inode_ptrs_.clear();
     dirty_block_.clear();

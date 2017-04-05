@@ -106,7 +106,7 @@ start:
             cout << "POST " << post << endl;
             cout << "COMP W/ POST: " << to_string(strcmp(phash, post)) << endl;
             if (strcmp(phash, post) > 0) {
-                cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[cur->num_keys - 1]);
+                cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[cur->num_keys]);
                 continue;
             }
 
@@ -183,7 +183,9 @@ BPLUSIndexLoader::get_children(string path) {
         BPLUSIndex::header* head = (BPLUSIndex::header*)tree.second;
 
         // iterate thru each inode
-        for (uint32_t ii = head->inode_list; ii < head->inode_list + (head->num_inodes * sizeof(BPLUSIndex::inode)); ii += sizeof(BPLUSIndex::inode)) {
+        for (uint32_t ii = head->inode_list;
+                ii < head->inode_list + (head->num_inodes * sizeof(BPLUSIndex::inode));
+                ii += sizeof(BPLUSIndex::inode)) {
 
             BPLUSIndex::inode* cur_inode = (BPLUSIndex::inode*)((char*)tree.second + ii);
 

@@ -76,7 +76,7 @@ class BPLUSIndex {
      * @num_ents is the number of values that will exist in this B+tree
      */
     BPLUSIndex(uint64_t num_ents, uint64_t block_size, uint64_t num_blocks, uint64_t paths_size);
-
+    bool find(std::string p);
     /**
      * Destructor, flushes everything to disk
      */
