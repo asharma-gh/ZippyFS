@@ -336,6 +336,8 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
         // set parent pointer in targ
         node* target = (node*)mem_.get_memory(targ);
         target->parent = mem_.get_offset(rightidx);
+        // reset middle to leftmost in new node, post insert
+        med_key_of = right->keys[0];
         // cout << "New tree..." << endl;
         // print(mem_.get_offset(rootidx_));
 

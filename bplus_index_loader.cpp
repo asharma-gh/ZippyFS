@@ -64,53 +64,36 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
         cout << "TREE: " << tree.first << endl;
 
         // traverse thru tree
-        BPLUSIndex::node* cur = (BPLUSIndex::node*)((char*)tree.second + ((BPLUSIndex::header*)tree.second)->root);
+        int64_t cur_offset = ((BPLUSIndex::header*)tree.second)->root;
+
+        BPLUSIndex::node* cur = nullptr;
         int64_t inodeoff = 0;
 
         for (;;) {
-start:
-            // check if this node contains this key
-            cout << "CUR NUM KEYS: " << to_string(cur->num_keys) << endl;
-            for (int64_t ii = 0; ii < cur->num_keys; ii++) {
-                // find this key
-                int64_t keyof = cur->keys[ii];
-                char kmem[HASH_SIZE + 1] = {'\0'};
-                memcpy(kmem, (char*)tree.second + keyof, HASH_SIZE);
-                cout << "Checking " << kmem << endl;
-                if (strcmp(kmem, phash) == 0) {
-                    // we found it
-                    if (cur->is_leaf) {
-                        cout << "FOUND IT " << endl;
-                        inodeoff = cur->values[ii];
-                        goto make_inode;
-                    } else {
-                        cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[ii + 1]);
-
-                        goto start;
-                    }
-                }
-            }
-
+            cur = (BPLUSIndex::node*)((char*)tree.second + cur_offset);
             if (cur->is_leaf)
-                // then we will never get to it
-                return latest;
-            // this node does not have the key, find the correct child
+                goto found_node;
+
+            // is this key before all the ones in this node?
             char* prev = (char*)tree.second + cur->keys[0];
             cout << "PREV " << prev << endl;
             cout << "COMP W/ PREV: " << to_string(strcmp(phash, prev)) << endl;
             if (strcmp(phash, prev) < 0) {
-                cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[0]);
+                cur_offset = cur->children[0];
                 continue;
             }
+
+            // is this key adter all the ones in this node?
             char* post = (char*)tree.second + cur->keys[cur->num_keys - 1];
             cout << "POST " << post << endl;
             cout << "COMP W/ POST: " << to_string(strcmp(phash, post)) << endl;
-            if (strcmp(phash, post) > 0) {
-                cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[cur->num_keys]);
+            if (strcmp(phash, post) >= 0) {
+                cur_offset = cur->children[cur->num_keys];
                 continue;
             }
 
             // then it must be somewhere in the middle
+            bool found = false;
             for (int ii = 0; ii < cur->num_keys - 1; ii++ ) {
                 char* pprev = (char*)tree.second + cur->keys[ii];
                 char* ppost = (char*)tree.second + cur->keys[ii + 1];
@@ -118,15 +101,26 @@ start:
                 cout << "PPOST: " << ppost << endl;
                 cout << "COMP PPREV: " << to_string(strcmp(pprev, phash)) << endl;
                 cout << "COMP PHASH,POST: " << to_string(strcmp(phash, ppost)) << endl;
-                if (strcmp(pprev, phash) < 0
+                if (strcmp(pprev, phash) <= 0
                         && strcmp(phash, ppost) < 0) {
                     cout << "found new child" << endl;
-                    cur = (BPLUSIndex::node*)((char*)tree.second + cur->children[ii + 1]);
-                    goto start;
+                    cur_offset = cur->children[ii + 1];
+                    found = true;
                 }
             }
-            throw domain_error("we will never terminate");
+            if (!found)
+                throw new domain_error("will not terminate");
+
         }
+found_node:
+        // cur contains our node
+        for (int64_t ii = 0; ii < cur->num_keys; ii++) {
+            if (strcmp((char*)tree.second + cur->keys[ii], phash) == 0) {
+                inodeoff = cur->values[ii];
+                goto make_inode;
+            }
+        }
+        return latest;
 make_inode:
         // we found the entry
         // create inode
