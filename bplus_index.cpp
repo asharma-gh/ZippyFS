@@ -419,7 +419,7 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
 
     if (pparent->num_keys == ORDER - 1) {
         // no room, need to split
-        split_insert_node(paroff, right->keys[0], -1, true, rightidx);
+        split_insert_node(paroff, med_key_of, -1, true, rightidx);
     } else {
         cout << "parent is not full" << endl;
         cout << "parent offset: " << to_string(paroff) << endl;

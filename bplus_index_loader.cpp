@@ -70,6 +70,7 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
         int64_t inodeoff = 0;
 
         for (;;) {
+            cout << "Cur_offset: " << to_string(cur_offset) << endl;
             cur = (BPLUSIndex::node*)((char*)tree.second + cur_offset);
             if (cur->is_leaf)
                 goto found_node;
