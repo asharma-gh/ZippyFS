@@ -1,9 +1,8 @@
-- step thru tree in log file
-    - make change to get med post insert
-- fix finding on deep trees
-- refactor finding in the loader, remove all those goto's
-- finish b+tree implementation in file system, get loads and flush to work
-- finish loader
+- clean up b tree and loader
+- add internal and leaf node
+- change pointers to allow for multiple tree references
+- add tree-ptr table
+- integrate merging on trees
 - separate root node and internal, leaf nodes
 
 - fully integrate loader into block_cache

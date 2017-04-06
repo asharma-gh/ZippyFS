@@ -43,6 +43,7 @@ BPLUSIndexLoader::load_trees() {
         // add pointer to map
         file_to_mem_[fpath] = fmem;
     }
+    closedir(tree_dir);
 }
 
 BPLUSIndexLoader::disk_inode_info

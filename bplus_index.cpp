@@ -143,7 +143,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         root_ptr_->keys[0] = key_of;
         root_ptr_->values[0] = inode_of;
         cout << "Printing TREE" << endl;
-        print(mem_.get_offset(rootidx_));
+        // print(mem_.get_offset(rootidx_));
         return;
     }
     unsigned long long stime = Util::get_time();
@@ -159,7 +159,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         split_insert_node(target_offset, key_of, inode_of, false, -1);
         cout << "TIME TO SPLIT PARENTS: " << to_string(Util::get_time( ) - ptime) << "ms" << endl;
         cout << "Printing TREE" << endl;
-        print(mem_.get_offset(rootidx_));
+        // print(mem_.get_offset(rootidx_));
         return;
     }
 
@@ -168,7 +168,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
 
     cout << "Time to fully insert: " << to_string(Util::get_time() - sttime) << "ms" << endl;
     cout << "Printing TREE" << endl;
-    print(mem_.get_offset(rootidx_));
+    //print(mem_.get_offset(rootidx_));
 }
 
 int64_t
@@ -320,7 +320,6 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
     bool leftofmed = strcmp(curkey, medkey) < 0;
     // if we are splitting a parent, don't include median on right
     if (isparent) {
-        //    cout << "MED IDX" << to_string(med_idx) << endl;
         for (ii = med_idx + 1; ii < ORDER - 1; ii++, cur_idx++) {
             right->num_keys++;
             right->keys[cur_idx] = nnode->keys[ii];
@@ -355,15 +354,10 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
             node* target = (node*)mem_.get_memory(targ);
             target->parent = mem_.get_offset(rightidx);
         }
-        // reset middle to leftmost in new node, post insert
-        //if (nnode->parent != -1)
-        //  med_key_of = right->keys[0];
-        // cout << "New tree..." << endl;
-        // print(mem_.get_offset(rootidx_));
+
 
     } else {
         // we are splitting a child
-        //   cout << "NUMBER OF KEYS IN HOST: " << to_string(nnode->num_keys) << endl;
         for (ii = med_idx; ii < ORDER - 1; ii++, cur_idx++) {
             right->num_keys++;
             right->keys[cur_idx] = nnode->keys[ii];
