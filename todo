@@ -55,33 +55,12 @@ which we can then mmap back and act on as if it was always in memory.
 
 
 ======
-
-
-- load from disk is the biggest bottleneck, make it faster some how
-
-- add mtime to each block. Currently we overwrite blocks only if
-the inode's overall mtime is higher. It can be the case though
-if two people work on the same file, on separate blocks, that sections
-    are updated across .node / .data files. 
-adding mtime to each block will fix this, but will require keeping
-track of the time for each block, and changing how stuff is read/written to .node files.
-
-
 - unlinking, removals
 - access / chmod stuff
 - group / user permissions
 - test over network
 -
 - general testing
-
-
-=== To think about later ====
-Issue:
-- cache consistency when garbage collection occurs
-solution: implement function in block_cache to "update" its file cache
-when gc occurs, if gc is implemented in fuse_ops. Alternatively,
-gc should be implemented in the block_cache
-
 ===
 TODO:
  - make looking for a particular inode id / path faster than linear time, using a tree like structure

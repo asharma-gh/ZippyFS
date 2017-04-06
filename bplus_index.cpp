@@ -68,8 +68,7 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         path_arr_idx_ = mem_.get_tire(path_size_ * sizeof(char));
         cur_path_idx_ = 0;
     }
-    // cout << "Printing tree pre adding.." << endl;
-    // print(mem_.get_offset(rootidx_));
+
     // add inode path to memory
     memcpy(((char*)mem_.get_memory(path_arr_idx_) + cur_path_idx_), in.get_path().c_str(), in.get_path().size());
 
@@ -123,7 +122,6 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     if (bd_size > 0) {
         cur_inode_ptr->block_data = mem_.get_offset(bd_arr_idx_) + (initial_bdidx * sizeof(block_data));
         cur_inode_ptr->block_data_size = bd_size;
-        //    cout << "BD OFF" << to_string(mem_.get_offset(bd_arr_idx_) + (cur_bd_arr_idx_ * sizeof(block_data))) << " BD SIZE " << to_string(bd_size) << endl;
 
     } else
         cur_inode_ptr->block_data = -1;
