@@ -68,8 +68,8 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         path_arr_idx_ = mem_.get_tire(path_size_ * sizeof(char));
         cur_path_idx_ = 0;
     }
-    cout << "Printing tree pre adding.." << endl;
-    print(mem_.get_offset(rootidx_));
+    // cout << "Printing tree pre adding.." << endl;
+    // print(mem_.get_offset(rootidx_));
     // add inode path to memory
     memcpy(((char*)mem_.get_memory(path_arr_idx_) + cur_path_idx_), in.get_path().c_str(), in.get_path().size());
 
@@ -312,6 +312,12 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
     // refresh pointer
     nnode = (node*)((char*)mem_.get_root() + nodeoffset);
     int64_t med_key_of = nnode->keys[med_idx];
+    // compare string with med
+    char* medkey = (char*)mem_.get_root() + med_key_of;
+    cout << "MEDKEY: " << medkey << endl;
+    char* curkey = (char*)mem_.get_root() + k;
+    cout << "CURKEY: " << curkey << endl;
+    bool leftofmed = strcmp(curkey, medkey) < 0;
     // if we are splitting a parent, don't include median on right
     if (isparent) {
         //    cout << "MED IDX" << to_string(med_idx) << endl;
@@ -319,12 +325,19 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
             right->num_keys++;
             right->keys[cur_idx] = nnode->keys[ii];
             right->children[cur_idx] = nnode->children[ii];
+            // change parent offset in child
+            node* child =(node*)((char*)mem_.get_root() + nnode->children[ii]);
+            child->parent = mem_.get_offset(rightidx);
             // delete now redundant entries
             nnode->keys[ii] = -1;
             nnode->num_keys--;
         }
         // copy last child over
         right->children[cur_idx] = nnode->children[ii];
+        // change parent offset in child
+        node* child =(node*)((char*)mem_.get_root() + nnode->children[ii]);
+        child->parent = mem_.get_offset(rightidx);
+
         // remove med from left
         nnode->keys[med_idx] = -1;
         nnode->num_keys--;
@@ -332,12 +345,19 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
         right->is_leaf = false;
         cout << "Split insert" << endl;
         cout << "Num keys in right: " << to_string(right->num_keys) << endl;
-        insert_into_node(mem_.get_offset(rightidx), k, v, false, mem_.get_offset(targ));
-        // set parent pointer in targ
-        node* target = (node*)mem_.get_memory(targ);
-        target->parent = mem_.get_offset(rightidx);
+        if (leftofmed) {
+            insert_into_node(nodeoffset, k, v, false, mem_.get_offset(targ));
+            node* target = (node*)mem_.get_memory(targ);
+            target->parent = nodeoffset;
+        } else {
+            insert_into_node(mem_.get_offset(rightidx), k, v, false, mem_.get_offset(targ));
+            // set parent pointer in targ
+            node* target = (node*)mem_.get_memory(targ);
+            target->parent = mem_.get_offset(rightidx);
+        }
         // reset middle to leftmost in new node, post insert
-        med_key_of = right->keys[0];
+        if (nnode->parent != -1)
+            med_key_of = right->keys[0];
         // cout << "New tree..." << endl;
         // print(mem_.get_offset(rootidx_));
 
@@ -358,15 +378,18 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
 
         // now that the leaf is split, insert into new side
         cout << "Split leaf insert" << endl;
-        if (v != -1)
+        if (leftofmed)
+            insert_into_node(nodeoffset, k, v, false, -1);
+        else
             insert_into_node(mem_.get_offset(rightidx), k, v, false, -1);
     }
     // fix parent pointers
     int64_t paroff = nnode->parent;
 
     int64_t nkey = right->keys[0];
-    if (isparent)
+    if (isparent) {
         nkey = med_key_of;
+    }
     // make new root if parent is null
     if (paroff == -1) {
         // make new root
@@ -376,6 +399,7 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
         nroot->num_keys = 1;
         nroot->is_leaf = false;
         nroot->keys[0] = nkey;
+        cout << "new root key: " << (char*)mem_.get_root() + nkey << endl;
         nroot->children[0] = nodeoffset;
         nroot->children[1] = mem_.get_offset(rightidx);
         right = (node*)mem_.get_memory(rightidx);
