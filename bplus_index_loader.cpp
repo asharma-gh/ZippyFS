@@ -14,6 +14,12 @@ BPLUSIndexLoader::BPLUSIndexLoader() {
 
 void
 BPLUSIndexLoader::load_trees() {
+
+    for (auto ent : file_to_mem_) {
+        munmap(ent.second, file_to_size_[ent.first]);
+        close(file_to_fd_[ent.first]);
+    }
+
     DIR* tree_dir = opendir(path_.c_str());
     struct dirent* entry;
     while ((entry = readdir(tree_dir))) {
@@ -22,9 +28,12 @@ BPLUSIndexLoader::load_trees() {
         string ent = entry->d_name;
         if (ent.substr(0,5).compare("TREE-") != 0)
             continue;
-        if (file_to_mem_.find(ent) != file_to_mem_.end())
+        /*
+        if (file_to_mem_.find(path_ + ent) != file_to_mem_.end()) {
+            cout << "Skipping..." << endl;
             continue;
-
+        }
+        */
         string fpath = path_ + ent;
 
         cout << "fpath: " << fpath << endl;
@@ -38,7 +47,7 @@ BPLUSIndexLoader::load_trees() {
         file_to_size_[fpath] = fsize;
 
         // load memory
-        BPLUSIndex::node* fmem = (BPLUSIndex::node*)mmap(0, fsize*sizeof(char), PROT_READ, MAP_SHARED, fd, 0);
+        BPLUSIndex::header* fmem = (BPLUSIndex::header*)mmap(0, fsize*sizeof(char), PROT_READ, MAP_SHARED, fd, 0);
 
         // add pointer to map
         file_to_mem_[fpath] = fmem;
@@ -48,7 +57,7 @@ BPLUSIndexLoader::load_trees() {
 
 BPLUSIndexLoader::disk_inode_info
 BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
-    load_trees();
+    //load_trees();
     cout << "finding inode for " << path << " getdata? " << to_string(get_data) << endl;
     disk_inode_info latest;
     latest.i_mtime = 0;
@@ -63,23 +72,23 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
     uint64_t latest_time = 0;
     for (auto tree : file_to_mem_) {
         cout << "TREE: " << tree.first << endl;
-
         // traverse thru tree
-        int64_t cur_offset = ((BPLUSIndex::header*)tree.second)->root;
-
+        BPLUSIndex::header* head = (BPLUSIndex::header*)tree.second;
+        int64_t cur_offset = head->root;
+        cout << "ROOT: " << to_string(cur_offset) << endl;
         BPLUSIndex::node* cur = nullptr;
         int64_t inodeoff = 0;
 
         for (;;) {
-            cout << "Cur_offset: " << to_string(cur_offset) << endl;
+            // cout << "Cur_offset: " << to_string(cur_offset) << endl;
             cur = (BPLUSIndex::node*)((char*)tree.second + cur_offset);
             if (cur->is_leaf)
                 goto found_node;
 
             // is this key before all the ones in this node?
             char* prev = (char*)tree.second + cur->keys[0];
-            cout << "PREV " << prev << endl;
-            cout << "COMP W/ PREV: " << to_string(strcmp(phash, prev)) << endl;
+            //  cout << "PREV " << prev << endl;
+            //  cout << "COMP W/ PREV: " << to_string(strcmp(phash, prev)) << endl;
             if (strcmp(phash, prev) < 0) {
                 cur_offset = cur->children[0];
                 continue;
@@ -87,8 +96,8 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
 
             // is this key adter all the ones in this node?
             char* post = (char*)tree.second + cur->keys[cur->num_keys - 1];
-            cout << "POST " << post << endl;
-            cout << "COMP W/ POST: " << to_string(strcmp(phash, post)) << endl;
+            //   cout << "POST " << post << endl;
+            // cout << "COMP W/ POST: " << to_string(strcmp(phash, post)) << endl;
             if (strcmp(phash, post) >= 0) {
                 cur_offset = cur->children[cur->num_keys];
                 continue;
@@ -99,10 +108,12 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
             for (int ii = 0; ii < cur->num_keys - 1; ii++ ) {
                 char* pprev = (char*)tree.second + cur->keys[ii];
                 char* ppost = (char*)tree.second + cur->keys[ii + 1];
-                cout << "PPREV: " << pprev << endl;
-                cout << "PPOST: " << ppost << endl;
-                cout << "COMP PPREV: " << to_string(strcmp(pprev, phash)) << endl;
-                cout << "COMP PHASH,POST: " << to_string(strcmp(phash, ppost)) << endl;
+                /*
+                  cout << "PPREV: " << pprev << endl;
+                  cout << "PPOST: " << ppost << endl;
+                  cout << "COMP PPREV: " << to_string(strcmp(pprev, phash)) << endl;
+                  cout << "COMP PHASH,POST: " << to_string(strcmp(phash, ppost)) << endl;
+                  */
                 if (strcmp(pprev, phash) <= 0
                         && strcmp(phash, ppost) < 0) {
                     cout << "found new child" << endl;
@@ -166,13 +177,14 @@ make_inode:
             }
         }
     }
+
     return latest;
 }
 
 vector<BPLUSIndexLoader::index_entry>
 BPLUSIndexLoader::get_children(string path) {
-    load_trees();
     cout << "Getting children for " << path << endl;
+    load_trees();
     vector<index_entry> names;
     // iterate thru each tree
     for (auto tree : file_to_mem_) {
