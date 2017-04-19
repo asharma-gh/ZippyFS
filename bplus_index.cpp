@@ -140,8 +140,6 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         root_ptr_ = (node*)mem_.get_memory(rootidx_);
         root_ptr_->keys[0] = key_of;
         root_ptr_->values[0] = inode_of;
-        cout << "Printing TREE" << endl;
-        // print(mem_.get_offset(rootidx_));
         return;
     }
     unsigned long long stime = Util::get_time();
@@ -156,8 +154,6 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
         // needs to split the node to fit this item
         split_insert_node(target_offset, key_of, inode_of, false, -1);
         cout << "TIME TO SPLIT PARENTS: " << to_string(Util::get_time( ) - ptime) << "ms" << endl;
-        cout << "Printing TREE" << endl;
-        // print(mem_.get_offset(rootidx_));
         return;
     }
 
@@ -165,8 +161,6 @@ void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_bloc
     insert_into_node(target_offset, key_of, inode_of, false, -1);
 
     cout << "Time to fully insert: " << to_string(Util::get_time() - sttime) << "ms" << endl;
-    cout << "Printing TREE" << endl;
-    //print(mem_.get_offset(rootidx_));
 }
 
 int64_t
@@ -475,6 +469,7 @@ BPLUSIndex::find(string p) {
     }
     return false;
 }
+
 BPLUSIndex::~BPLUSIndex() {
     mem_.end();
 }
