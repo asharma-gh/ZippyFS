@@ -53,6 +53,7 @@ class BPLUSIndex {
         int64_t data_offset;
     } block_data;
 
+    /** TODO: refactor node to internal_node */
     /** represents a tree structure containing inodes */
     typedef struct node {
         int64_t parent = -1;
@@ -66,7 +67,17 @@ class BPLUSIndex {
         int64_t values[ORDER - 1] = {-1};
     } node;
 
-    /** TODO: interior node, leaf node */
+    /** represents a lead node for a B+Tree */
+    typedef struct leaf_node {
+        int64_t parent = -1;
+        /** array of offsets to char arrays */
+        int64_t keys[ORDER - 1] = {-1};
+        int64_t num_keys = 0;
+        bool is_leaf = 1;
+        /** list of offsets for inodes if this node is a leaf */
+        int64_t values[ORDER - 1] = {-1};
+
+    } leaf_node;
 
     /** adds the given inode to this B+Tree */
     void add_inode(Inode in, std::map<uint64_t, std::shared_ptr<Block>> dirty_blocks, std::map<uint64_t, unsigned long long> block_mtime);
