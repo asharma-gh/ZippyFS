@@ -4,7 +4,7 @@
 #include "inode.h"
 #include "tire_fire.h"
 #include "block.h"
-#define ORDER 128
+#define ORDER 24
 #define HASH_SIZE 128
 /**
  * This class represents a memory-backed B+Tree used for indexing

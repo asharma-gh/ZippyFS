@@ -73,14 +73,15 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
     for (auto tree : file_to_mem_) {
         cout << "TREE: " << tree.first << endl;
         // traverse thru tree
-        BPLUSIndex::header* head = (BPLUSIndex::header*)tree.second;
+        BPLUSIndex::header* head = tree.second;
+        cout << "SEG?" << endl;
         int64_t cur_offset = head->root;
         cout << "ROOT: " << to_string(cur_offset) << endl;
         BPLUSIndex::node* cur = nullptr;
         int64_t inodeoff = 0;
 
         for (;;) {
-            // cout << "Cur_offset: " << to_string(cur_offset) << endl;
+            cout << "Cur_offset: " << to_string(cur_offset) << endl;
             cur = (BPLUSIndex::node*)((char*)tree.second + cur_offset);
             if (cur->is_leaf)
                 goto found_node;
