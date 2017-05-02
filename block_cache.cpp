@@ -150,30 +150,6 @@ BlockCache::readdir(string path) {
     // map (path, index ent)
     map<string, BPLUSIndexLoader::index_entry> added_names;
 
-    unsigned long long time = Util::get_time();
-    // first check the cache, add stuff that's updated (checking for deletions)
-    // load_from_disk("/mm");
-    /*
-    for (auto entry : inode_idx_) {
-        cout << "Checking " << entry.first << endl;
-        char* dirpath = strdup(entry.first.c_str());
-        dirpath = dirname(dirpath);
-        cout << "DIRNAME " << dirpath << endl;
-        if (strcmp(dirpath, path.c_str()) == 0) {
-            cout << "ADDING SHIT TO MAP" << endl;
-            struct stat st;
-            get_inode_by_path(entry.first)->stat(&st);
-            BPLUSIndexLoader::index_entry ent;
-            ent.path = entry.first;
-            ent.deleted = get_inode_by_path(entry.first)->is_deleted();
-            ent.mtime = get_inode_by_path(entry.first)->get_ull_mtime();
-            added_names[entry.first] = ent;
-        }
-        free(dirpath);
-    }
-    */
-    unsigned long long dtime = Util::get_time();
-
     // check stuff on disk
     auto disk_ents = loader_.get_children(path);
 
@@ -193,12 +169,7 @@ BlockCache::readdir(string path) {
         cout << "ADDED " << thing.first << endl;
         ents.push_back(thing.second);
     }
-    unsigned long long etime = Util::get_time();
 
-    cout << "\nDiff start & end: " << to_string (etime - dtime)
-         << "\nDiff disk & end: " << to_string (etime - time)
-         << "\nDiff start & disk: " << to_string (dtime - time)
-         << endl;
     // TODO: remove vector for map, can convert back to vec if needed
     return ents;
 }
