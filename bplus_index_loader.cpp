@@ -28,12 +28,7 @@ BPLUSIndexLoader::load_trees() {
         string ent = entry->d_name;
         if (ent.substr(0,5).compare("TREE-") != 0)
             continue;
-        /*
-        if (file_to_mem_.find(path_ + ent) != file_to_mem_.end()) {
-            cout << "Skipping..." << endl;
-            continue;
-        }
-        */
+
         string fpath = path_ + ent;
 
         cout << "fpath: " << fpath << endl;
