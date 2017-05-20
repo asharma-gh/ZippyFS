@@ -67,6 +67,19 @@ class BPLUSIndex {
         int64_t values[ORDER - 1] = {-1};
     } node;
 
+    /** represents an internal node in a B+tree with children */
+    typedef struct internal_node {
+        int64_t parent = -1;
+        /** array of offsets to char arrays */
+        int64_t keys[ORDER - 1] = {-1};
+        int64_t num_keys = 0;
+        bool is_leaf = 0;
+        /** offset to child nodes */
+        uint64_t children[ORDER] = {0};
+        /** list of offsets for inodes if this node is a leaf */
+        int64_t values[ORDER - 1] = {-1};
+    } node;
+
     /** represents a lead node for a B+Tree */
     typedef struct leaf_node {
         int64_t parent = -1;
