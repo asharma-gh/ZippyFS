@@ -78,7 +78,7 @@ class BPLUSIndex {
         uint64_t children[ORDER] = {0};
         /** list of offsets for inodes if this node is a leaf */
         int64_t values[ORDER - 1] = {-1};
-    } node;
+    } internal_node;
 
     /** represents a lead node for a B+Tree */
     typedef struct leaf_node {
