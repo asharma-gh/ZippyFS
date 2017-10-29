@@ -9,8 +9,7 @@ If a particular section of a file was modified, that block of the file is flushe
 Contents in the disk directory are synchronized with the server. Contents on the server are synchronized with all peers connected to it.  
 "Contents" consists of meta-data associated with each file and corresponding blocks. When changes are flushed, a new version of the meta data and data are created, so all changed versions exist.  
 
-currently finding a file involves glob'ing the directory of stuff, linking together the files in a b-tree may make this much faster  
- 
+Currently developing a distributed B+Tree implementation which will serve as the database for all the files. Work needs to be done on merging sections of B+trees, garbage collection on nodes all while keeping everything persistent  
 
 ## Installation/Set-up
 This is still in very early stages, and some hacking at the source may be required to get it running. sync.py for instance needs to be overhauled for your server configuration.  
