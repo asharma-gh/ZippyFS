@@ -38,7 +38,6 @@ using namespace std;
 
 BlockCache* block_cache;
 
-
 /** the path of the mounted directory of zip files */
 static char* zip_dir_name;
 
@@ -289,6 +288,7 @@ zippyfs_utimens(const char* path,  const struct timespec ts[2]) {
     (void)ts;
     return 0;
 }
+
 /**
  * closes the working zip archive
  */

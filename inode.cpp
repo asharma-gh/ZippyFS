@@ -160,6 +160,7 @@ uint64_t
 Inode::get_size() {
     return size_;
 }
+
 void
 Inode::set_id(string id) {
     inode_id_ = id;
@@ -170,6 +171,7 @@ Inode::get_refs() {
     vector<string> t (links_.begin(), links_.end());
     return t;
 }
+
 void
 Inode::set_nlink(uint32_t nlink) {
     nlink_= nlink;
@@ -181,6 +183,7 @@ Inode::set_mtime(unsigned long long mtime) {
     ts_mtime_.tv_sec = mtime / 1000;
     ts_mtime_.tv_nsec = (mtime % 1000) * 1000000;
 }
+
 void
 Inode::set_ctime(unsigned long long ctime) {
     ul_ctime_ = ctime;
@@ -188,10 +191,12 @@ Inode::set_ctime(unsigned long long ctime) {
     ts_ctime_.tv_nsec = (ctime % 1000) * 1000000;
 
 }
+
 string
 Inode::get_record() {
     return (path_ + " " + to_string(mode_) + " " + to_string(ul_mtime_) + " " + to_string(deleted_) + "\n");
 }
+
 string
 Inode::get_flush_record() {
     /**
@@ -255,7 +260,6 @@ Inode::remake_inode() {
     deleted_ = 0;
 }
 
-
 int
 Inode::read(uint8_t* buf, uint64_t size, uint64_t offset) {
     cout << "READING FROM INODE SIZE " << size << endl;
@@ -294,6 +298,7 @@ string
 Inode::get_id() {
     return inode_id_;
 }
+
 string
 Inode::get_path() {
     return path_;

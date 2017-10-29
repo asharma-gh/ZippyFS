@@ -1,5 +1,10 @@
 - clean up b tree and loader
 - add internal and leaf node
+- Currently, both node and internal_nodes contain value pointers, this should not be necessary since all the values are on the leaf nodes
+anyways.
+ - refactor our the value parameter
+ - ensure that all of the values are located in the leaf nodes
+ - set up pointers between each leaf node
 - change pointers to allow for multiple tree references
 - add tree-ptr table
 - integrate merging on trees

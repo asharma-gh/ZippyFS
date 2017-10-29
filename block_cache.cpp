@@ -282,6 +282,7 @@ BlockCache::open(string path) {
 
     return 0;
 }
+
 //TODO: remove all of this
 int
 BlockCache::flush_to_shdw(int on_close) {

@@ -15,8 +15,9 @@ BPLUSIndex::BPLUSIndex(uint64_t num_ents, uint64_t blocksize, uint64_t num_block
 
 }
 
-void BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks,
-                           map<uint64_t, unsigned long long> block_mtime) {
+void
+BPLUSIndex::add_inode(Inode in, map<uint64_t, shared_ptr<Block>> dirty_blocks,
+                      map<uint64_t, unsigned long long> block_mtime) {
     (void)dirty_blocks;
     (void)block_mtime;
     cout << "INSERTING " << in.get_id() << endl;
@@ -213,7 +214,6 @@ BPLUSIndex::find_node_to_store(string key) {
         }
         cur_offset = after(cur, inneridx);
         change = true;
-
     }
 }
 
@@ -414,6 +414,7 @@ BPLUSIndex::split_insert_node(uint64_t nodeoffset, int64_t k, int64_t v, bool is
     }
     return -1;
 }
+
 void
 BPLUSIndex::print(int64_t n) {
     node* nn = (node*)((char*)mem_.get_root() + n);
@@ -456,6 +457,7 @@ BPLUSIndex::print(int64_t n) {
 
 
 }
+
 bool
 BPLUSIndex::find(string p) {
     int64_t noff = find_node_to_store(p);
