@@ -12,6 +12,8 @@ Contents in the disk directory are synchronized with the server. Contents on the
 Currently developing a distributed B+Tree implementation which will serve as the database for all the files. Work needs to be done on merging sections of B+trees, garbage collection on nodes all while keeping everything persistent  
 
 ### What is currently done
+- block level data representation, inode structure definition with read/write interface
+- bump memory allocator for memory-mapped data
 - memory-mapped B+Tree implementation
 - Api to add inodes to B+Tree
 - B+Tree loader which loads the entire tree into memory
