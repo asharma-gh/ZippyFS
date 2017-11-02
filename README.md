@@ -21,6 +21,10 @@ Currently developing a distributed B+Tree implementation which will serve as the
 - basic FUSE callbacks for things like cd/ls/touch/echo/cat/mkdir
 - block cache to contain edits
 - very simple fsync utility script
+### Todo
+- refactoring into modules
+- tests for each module
+- caching at B+Tree loading level
 ## Installation/Set-up
 This is still in very early stages, and some hacking at the source may be required to get it running. sync.py for instance needs to be overhauled for your server configuration.  
 
