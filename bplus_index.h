@@ -7,7 +7,7 @@
 #define ORDER 24
 #define HASH_SIZE 128
 /**
- * This class represents a memory-backed B+Tree used for indexing
+ * This class represents a disk-backed B+Tree used for indexing
  * inodes flushed from the in-memory file-system.
  *  - It will only support the limited functionality required by the file system, which is only insertion.
  * It utilizes the memory allocated dubbed TireFire, which also is implemented using bump-allocation, and thus free-ing is not available, and so deletions are not possible.
