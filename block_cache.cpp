@@ -219,10 +219,8 @@ BlockCache::write(string path, const uint8_t* buf, size_t size, size_t offset) {
         }
         cout << "block idx " << block_idx << endl;
         if (inode->has_block(block_idx)) {
-            cout << "WE HAVE THE BLOCK" << endl;
             shared_ptr<Block> temp = inode->get_block(block_idx);
             temp->insert(buf, block_size, offset_amt);
-            cout << "overrided block" << endl;
             cout << "adding dirty block to map" << endl;
             dirty_block_[inode_idx_[path]][block_idx] = temp;
             dirty_block_mtime_[inode_idx_[path]][block_idx] = Util::get_time();
@@ -367,7 +365,6 @@ BlockCache::load_from_disk(string path) {
 
     // add all blocks
     for (auto blk : di.i_block_data) {
-        cout << "ADDING BLOCK!!!" << endl;
         latest_inode->add_block(blk.first, blk.second);
     }
 
@@ -375,7 +372,6 @@ BlockCache::load_from_disk(string path) {
     bool is_updated = (in_cache(path) == 0) && get_inode_by_path(path)->get_ull_mtime() >= di.i_mtime;
 
     if (!is_updated || in_cache(path) == -1) {
-        cout <<" UPDATED THING " << endl;
         inode_idx_[path] = latest_inode->get_id();
         inode_ptrs_[latest_inode->get_id()] = latest_inode;
         latest_inode->undo_dirty();
@@ -387,6 +383,5 @@ BlockCache::load_from_disk(string path) {
 
 BPLUSIndexLoader::disk_inode_info
 BlockCache::get_latest_inode(string path, bool get_data) {
-    cout << "Looking for thing with loader: " << path << endl;
     return loader_.find_latest_inode(path, get_data);
 }

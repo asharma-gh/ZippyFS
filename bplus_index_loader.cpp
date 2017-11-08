@@ -31,7 +31,6 @@ BPLUSIndexLoader::load_trees() {
 
         string fpath = path_ + ent;
 
-        cout << "fpath: " << fpath << endl;
         int fd = ::open(fpath.c_str(), O_RDONLY);
 
         file_to_fd_[fpath] = fd;
@@ -69,22 +68,18 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
         cout << "TREE: " << tree.first << endl;
         // traverse thru tree
         BPLUSIndex::header* head = tree.second;
-        cout << "SEG?" << endl;
         int64_t cur_offset = head->root;
         cout << "ROOT: " << to_string(cur_offset) << endl;
         BPLUSIndex::node* cur = nullptr;
         int64_t inodeoff = 0;
 
         for (;;) {
-            cout << "Cur_offset: " << to_string(cur_offset) << endl;
             cur = (BPLUSIndex::node*)((char*)tree.second + cur_offset);
             if (cur->is_leaf)
                 goto found_node;
 
             // is this key before all the ones in this node?
             char* prev = (char*)tree.second + cur->keys[0];
-            //  cout << "PREV " << prev << endl;
-            //  cout << "COMP W/ PREV: " << to_string(strcmp(phash, prev)) << endl;
             if (strcmp(phash, prev) < 0) {
                 cur_offset = cur->children[0];
                 continue;
@@ -92,8 +87,6 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
 
             // is this key adter all the ones in this node?
             char* post = (char*)tree.second + cur->keys[cur->num_keys - 1];
-            //   cout << "POST " << post << endl;
-            // cout << "COMP W/ POST: " << to_string(strcmp(phash, post)) << endl;
             if (strcmp(phash, post) >= 0) {
                 cur_offset = cur->children[cur->num_keys];
                 continue;
@@ -104,12 +97,6 @@ BPLUSIndexLoader::find_latest_inode(string path, bool get_data) {
             for (int ii = 0; ii < cur->num_keys - 1; ii++ ) {
                 char* pprev = (char*)tree.second + cur->keys[ii];
                 char* ppost = (char*)tree.second + cur->keys[ii + 1];
-                /*
-                  cout << "PPREV: " << pprev << endl;
-                  cout << "PPOST: " << ppost << endl;
-                  cout << "COMP PPREV: " << to_string(strcmp(pprev, phash)) << endl;
-                  cout << "COMP PHASH,POST: " << to_string(strcmp(phash, ppost)) << endl;
-                  */
                 if (strcmp(pprev, phash) <= 0
                         && strcmp(phash, ppost) < 0) {
                     cout << "found new child" << endl;
@@ -145,7 +132,6 @@ make_inode:
             latest_time = inode.mtime;
         }
         if (get_data) {
-            cout << "Getting data..." << endl;
             int64_t bd_off = inode.block_data;
             if (bd_off == -1)
                 // no data
@@ -155,8 +141,6 @@ make_inode:
             for (uint64_t ii = bd_off; ii < bd_off + bd_size; ii += sizeof(BPLUSIndex::block_data)) {
                 // get block
                 BPLUSIndex::block_data b = *(BPLUSIndex::block_data*)((char*)tree.second + ii);
-                cout << "GETTING BLOCK!!!" <<endl;
-                cout << "boff: " << to_string(b.data_offset) << " bsize: " << to_string (b.size) << endl;
 
                 // add block if its a later version
                 if (latest.i_block_time.find(b.block_id)

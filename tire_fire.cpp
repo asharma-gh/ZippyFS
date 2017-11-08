@@ -78,12 +78,9 @@ TireFire::end() {
     cout << "Destroying.." << endl;
 
     close(fd_);
-    cout << "1" << endl;
+
     // flush change
     msync(cur_ptr_, cur_size_, MS_INVALIDATE | MS_SYNC);
-    cout << "2" << endl;
 
     munmap(cur_ptr_, cur_size_);
-    cout << "3" << endl;
-
 }
