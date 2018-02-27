@@ -1,8 +1,7 @@
 # zippyfs
 ### DEPRECATED
 I will be rewriting this project soon, as a secure, distributed filesystem focused on file synchronization. I will update this readme with it shortly.
-distributed file system in fuse, early in development    
-Original version: branch nozippyfs
+
 ## Design
 This file system is built using FUSE. This allows us to create a file system which redefines the unix i/o interface.  
 This program consists of 3 main components, a block cache, directory on disk, and the server.  
