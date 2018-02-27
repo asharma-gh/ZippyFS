@@ -1,5 +1,5 @@
 # zippyfs
-### DEPRECATED
+### DEPRECATED (as of libfuse v3)
 I will be rewriting this project soon, as a secure, distributed filesystem focused on file synchronization. I will update this readme with it shortly.
 
 ## Design
