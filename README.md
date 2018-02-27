@@ -1,4 +1,6 @@
 # zippyfs
+### DEPRECATED
+I will be rewriting this project soon, as a secure, distributed filesystem focused on file synchronization. I will update this readme with it shortly.
 distributed file system in fuse, early in development    
 Original version: branch nozippyfs
 ## Design
