@@ -1,11 +1,5 @@
-# zippyfs
-### DEPRECATED (as of libfuse v3)
-I will be rewriting this project soon, as a secure, distributed filesystem focused on file synchronization. This repository will be kept as reference.
-
-[Rewrite, and latest version](https://github.com/freester1/zippyfs)
-
-
-Thanks for visiting!
+# Zippyfs
+This was produced as an independent study exploring the concept of a distributed FUSE filesystem to serve as a backend for file-synchronization applications. 
 
 ## Design
 This file system is built using FUSE. This allows us to create a file system which redefines the unix i/o interface.  
