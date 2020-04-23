@@ -1,5 +1,5 @@
-# Zippyfs
-This was produced as an independent study exploring the concept of a distributed FUSE filesystem to serve as a backend for file-synchronization applications. 
+# ZippyFS
+This is the product of an independent study exploring the concept of a distributed FUSE filesystem to serve as a backend for file-synchronization applications. 
 
 ## Design
 This file system is built using FUSE. This allows us to create a file system which redefines the unix i/o interface.  
